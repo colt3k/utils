@@ -1,0 +1,14 @@
+Calibration - ScryptParams:  {
+    "iterations": 1048576,
+    "block_size": 1,
+    "parallelism": 1,
+    "salt_bytes": 16,
+    "derived_key_length": 32,
+    "generated_or_stored_salt": null,
+    "derived_key": null
+}
+Salt: wYr2y5H5T2/LCqWURBfVQQ==
+Derived Key Length (inludes SCryptParam data): 109
+Mac:  UKMDQBsaXYlhxAiHkUsXIAAAAAAAAAAAAAAAAAAAAAA=
+Verifying Security of data...
+CipherText: E7CqSdOc1pWZwPEw60eM4OiNMc7vxxr5l6wGwQzNdqiIXIWU84VQyBj0ZvhDaG5r

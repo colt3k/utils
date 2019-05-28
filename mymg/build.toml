@@ -1,0 +1,56 @@
+
+############## EXAMPLES #################
+# mage install
+# mage release
+# bump= mage release // will increase version
+# names=one,two mage release | install
+
+###### Build
+
+build_tags=""
+
+###### Clean
+
+to_clean_dirs=["PREP/","cross"]
+
+###### APPS
+
+md5Exe="/sbin/md5"
+shaExe="/usr/local/bin/shasum"
+curlExe="/usr/bin/curl"
+catExe="/bin/cat"
+gitExe="/usr/local/bin/git"
+tarExe="/usr/bin/tar"
+scpExe="/usr/bin/scp"
+whichExe="/usr/bin/which"
+
+###### Deployment
+
+
+# host must be available via ping check, requires ppk setup
+[[scp]]
+host="main.domain.com"
+path="main:/root/apps/"
+
+# host must be available via http check
+[[artifactory]]
+host="main.domain.com"
+path="http://main.domain.com:8081/artifactory/artifactoryreponame/appname/"
+creds="/Users/username/tckey/keys/auths/.myartifactorycreds"
+
+[[artifactory]]
+host="artifactory.domain2.com"
+path="https://artifactory.domain.com/artifactory/artifactoryreponame/artifactorypath/"
+creds="/Users/username/.artifactorycreds"
+
+###### Project Properties
+
+[[application]]
+name="appname"
+ostargets=["darwin/amd64"]
+osdeployscripts=["./pkgr/deploy_darwin.sh"]
+package="go.domain.com/colt3k/appname"
+version="cmd/appname/VERSION.txt"
+readme="cmd/appname/README.md"
+changelog="cmd/appname/CHANGES.txt"
+files=["./pkgr/bash_autocomplete","cmd/appname/README.md"]

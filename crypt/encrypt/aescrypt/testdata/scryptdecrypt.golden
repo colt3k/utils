@@ -1,0 +1,12 @@
+Calibration - ScryptParams:  {
+    "iterations": 1048576,
+    "block_size": 1,
+    "parallelism": 1,
+    "salt_bytes": 16,
+    "derived_key_length": 32,
+    "generated_or_stored_salt": null,
+    "derived_key": null
+}
+Salt: wYr2y5H5T2/LCqWURBfVQQ==
+Derived Key Length (inludes SCryptParam data): 109
+PlainText2: My Original plain text used for testing.
