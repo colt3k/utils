@@ -329,10 +329,11 @@ func Help() {
 	fmt.Println("  config=	Location of build.toml default is ./build.toml")
 	fmt.Println("  nostatic= Do not set static flag for build")
 	fmt.Println("Targets")
-	fmt.Println("  help		show this help information")
-	fmt.Println("  install	install the application to local machine")
-	fmt.Println("  release	create and push release based on current local code")
-	fmt.Println("  targets	show current project configured command's to build")
+	fmt.Println("  help         show this help information")
+	fmt.Println("  install      install the application to local machine")
+	fmt.Println("  buildCross   create based on current local code and don't clean up")
+	fmt.Println("  release      create and push release based on current local code")
+	fmt.Println("  targets      show current project configured command's to build")
 	fmt.Println("Flags")
 	fmt.Println("  -v		show verbose mage output")
 	fmt.Println("  -d		show custom debug output")
@@ -376,7 +377,7 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue with setup :", err)
 		}
-		cleaner(d.Name)
+		cleaner(d.Name, false)
 		err = Format()
 		if err != nil {
 			fmt.Println("issue formatting :", err)
@@ -514,6 +515,59 @@ func BumpVersion() error {
 	}
 	return nil
 }
+func BuildCross() error {
+	mg.SerialDeps(parseToml, BumpVersion)
+
+	for _, d := range apps.Apps {
+		if !d.Enable {
+			continue
+		}
+		fmt.Println("\nSetup")
+		err := setup(d)
+		if err != nil {
+			fmt.Println("issue setup :", err)
+		}
+		fmt.Println("Release Prep")
+		// make dir PREP
+		fmt.Println("  create PREP dir")
+		if err = os.MkdirAll(prepDir, 0700); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create %q: %v", prepDir, err)
+		}
+
+		// loop through included files and place in PREP
+		fmt.Println("  add files to PREP")
+		for _, k := range d.Files {
+			fileName := filepath.Base(k)
+			if fileName == "bash_autocomplete" {
+				fileName = d.Name + ".bash"
+			}
+
+			fileTarget := filepath.Join(prepDir, fileName)
+			var fullFilePath string
+			fullFilePath, err = filepath.Abs(k)
+			if err != nil {
+				return err
+			}
+			log.Printf("copying %s to %s\n", fullFilePath, fileTarget)
+			err = sh.Copy(fileTarget, fullFilePath)
+			if err != nil {
+				return err
+			}
+		}
+		// end of loop
+
+		// cross building
+		err = cross(d)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		cleaner(d.Name, true)
+
+	}
+	return nil
+}
 func Release() error {
 	mg.SerialDeps(parseToml, BumpVersion)
 
@@ -571,11 +625,13 @@ func Release() error {
 			fmt.Println("issue artifactory push :", err)
 		}
 
-		cleaner(d.Name)
+		cleaner(d.Name, false)
 
 	}
 	return nil
 }
+
+
 
 // Build for all defined Architectures
 func cross(app application) error {
@@ -683,7 +739,7 @@ func cross(app application) error {
 		// create sha files
 		if !dryRun {
 			var md5sum string
-			md5sum, err = sh.Output(md5Exe, executableName)
+			md5sum, err = sh.Output(md5Exe, "-q", executableName)
 			if err != nil {
 				return err
 			}
@@ -701,7 +757,8 @@ func cross(app application) error {
 			if err != nil {
 				return err
 			}
-			_, err = io.WriteOut([]byte(shasum), executableName+".sha256")
+			sha256Parts := strings.Fields(shasum)
+			_, err = io.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
 			if err != nil {
 				return err
 			}
@@ -1021,7 +1078,7 @@ func Install() error {
 		} else {
 			fmt.Println("DRY_RUN copying ./pkgr/bash_autocomplete to /usr/local/etc/bash_completion.d/" + d.Name)
 		}
-		cleaner(d.Name)
+		cleaner(d.Name, false)
 	}
 
 	return nil
@@ -1033,12 +1090,12 @@ func Clean() {
 		if !d.Enable {
 			continue
 		}
-		cleaner(d.Name)
+		cleaner(d.Name, false)
 	}
 }
 
 // Clean up after yourself
-func cleaner(projectName string) {
+func cleaner(projectName string, dirsOnly bool) {
 	fmt.Println("Cleaning...")
 	for _, d := range toCleanDirs {
 		fmt.Println("  Cleaning...", d)
@@ -1051,14 +1108,15 @@ func cleaner(projectName string) {
 	for _, d := range toCleanFiles {
 		fmt.Println("  Cleaning...", d)
 		matches := findFiles(projectName)
-		for _, k := range matches {
-			fmt.Println("  Cleaning...", k)
-			err := os.Remove(k)
-			if err != nil {
-				log.Println(err)
+		if !dirsOnly {
+			for _, k := range matches {
+				fmt.Println("  Cleaning...", k)
+				err := os.Remove(k)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		}
-
 		err := os.Remove(d)
 		if err != nil {
 			log.Println(err)
