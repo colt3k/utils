@@ -3,6 +3,7 @@ package iocsv
 import (
 	"bufio"
 	"encoding/csv"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +11,6 @@ import (
 	log "github.com/colt3k/nglog/ng"
 	"github.com/iancoleman/orderedmap"
 
-	"github.com/colt3k/utils/io"
 	"github.com/colt3k/utils/io/data"
 )
 
@@ -90,12 +90,12 @@ func ReadCSVFromFile(filePath string, skipHeader bool, headAr []string) (*data.T
 	}
 	defer f.Close()
 	rdr := bufio.NewReader(f)
-	str, err := io.ReadLine(rdr)
+	byt, err := ioutil.ReadAll(rdr)
 	if err != nil {
 		return nil, err
 	}
 
-	return ReadCSV(str, skipHeader, headAr)
+	return ReadCSV(string(byt), skipHeader, headAr)
 }
 func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, error) {
 
