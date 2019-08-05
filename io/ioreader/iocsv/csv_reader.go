@@ -106,6 +106,14 @@ func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, er
 		log.Logf(log.FATAL, "error reading all lines\n%+v", err)
 	}
 
+	// If no lines then add empty set ???
+	//if len(lines) == 0 {
+	//	//return nil, fmt.Errorf("empty file")
+	//	lines = [][]string {
+	//		{},
+	//	}
+	//}
+
 	//Create a Row, Add Colums to it then add it to our Table
 	var rows []data.Row
 	if skipHeader {

@@ -1,13 +1,11 @@
 package passthrough
 
 import (
+	"fmt"
 	"io"
+	"strconv"
 	"sync"
 	"time"
-
-	"github.com/colt3k/utils/mathut"
-
-	log "github.com/colt3k/nglog/ng"
 
 	"github.com/colt3k/utils/file"
 )
@@ -24,6 +22,7 @@ type PassThru struct {
 	err   error
 
 	ticker *time.Ticker
+	readOnce bool
 }
 
 // NewPassThru creates an instance of our PassThru object
@@ -60,21 +59,25 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 	pt.lock.Unlock()
 
 	if err == nil {
-		go func() {
-			for range pt.ticker.C {
-				log.Printf("Part %d for %s byte(s) sent %d of %d %s%%", pt.partId, pt.name, pt.total, pt.fullSize, mathut.FmtFloatWithPrecision(float64(pt.total)*100/float64(pt.fullSize), 2))
-			}
-		}()
+		if !pt.readOnce {
+			fmt.Println("Create Ticker Func for ", pt.partId)
+			go func() {
+				for range pt.ticker.C {
+					fmt.Printf("Part %d for %s byte(s) sent %d of %d %s%%\n", pt.partId, pt.name, pt.total, pt.fullSize, strconv.FormatFloat(float64(pt.total)*100/float64(pt.fullSize), 'f', 2, 64))
+				}
+			}()
+			pt.readOnce = true
+		}
 
 		if pt.total == pt.fullSize {
 			pt.ticker.Stop()
-			log.Logln(log.DEBUG, pt.name, "File Read Completed FULLSIZE Match ", pt.total)
+			//fmt.Println(pt.name, "File Read Completed FULLSIZE Match ", pt.total)
 		}
 	} else if err == io.EOF {
 		pt.ticker.Stop()
-		log.Logln(log.DEBUG, pt.name, "File Read Completed EOF ", pt.total)
+		//fmt.Println(pt.name, "File Read Completed EOF ", pt.total)
 	} else {
-		log.Println(err)
+		fmt.Println(err)
 	}
 
 	return n, err
@@ -83,7 +86,10 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 // Close
 func (pt *PassThru) Close() error {
 	pt.rc.Close()
-	//pt.ticker.Stop()
+	pt.ticker.Stop()
+	pt.ticker = nil
+	pt.rc = nil
+
 	//we don't actually have to do anything here, since the buffer is just some data in memory
 	//and the error is initialized to no-error
 	return nil
