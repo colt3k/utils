@@ -59,7 +59,8 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		data, err := pullURLToString(url, auth)
 		if bserr.WarnErr(err) {
 			log.Logf(log.WARN, "update site unreachable %v", err.Error())
-			return nil, updateAvailable
+			//return nil, updateAvailable
+			continue
 		}
 
 		ac = new(updater.AppConfig)
@@ -276,9 +277,9 @@ func testHosts(hosts []updater.Connection) {
 
 			log.Logf(log.DEBUG, "host available? %v: %s", avail, d.OnAvailable)
 			hosts[i].SetAvailable(avail)
-			if avail {
-				break
-			}
+			//if avail {
+			//	break
+			//}
 		}
 		// if OnAvailable is set and OnHostname is NOT set but host is not resolvable skip
 		if len(d.OnHostNamePrefix) > 0 && strings.HasPrefix(strings.ToLower(host), d.OnHostNamePrefix) {
