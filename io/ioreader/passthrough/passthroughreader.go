@@ -89,6 +89,8 @@ func (pt *PassThru) Close() error {
 	pt.ticker.Stop()
 	pt.ticker = nil
 	pt.rc = nil
+pt.total = -1
+pt.fullSize = -1
 
 	//we don't actually have to do anything here, since the buffer is just some data in memory
 	//and the error is initialized to no-error
