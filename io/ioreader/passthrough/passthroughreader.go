@@ -86,8 +86,8 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 // Close
 func (pt *PassThru) Close() error {
 	pt.rc.Close()
-	pt.ticker.Stop()
-	pt.ticker = nil
+	//pt.ticker.Stop()
+	//pt.ticker = nil
 	pt.rc = nil
 pt.total = -1
 pt.fullSize = -1
