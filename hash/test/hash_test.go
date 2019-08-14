@@ -1,9 +1,15 @@
 package test
 
 import (
+	isha "crypto/sha1"
+	"encoding/base64"
+	"testing"
+
 	log "github.com/colt3k/nglog/ng"
+	"github.com/colt3k/utils/crypt"
 	"github.com/colt3k/utils/encode"
 	"github.com/colt3k/utils/encode/encodeenum"
+
 	"github.com/colt3k/utils/hash"
 	"github.com/colt3k/utils/hash/blake2"
 	"github.com/colt3k/utils/hash/hashenum"
@@ -80,4 +86,19 @@ func show(hasher hash.Hasher, data []byte) {
 		log.SetFlags(0)
 		log.Logln(log.NONE, "--- previous error ---")
 	}
+}
+
+func Test_SSHA(t *testing.T) {
+	password := "password"
+
+	salt := crypt.GenSalt([]byte("salt"), 4)
+
+	h := isha.New()
+	h.Write([]byte(password))
+	h.Write(salt)
+	b := h.Sum(nil)
+	full := append(b, salt...)
+
+	log.Printf("{SSHA}%s",base64.StdEncoding.EncodeToString(full))
+
 }
