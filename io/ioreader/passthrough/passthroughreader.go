@@ -12,16 +12,17 @@ import (
 
 // PassThru wraps an existing io.Reader and forwards the Read() call, while displaying
 type PassThru struct {
-	rc       io.ReadCloser
-	name     string
-	partId   int
-	fullSize int64
+	rc         io.ReadCloser
+	name       string
+	partId     int
+	totalParts int
+	fullSize   int64
 
 	lock  sync.RWMutex // protects total and err
 	total int64        // Total # of bytes transferred
 	err   error
 
-	ticker *time.Ticker
+	ticker   *time.Ticker
 	readOnce bool
 }
 
@@ -41,13 +42,13 @@ func New(readCloser io.ReadCloser, f file.File, notifyInSecs int) *PassThru {
 	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name}
 }
 
-func NewStream(readCloser io.ReadCloser, fsize int64, name string, partId int, notifyInSecs int) *PassThru {
+func NewStream(readCloser io.ReadCloser, fsize int64, name string, partId, totalParts int, notifyInSecs int) *PassThru {
 	if notifyInSecs == -1 || notifyInSecs == 0 {
 		notifyInSecs = 30
 	}
 
 	ticker := time.NewTicker(time.Duration(notifyInSecs) * time.Second)
-	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId:partId}
+	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId: partId, totalParts:totalParts}
 }
 
 // Read 'overrides' the underlying io.Reader's Read method, used to track byte counts and forward the call.
@@ -60,7 +61,7 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 
 	if err == nil {
 		if !pt.readOnce {
-			fmt.Println("Starting part #", pt.partId)
+			fmt.Printf("Starting part #%d of %d", pt.partId, pt.totalParts)
 			go func() {
 				for range pt.ticker.C {
 					fmt.Printf("Part %d for %s byte(s) sent %d of %d %s%%\n", pt.partId, pt.name, pt.total, pt.fullSize, strconv.FormatFloat(float64(pt.total)*100/float64(pt.fullSize), 'f', 2, 64))
@@ -94,8 +95,8 @@ func (pt *PassThru) Close() error {
 	}
 
 	pt.rc = nil
-pt.total = -1
-pt.fullSize = -1
+	pt.total = -1
+	pt.fullSize = -1
 
 	//we don't actually have to do anything here, since the buffer is just some data in memory
 	//and the error is initialized to no-error
@@ -117,6 +118,7 @@ func (pt *PassThru) Err() error {
 	pt.lock.RUnlock()
 	return err
 }
+
 // Len returns the number of bytes of the unread portion of the
 // slice.
 func (pt *PassThru) Len() int {
@@ -126,4 +128,3 @@ func (pt *PassThru) Len() int {
 	}
 	return int(int64(pt.fullSize) - pt.total)
 }
-
