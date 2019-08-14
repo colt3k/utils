@@ -1,5 +1,6 @@
 github.com/colt3k/nglog v0.0.1 h1:25rOKKVvmomcpNxapY9yIsECbahaL52HdPK/ZNC0uxM=
 github.com/colt3k/nglog v0.0.1/go.mod h1:1uzjsWq3W1tGYxZ3/kGrXpmeaVPvt9chX7n5cn/Qp8c=
+github.com/colt3k/utils/encode v0.0.1 h1:hdJVDGzOUuhgtCTYWCHrocWVbKLQs84jfdqEJDKrTIs=
 github.com/colt3k/utils/encode v0.0.1/go.mod h1:WVkLaBMJuvVnzm7MQuhLddJ+jLKYVzBVTUXIHOupGD8=
 github.com/colt3k/utils/hash v0.0.1 h1:QRy/iexxbMPiSeFchj/JM5c52k/byrAB27mzr733cKA=
 github.com/colt3k/utils/hash v0.0.1/go.mod h1:G10f8mRqYjCn5O0eGoHO6duHNS3k1ciApdVVvDad7kI=
