@@ -1,3 +1,3 @@
 module github.com/colt3k/utils/ascii
 
-go 1.12
+go 1.13
