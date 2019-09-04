@@ -3,7 +3,7 @@ module github.com/colt3k/utils/archive
 go 1.12
 
 require (
-	github.com/colt3k/utils/encode v0.0.1
+	github.com/colt3k/utils/encode v0.0.2
 	github.com/pierrec/lz4 v2.0.5+incompatible
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/ulikunitz/xz v0.5.5

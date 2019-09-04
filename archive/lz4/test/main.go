@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go.collins-tech.com/coltek/utils/encode"
-	"go.collins-tech.com/coltek/utils/encode/encodeenum"
+	"github.com/colt3k/utils/encode"
+	"github.com/colt3k/utils/encode/encodeenum"
 
 	"github.com/colt3k/utils/archive/lz4"
 )
