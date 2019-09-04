@@ -9,3 +9,5 @@ require (
 	github.com/colt3k/utils/stringut v0.0.1
 	github.com/iancoleman/orderedmap v0.0.0-20181121102841-22c6ecc9fe13 // indirect
 )
+
+go 1.13
