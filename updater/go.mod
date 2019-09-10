@@ -10,3 +10,5 @@ require (
 	github.com/colt3k/utils/ques v0.0.1
 	github.com/colt3k/utils/version v0.0.1
 )
+
+go 1.13

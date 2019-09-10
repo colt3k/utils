@@ -9,3 +9,5 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20180518182100-8d986c03457a
 	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
 )
+
+go 1.13
