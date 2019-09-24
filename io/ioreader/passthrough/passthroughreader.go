@@ -91,7 +91,6 @@ func (pt *PassThru) Close() error {
 	}
 	if pt.ticker != nil {
 		pt.ticker.Stop()
-		pt.ticker = nil
 	}
 
 	pt.rc = nil
