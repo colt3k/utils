@@ -43,6 +43,10 @@ func ConvertUnix2TimeStr(unxTime string) time.Time {
 	return time.Unix(i, 0)
 }
 
+func ConverMillis2Time(millis int64) time.Time {
+	return time.Unix(0, millis * int64(time.Millisecond))
+}
+
 type MyTime struct {
 	time.Time
 }
