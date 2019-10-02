@@ -84,7 +84,7 @@ func Key(password string, params Params) ([]byte, error) {
 	// Prepend the params and the salt to the derived key, each separated
 	// by a "$" character. The salt and the derived key are hex encoded.
 	//fmt.Println("SALT IN SCRYPT: ", Base64encode(params.Salt))
-	log.Logln(log.DEBUG, "Building Derived Key, pass back in format N$R$P$SALT$DK")
+	//log.Logln(log.DEBUG, "Building Derived Key, pass back in format N$R$P$SALT$DK")
 	return []byte(fmt.Sprintf("%d$%d$%d$%x$%x", params.N, params.R, params.P, params.Salt, dk)), nil
 }
 
@@ -260,18 +260,18 @@ func Calibrate(timeout time.Duration, memMiBytes int, params Params) (Params, er
 // scrypt key derivation function.
 func (p *Params) Check() error {
 	// Validate N
-	log.Logln(log.DEBUG, "VALIDATE N (iterations): less than maxInt OR less than equal to 1 OR modulo 2 not equal zero")
+	//log.Logln(log.DEBUG, "VALIDATE N (iterations): less than maxInt OR less than equal to 1 OR modulo 2 not equal zero")
 	if p.N > maxInt || p.N <= 1 || p.N%2 != 0 {
 		return ErrInvalidParams
 	}
 
-	log.Logln(log.DEBUG, "VALIDATE R (block size): less than 1 or greater than maxInt")
+	//log.Logln(log.DEBUG, "VALIDATE R (block size): less than 1 or greater than maxInt")
 	// Validate r
 	if p.R < 1 || p.R > maxInt {
 		return ErrInvalidParams
 	}
 
-	log.Logln(log.DEBUG, "VALIDATE P (parallelism): less than one OR greater than maxInt")
+	//log.Logln(log.DEBUG, "VALIDATE P (parallelism): less than one OR greater than maxInt")
 	// Validate p
 	if p.P < 1 || p.P > maxInt {
 		return ErrInvalidParams
@@ -283,13 +283,13 @@ func (p *Params) Check() error {
 		return ErrInvalidParams
 	}
 
-	log.Logln(log.DEBUG, "VALIDATE (salt len): less than minimum 8 OR greater than maxInt")
+	//log.Logln(log.DEBUG, "VALIDATE (salt len): less than minimum 8 OR greater than maxInt")
 	// Validate the salt length
 	if p.SaltLen < minSaltLen || p.SaltLen > maxInt {
 		return ErrInvalidParams
 	}
 
-	log.Logln(log.DEBUG, "VALIDATE (derived key length): less than 16 OR greater than maxInt")
+	//log.Logln(log.DEBUG, "VALIDATE (derived key length): less than 16 OR greater than maxInt")
 	// Validate the derived key length
 	if p.DKLen < minDKLen || p.DKLen > maxInt {
 		return ErrInvalidParams

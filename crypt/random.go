@@ -2,8 +2,6 @@ package crypt
 
 import (
 	"crypto/rand"
-
-	log "github.com/colt3k/nglog/ng"
 )
 
 /*
@@ -11,7 +9,7 @@ GenSalt generate a salt if one doesn't exist of the length specified
 */
 func GenSalt(salt []byte, length int) []byte {
 	if salt == nil || len(salt) < length {
-		log.Logln(log.DEBUG, "Generating a Salt, none passed in.")
+		//log.Logln(log.DEBUG, "Generating a Salt, none passed in.")
 		b := GenerateRandomBytes(length)
 		salt = b
 	}
