@@ -39,13 +39,13 @@ func NewFile(file string) file.File {
 
 // Available does this file exist?
 func (f *BasicFile) Available() bool {
-	log.Logln(log.DEBUG, "File:", f.fileStr)
+	//log.Logln(log.DEBUG, "File:", f.fileStr)
 
 	if _, err := os.Stat(f.fileStr); !os.IsNotExist(err) {
-		log.Logln(log.DEBUG, "File Exists:true")
+		//log.Logln(log.DEBUG, "File Exists:true")
 		return true
 	}
-	log.Logln(log.DEBUG, "File Exists:false")
+	//log.Logln(log.DEBUG, "File Exists:false")
 	return false
 }
 
