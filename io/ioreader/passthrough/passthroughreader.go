@@ -24,10 +24,11 @@ type PassThru struct {
 
 	ticker   *time.Ticker
 	readOnce bool
+	showPart bool
 }
 
 // NewPassThru creates an instance of our PassThru object
-func New(readCloser io.ReadCloser, f file.File, notifyInSecs int) *PassThru {
+func New(readCloser io.ReadCloser, f file.File, notifyInSecs int, showPartNum bool) *PassThru {
 	if notifyInSecs == -1 || notifyInSecs == 0 {
 		notifyInSecs = 30
 	}
@@ -39,16 +40,16 @@ func New(readCloser io.ReadCloser, f file.File, notifyInSecs int) *PassThru {
 	}
 
 	ticker := time.NewTicker(time.Duration(notifyInSecs) * time.Second)
-	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name}
+	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, showPart:showPartNum}
 }
 
-func NewStream(readCloser io.ReadCloser, fsize int64, name string, partId, totalParts int, notifyInSecs int) *PassThru {
+func NewStream(readCloser io.ReadCloser, fsize int64, name string, partId, totalParts int, notifyInSecs int, showPartNum bool) *PassThru {
 	if notifyInSecs == -1 || notifyInSecs == 0 {
 		notifyInSecs = 30
 	}
 
 	ticker := time.NewTicker(time.Duration(notifyInSecs) * time.Second)
-	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId: partId, totalParts:totalParts}
+	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId: partId, totalParts:totalParts, showPart:showPartNum}
 }
 
 // Read 'overrides' the underlying io.Reader's Read method, used to track byte counts and forward the call.
