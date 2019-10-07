@@ -67,7 +67,9 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 			}
 			go func() {
 				for range pt.ticker.C {
-					fmt.Printf("Part %d for %s byte(s) sent %d of %d %s%%\n", pt.partId, pt.name, pt.total, pt.fullSize, strconv.FormatFloat(float64(pt.total)*100/float64(pt.fullSize), 'f', 2, 64))
+					if pt.total != -1 && pt.fullSize != -1 {
+						fmt.Printf("Part %d for %s byte(s) sent %d of %d %s%%\n", pt.partId, pt.name, pt.total, pt.fullSize, strconv.FormatFloat(float64(pt.total)*100/float64(pt.fullSize), 'f', 2, 64))
+					}
 				}
 			}()
 			pt.readOnce = true
