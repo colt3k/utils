@@ -257,10 +257,10 @@ var httpClient *Client
 var responseTimeout int
 
 // Reachable is the url reachable
-func Reachable(host, name string, timeout int) (bool, error) {
+func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, error) {
 	if httpClient == nil || responseTimeout != timeout {
 		responseTimeout = timeout
-		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout))
+		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
