@@ -262,6 +262,7 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 		responseTimeout = timeout
 		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
+	httpClient.disableVerifyCert = disableVerifyCert
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
