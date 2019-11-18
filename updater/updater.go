@@ -2,23 +2,25 @@ package updater
 
 import (
 	"bytes"
+	"strconv"
 
 	"github.com/colt3k/utils/mathut"
 )
 
 type AppConfig struct {
-	OS          string `json:"os"`
-	Arch        string `json:"arch"`
-	Name        string `json:"name"`
-	Timestamp   int64  `json:"timestamp"`
-	Hash        string `json:"hash"`
-	Version     string `json:"version"`
-	Changelog   string `json:"changelog"`
-	BaseURL     string
-	URL         string
-	ArchiveName string
-	User        []byte
-	Pass        []byte
+	OS                string `json:"os"`
+	Arch              string `json:"arch"`
+	Name              string `json:"name"`
+	Timestamp         int64  `json:"timestamp"`
+	Hash              string `json:"hash"`
+	Version           string `json:"version"`
+	Changelog         string `json:"changelog"`
+	BaseURL           string
+	URL               string
+	ArchiveName       string
+	User              []byte
+	Pass              []byte
+	DisableVerifyCert bool
 }
 
 func (a *AppConfig) String() string {
@@ -43,6 +45,8 @@ func (a *AppConfig) String() string {
 	byt.WriteString(a.URL)
 	byt.WriteString(",  ArchiveName: ")
 	byt.WriteString(a.ArchiveName)
+	byt.WriteString(",  DisableVerifyCert: ")
+	byt.WriteString(strconv.FormatBool(a.DisableVerifyCert))
 	byt.WriteString("  }")
 	return byt.String()
 }
@@ -57,20 +61,20 @@ func NewUser(user, passOrToken, urlPrefix, repository string) *Connection {
 }
 
 type Connection struct {
-	Name               string
-	User               string
-	PassOrToken        string
-	URLPrefix          string
-	Repository         string
-	Path               string
-	OnAvailable        string
-	available          bool
-	OnHostNamePrefix   string
-	hostNamePfx        bool
-	OnHostNameSuffix   string
-	hostNameSuffix     bool
-	OnAvailableViaHTTP bool
-	DisableValidateCert       bool
+	Name                string
+	User                string
+	PassOrToken         string
+	URLPrefix           string
+	Repository          string
+	Path                string
+	OnAvailable         string
+	available           bool
+	OnHostNamePrefix    string
+	hostNamePfx         bool
+	OnHostNameSuffix    string
+	hostNameSuffix      bool
+	OnAvailableViaHTTP  bool
+	DisableValidateCert bool
 }
 
 func (c *Connection) Available() bool {

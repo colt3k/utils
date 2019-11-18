@@ -56,7 +56,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		compressdSuffix = "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tgz"
 
 		auth := &hc.Auth{Username: user, Password: pass}
-		data, err := pullURLToString(url, auth)
+		data, err := pullURLToString(url, auth, d.DisableValidateCert)
 		if bserr.WarnErr(err) {
 			log.Logf(log.WARN, "update site unreachable %v", err.Error())
 			//return nil, updateAvailable
@@ -67,6 +67,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		ac.BaseURL = base.String()
 		ac.User = user
 		ac.Pass = pass
+		ac.DisableVerifyCert = d.DisableValidateCert
 
 		dec := json.NewDecoder(ioutil.NopCloser(strings.NewReader(data)))
 		if err := dec.Decode(&ac); bserr.Err(err, "error decoding") {
@@ -196,7 +197,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 func download(ac *updater.AppConfig) bool {
 
 	var success bool
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20))
+	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 
 	auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
 	resp, err := httpClient.Fetch("GET", ac.URL, auth, nil, nil)
@@ -293,9 +294,9 @@ func testHosts(hosts []updater.Connection) {
 	}
 }
 
-func pullURLToString(url_ string, auth *hc.Auth) (string, error) {
+func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
 	log.Logln(log.DEBUG, "obtain httpclient")
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20))
+	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(disableVerifyCert))
 
 	resp, err := httpClient.Fetch("GET", url_, auth, nil, nil)
 	if resp != nil {
