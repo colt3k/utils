@@ -14,6 +14,7 @@ github.com/colt3k/utils/mathut v0.0.1/go.mod h1:YK4vx6fJOhaIJ3idYVcILYl99CNpLol7
 github.com/colt3k/utils/netut v0.0.1/go.mod h1:OTcQKaUjhExTGqzJJ6jg43uhGkAL+4JPDOpMiGQx6PU=
 github.com/colt3k/utils/netut v0.0.2 h1:7qke3526SZ4aTMeVWaDKLFg1XryblR8WutqdnkKMrWs=
 github.com/colt3k/utils/netut v0.0.2/go.mod h1:i714XPZ0erBxLBCb9m8F4n1syPfaPdhnHJAildN9xgg=
+github.com/colt3k/utils/netut v0.0.3/go.mod h1:i714XPZ0erBxLBCb9m8F4n1syPfaPdhnHJAildN9xgg=
 github.com/colt3k/utils/osut v0.0.1 h1:6iNcG8jk8IjNnsxZuRS9vQeJLlihgx1cUmQnraPngV0=
 github.com/colt3k/utils/osut v0.0.1/go.mod h1:a9YuFtk23T9NNhGWzK4FFnGDnfghS34nt4fO0hBeCfc=
 github.com/colt3k/utils/ques v0.0.1 h1:NH/9BYYO1MeZh0SnEd/1v647uEKS2WViK4osxf2UU9M=
