@@ -165,7 +165,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 		log.Println("Chg: ", ac.Changelog)
 		log.Println("URL:", ac.BaseURL)
 		if len(ac.Changelog) > 0 {
-			httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20))
+			httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 			var err error
 			url := ac.BaseURL + "/" + ac.Changelog
 			auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
