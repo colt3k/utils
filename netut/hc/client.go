@@ -103,7 +103,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 		}
 	}
 
-	// Can be used instead of all timers to perform cancel based on time set for the client
+		// Can be used instead of all timers to perform cancel based on time set for the client
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	//ctx, cancel := context.WithCancel(context.Background())
 	//timer := time.AfterFunc(5*time.Second, func() {
@@ -163,6 +163,7 @@ func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]strin
 	}
 
 	var netTransport = &http.Transport{
+		Proxy:http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout,
 			KeepAlive: c.DialKeepAliveTimeout,
