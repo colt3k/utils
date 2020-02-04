@@ -268,8 +268,10 @@ func testHosts(hosts []updater.Connection) {
 			var avail bool
 			var err error
 			if d.OnAvailableViaHTTP {
+				log.Logln(log.DEBUG, "onAvailable check", d.OnAvailable)
 				avail, err = hc.Reachable(d.OnAvailable, d.Name, 2, d.DisableValidateCert)
 			} else {
+				log.Logln(log.DEBUG, "ping host check", d.OnAvailable)
 				avail, err = netut.Ping(d.OnAvailable)
 			}
 			if err != nil {
