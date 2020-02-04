@@ -81,7 +81,9 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
+	// Test for HTTP_PROXY and HTTPS_PROXY and use appropriate one
 	var netTransport = &http.Transport{
+		Proxy:http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout, // time spent establishing a TCP connection
 			KeepAlive: c.DialKeepAliveTimeout,
