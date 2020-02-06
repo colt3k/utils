@@ -129,7 +129,7 @@ func UpdateAvailableMsg() string {
 	return buf.String()
 }
 
-func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question bool) bool {
+func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question, ans bool) bool {
 
 	/*
 		1. Pull file from archive
@@ -141,23 +141,29 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 	if ac, found := CheckUpdate(appName, hosts, version); found {
 		s := UpdateAvailableMsg()
 		fmt.Println(s)
-		if question && ques.Confirm("\nPerform Update ? ") {
-			//Download
-			if download(ac) {
-				// success
-				log.Println("\n** successful download, exiting so you can restart the application **")
-				os.Exit(0)
-			} else {
-				// failed
-				log.DisableTimestamp()
-				log.Println("\nupdate failed")
-				log.EnableTimestamp()
-			}
+		if ans {
+			downloadUpdate(ac)
+		} else if !ans && question && ques.Confirm("\nPerform Update ? ") {
+			downloadUpdate(ac)
 		} else {
 			return found
 		}
 	}
 	return false
+}
+
+func downloadUpdate(ac *updater.AppConfig) {
+	//Download
+	if download(ac) {
+		// success
+		log.Println("\n** successful download, exiting so you can restart the application **")
+		os.Exit(0)
+	} else {
+		// failed
+		log.DisableTimestamp()
+		log.Println("\nupdate failed")
+		log.EnableTimestamp()
+	}
 }
 
 func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
