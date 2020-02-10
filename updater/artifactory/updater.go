@@ -27,10 +27,12 @@ import (
 
 var ac *updater.AppConfig
 
-func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool) {
+func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool, bool) {
 
 	testHosts(hosts)
 	for _, d := range hosts {
+
+		var autoUpdate bool
 
 		// if all checks failed skip
 		if !d.Available() && !d.HostPfx() && !d.HostSuffix() {
@@ -38,6 +40,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 		var base bytes.Buffer
 		var upUrl bytes.Buffer
+		var autoUrl bytes.Buffer
 
 		user := []byte(d.User)
 		pass := []byte(d.PassOrToken)
@@ -71,7 +74,24 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 
 		dec := json.NewDecoder(ioutil.NopCloser(strings.NewReader(data)))
 		if err := dec.Decode(&ac); bserr.Err(err, "error decoding") {
-			return ac, updateAvailable
+			return ac, updateAvailable, autoUpdate
+		}
+
+		// Check for Auto file and value
+		autoUrl.WriteString(base.String())
+		autoUrl.WriteString(appName + ".auto")
+		log.Logln(log.DEBUG, "URL:", autoUrl.String())
+		autoURI := autoUrl.String()
+		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert)
+		if bserr.WarnErr(err) {
+			log.Logf(log.WARN, "no auto file available %v", err.Error())
+		}
+		if len(autoDat) > 0 {
+			var errAU error
+			autoUpdate, errAU = strconv.ParseBool(autoDat)
+			if errAU != nil {
+				log.Logf(log.ERROR, "issue parsing auto update file %v", errAU)
+			}
 		}
 
 		curVer, err := semver.Make(strings.TrimPrefix(version.Version, "v"))
@@ -90,7 +110,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			ac.URL = base.String()
 			ac.ArchiveName = appName + compressdSuffix
 			updateAvailable = true
-			return ac, updateAvailable
+			return ac, updateAvailable, autoUpdate
 
 		} else if localTime.Before(remoteTime) { // if current app is older than remote pull, could be a roll back
 			//Check build time instead
@@ -101,15 +121,15 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			if ac.Name == appName && ac.OS == runtime.GOOS {
 				log.Logln(log.DEBUG, "update available!")
 				updateAvailable = true
-				return ac, updateAvailable
+				return ac, updateAvailable, autoUpdate
 			}
 		} else {
 			log.Logln(log.DEBUG, "local version is newer")
 		}
-		return ac, updateAvailable
+		return ac, updateAvailable, autoUpdate
 	}
 
-	return nil, false
+	return nil, false, false
 }
 
 func UpdateAvailableMsg() string {
@@ -129,7 +149,7 @@ func UpdateAvailableMsg() string {
 	return buf.String()
 }
 
-func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question, ans bool) bool {
+func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question bool) bool {
 
 	/*
 		1. Pull file from archive
@@ -138,12 +158,12 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 		3. exit application and notify to restart - due to update or make option via input
 	*/
 	log.Logln(log.DEBUG, "check for update")
-	if ac, found := CheckUpdate(appName, hosts, version); found {
+	if ac, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
 		s := UpdateAvailableMsg()
 		fmt.Println(s)
-		if ans {
+		if autoUpdate {
 			downloadUpdate(ac)
-		} else if !ans && question && ques.Confirm("\nPerform Update ? ") {
+		} else if !autoUpdate && question && ques.Confirm("\nPerform Update ? ") {
 			downloadUpdate(ac)
 		} else {
 			return found
