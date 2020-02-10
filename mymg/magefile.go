@@ -335,7 +335,8 @@ func Help() {
 	fmt.Println("  buildCross   create based on current local code and don't clean up")
 	fmt.Println("  release      create and push release based on current local code")
 	fmt.Println("  targets      show current project configured command's to build")
-	fmt.Println("  auto         build auto file and release")
+	fmt.Println("  auto         build true auto file and release")
+	fmt.Println("  noauto       build false auto file and release")
 	fmt.Println("Flags")
 	fmt.Println("  -v		show verbose mage output")
 	fmt.Println("  -d		show custom debug output")
@@ -662,12 +663,46 @@ func Auto() error {
 		if err != nil {
 			fmt.Println("issue ssh copy :", err)
 		}
-		//err = artifactoryPush(d.Name)
-		//if err != nil {
-		//	fmt.Println("issue artifactory push :", err)
-		//}
+		err = artifactoryPush(d.Name)
+		if err != nil {
+			fmt.Println("issue artifactory push :", err)
+		}
 
 		//cleaner(d.Name, false)
+	}
+
+	return nil
+}
+
+func NoAuto() error {
+
+	mg.SerialDeps(parseToml, BumpVersion)
+
+	for _, d := range apps.Apps {
+		if !d.Enable {
+			continue
+		}
+		fmt.Println("\nSetup")
+		err := setup(d)
+		if err != nil {
+			fmt.Println("issue setup :", err)
+		}
+
+		_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		if err != nil {
+			return err
+		}
+
+		err = scpCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue ssh copy :", err)
+		}
+		err = artifactoryPush(d.Name)
+		if err != nil {
+			fmt.Println("issue artifactory push :", err)
+		}
+
+		cleaner(d.Name, false)
 	}
 
 	return nil
