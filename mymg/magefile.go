@@ -15,10 +15,10 @@ import (
 
 	"github.com/colt3k/utils/ques"
 
+	"github.com/colt3k/utils/io"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
 	toml "github.com/pelletier/go-toml"
-	"github.com/colt3k/utils/io"
 
 	"github.com/colt3k/utils/crypt/genppk"
 )
@@ -34,14 +34,14 @@ import (
 // bump= mage -v install or release
 
 var (
-	dryRun    bool
-	apps      applications
-	arts      artifactories
-	scpS      scps
-	timestamp = time.Now().Unix()
-	baseDir   = ""
-	buildDir  = ""
-	prepDir   = ""
+	dryRun      bool
+	apps        applications
+	arts        artifactories
+	scpS        scps
+	timestamp   = time.Now().Unix()
+	baseDir     = ""
+	buildDir    = ""
+	prepDir     = ""
 
 	versionPkg              = "github.com/colt3k/utils"
 	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s"`
@@ -220,6 +220,7 @@ func parseToml() error {
 	if ok {
 		dryRun = true
 	}
+
 	namesIn, namesFound := os.LookupEnv("names")
 	if !namesFound {
 		prompt = true
@@ -334,6 +335,7 @@ func Help() {
 	fmt.Println("  buildCross   create based on current local code and don't clean up")
 	fmt.Println("  release      create and push release based on current local code")
 	fmt.Println("  targets      show current project configured command's to build")
+	fmt.Println("  auto         build auto file and release")
 	fmt.Println("Flags")
 	fmt.Println("  -v		show verbose mage output")
 	fmt.Println("  -d		show custom debug output")
@@ -631,7 +633,45 @@ func Release() error {
 	return nil
 }
 
+func Auto() error {
 
+	mg.SerialDeps(parseToml, BumpVersion)
+
+	for _, d := range apps.Apps {
+		if !d.Enable {
+			continue
+		}
+		fmt.Println("\nSetup")
+		err := setup(d)
+		if err != nil {
+			fmt.Println("issue setup :", err)
+		}
+
+			_, err = io.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
+			if err != nil {
+				return err
+			}
+
+			//_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+			//if err != nil {
+			//	return err
+			//}
+
+
+		err = scpCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue ssh copy :", err)
+		}
+		//err = artifactoryPush(d.Name)
+		//if err != nil {
+		//	fmt.Println("issue artifactory push :", err)
+		//}
+
+		//cleaner(d.Name, false)
+	}
+
+	return nil
+}
 
 // Build for all defined Architectures
 func cross(app application) error {
