@@ -814,9 +814,18 @@ func cross(app application) error {
 		// create sha files
 		if !dryRun {
 			var md5sum string
-			md5sum, err = sh.Output(md5Exe, "-q", executableName)
-			if err != nil {
-				return err
+			if strings.Contains(md5Exe, "md5sum") {
+				md5sum, err = sh.Output(md5Exe, executableName)
+				if err != nil {
+					return err
+				}
+				parts := strings.Split(md5sum, " ")
+				md5sum = parts[0]
+			} else {
+				md5sum, err = sh.Output(md5Exe, "-q", executableName)
+				if err != nil {
+					return err
+				}
 			}
 			_, err = io.WriteOut([]byte(md5sum), executableName+".md5")
 			if err != nil {
@@ -828,9 +837,18 @@ func cross(app application) error {
 
 		if !dryRun {
 			var shasum string
-			shasum, err = sh.Output(shaExe, executableName)
-			if err != nil {
-				return err
+			if strings.Contains(md5Exe, "sha256sum") {
+				shasum, err = sh.Output(shaExe, executableName)
+				if err != nil {
+					return err
+				}
+				parts := strings.Split(shasum, " ")
+				shasum = parts[0]
+			} else {
+				shasum, err = sh.Output(shaExe, executableName)
+				if err != nil {
+					return err
+				}
 			}
 			sha256Parts := strings.Fields(shasum)
 			_, err = io.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
