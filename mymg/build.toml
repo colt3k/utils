@@ -15,8 +15,9 @@ to_clean_dirs=["PREP/","cross"]
 
 ###### APPS
 
-md5Exe="/sbin/md5"
-shaExe="/usr/local/bin/shasum"
+md5Exe="/sbin/md5sum"
+sha1Exe="/usr/local/bin/sha1sum"
+sha256Exe="/usr/local/bin/sha256sum"
 curlExe="/usr/bin/curl"
 catExe="/bin/cat"
 gitExe="/usr/local/bin/git"

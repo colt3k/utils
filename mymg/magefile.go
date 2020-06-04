@@ -61,7 +61,8 @@ var (
 	toCleanDirs  []string
 
 	md5Exe   = "/bin/md5sum"
-	shaExe   = "/bin/sha256sum"
+	sha1Exe	 = "/bin/sha1sum"
+	sha256Exe   = "/bin/sha256sum"
 	curlExe  = "/bin/curl"
 	catExe   = "/bin/cat"
 	gitExe   = "/bin/git"
@@ -243,7 +244,8 @@ func parseToml() error {
 
 	// APPS
 	md5Exe = props["md5Exe"].(string)
-	shaExe = props["shaExe"].(string)
+	sha1Exe = props["sha1Exe"].(string)
+	sha256Exe = props["sha256Exe"].(string)
 	curlExe = props["curlExe"].(string)
 	catExe = props["catExe"].(string)
 	gitExe = props["gitExe"].(string)
@@ -813,21 +815,13 @@ func cross(app application) error {
 		}
 		// create sha files
 		if !dryRun {
-			var md5sum string
-			if strings.Contains(md5Exe, "md5sum") {
-				md5sum, err = sh.Output(md5Exe, executableName)
-				if err != nil {
-					return err
-				}
-				parts := strings.Split(md5sum, " ")
-				md5sum = parts[0]
-			} else {
-				md5sum, err = sh.Output(md5Exe, "-q", executableName)
-				if err != nil {
-					return err
-				}
+			md5sum, err := sh.Output(md5Exe, executableName)
+			if err != nil {
+				return err
 			}
-			_, err = io.WriteOut([]byte(md5sum), executableName+".md5")
+			md5sumParts := strings.Fields(md5sum)
+
+			_, err = io.WriteOut([]byte(md5sumParts[0]), executableName+".md5")
 			if err != nil {
 				return err
 			}
@@ -837,18 +831,9 @@ func cross(app application) error {
 
 		if !dryRun {
 			var shasum string
-			if strings.Contains(md5Exe, "sha256sum") {
-				shasum, err = sh.Output(shaExe, executableName)
-				if err != nil {
-					return err
-				}
-				parts := strings.Split(shasum, " ")
-				shasum = parts[0]
-			} else {
-				shasum, err = sh.Output(shaExe, executableName)
-				if err != nil {
-					return err
-				}
+			shasum, err = sh.Output(sha256Exe, executableName)
+			if err != nil {
+				return err
 			}
 			sha256Parts := strings.Fields(shasum)
 			_, err = io.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
@@ -1005,16 +990,20 @@ func artifactoryPush(projectName string) error {
 						fmt.Println("    to ", k.Path)
 						// hash each before uploading
 						if !dryRun {
-							md5sum, err := sh.Output(md5Exe, "-q", d)
+
+							md5sum, err := sh.Output(md5Exe, d)
 							if err != nil {
 								return err
 							}
-							shasum, err := sh.Output(shaExe, d)
+							md5parts := strings.Fields(md5sum)
+							md5sum = md5parts[0]
+							sha1sum, err := sh.Output(sha1Exe, d)
 							if err != nil {
 								return err
 							}
-							shaParts := strings.Fields(shasum)
-							shasum256, err := sh.Output(shaExe, "-a", "256", d)
+							shaParts := strings.Fields(sha1sum)
+
+							shasum256, err := sh.Output(sha256Exe, d)
 							if err != nil {
 								return err
 							}
