@@ -1279,7 +1279,7 @@ func gitStatus() string {
 func goVersion() string {
 	resp, _ := sh.Output("go", "version")
 	flds := strings.Fields(resp)
-	return flds[3]
+	return flds[2]
 }
 func loadArtifactoryCreds(path string) []byte {
 	if len(path) > 0 {
