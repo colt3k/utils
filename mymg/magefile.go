@@ -44,7 +44,7 @@ var (
 	prepDir     = ""
 
 	versionPkg              = "github.com/colt3k/utils"
-	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s"`
+	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
 	goLDFlagsTemplate       = "-s -w %s"
 	goLDFlags               string
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
@@ -1227,7 +1227,7 @@ func setup(app application) error {
 	log.Printf("** Project: %s \n** Project Pkg: %s\n** CurrentPath: %s", app.Name, app.Package, baseDir)
 
 	fmt.Println("  setup ldflag version templates")
-	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10))
+	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
 	fmt.Println("Version Fields: ", versionFields)
 	goLDFlags = fmt.Sprintf(goLDFlagsTemplate, versionFields)
 	goLDFlagsStatic = fmt.Sprintf(goLDFlagsStaticTemplate, versionFields)
@@ -1276,6 +1276,11 @@ func gitStatus() string {
 	return ""
 }
 
+func goVersion() string {
+	resp, _ := sh.Output("go", "version")
+	flds := strings.Fields(resp)
+	return flds[3]
+}
 func loadArtifactoryCreds(path string) []byte {
 	if len(path) > 0 {
 		creds, _ := sh.Output("cat", path)
