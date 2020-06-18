@@ -8,3 +8,6 @@ var GITCOMMIT = "0abc12d" //go run -ldflags "-X version.GITCOMMIT=`git rev-parse
 
 // BUILDDATE date in unixtime
 var BUILDDATE = "1538584284"//= time.Now().UTC().Unix() //.Add(-2 * time.Hour), ON LINUX `date +%s`
+
+// GOVERSION go lang version application was built upon
+var GOVERSION = "go1.xx.x" //go run -ldflags "-X version.GOVERSION=`go version | awk '{ print $3 }'`"
