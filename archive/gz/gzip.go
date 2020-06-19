@@ -20,6 +20,11 @@ func New() *GZip {
 		compressionLevel:gzip.DefaultCompression,
 	}
 }
+func NewLvl(compressionLevel int) *GZip {
+	return &GZip{
+		compressionLevel:compressionLevel,
+	}
+}
 func (g *GZip) Compress(in io.Reader, out io.Writer) error {
 	w, err := gzip.NewWriterLevel(out, g.compressionLevel)
 	if err != nil {
