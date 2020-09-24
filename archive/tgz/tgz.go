@@ -26,15 +26,12 @@ func Untar(dst string, r io.Reader) error {
 		header, err := tr.Next()
 
 		switch {
-
 		// if no more files are found return
 		case err == io.EOF:
 			return nil
-
 		// return any other error
 		case err != nil:
 			return err
-
 		// if the header is nil, just skip it (not sure how this happens)
 		case header == nil:
 			continue
@@ -49,7 +46,6 @@ func Untar(dst string, r io.Reader) error {
 
 		// check the file type
 		switch header.Typeflag {
-
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
@@ -57,9 +53,12 @@ func Untar(dst string, r io.Reader) error {
 					return err
 				}
 			}
-
 		// if it's a file create it
 		case tar.TypeReg:
+			// If file exists already then delete it first!!!
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				os.Remove(target)
+			}
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err
