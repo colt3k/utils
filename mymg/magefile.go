@@ -34,17 +34,18 @@ import (
 // bump= mage -v install or release
 
 var (
-	dryRun      bool
-	apps        applications
-	arts        artifactories
-	scpS        scps
-	timestamp   = time.Now().Unix()
-	baseDir     = ""
-	buildDir    = ""
-	prepDir     = ""
+	dryRun    bool
+	apps      applications
+	arts      artifactories
+	scpS      scps
+	timestamp = time.Now().Unix()
+	baseDir   = ""
+	buildDir  = ""
+	prepDir   = ""
 
 	versionPkg              = "github.com/colt3k/utils"
 	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
+	saltOverwriteValue      = ""
 	goLDFlagsTemplate       = "-s -w %s"
 	goLDFlags               string
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
@@ -60,15 +61,15 @@ var (
 	toCleanFiles []string
 	toCleanDirs  []string
 
-	md5Exe   = "/bin/md5sum"
-	sha1Exe	 = "/bin/sha1sum"
-	sha256Exe   = "/bin/sha256sum"
-	curlExe  = "/bin/curl"
-	catExe   = "/bin/cat"
-	gitExe   = "/bin/git"
-	tarExe   = "/bin/tar"
-	scpExe   = "/bin/scp"
-	whichExe = "/usr/bin/which"
+	md5Exe    = "/bin/md5sum"
+	sha1Exe   = "/bin/sha1sum"
+	sha256Exe = "/bin/sha256sum"
+	curlExe   = "/bin/curl"
+	catExe    = "/bin/cat"
+	gitExe    = "/bin/git"
+	tarExe    = "/bin/tar"
+	scpExe    = "/bin/scp"
+	whichExe  = "/usr/bin/which"
 )
 
 func setupScps(props map[string]interface{}) error {
@@ -168,6 +169,11 @@ func setupApps(props map[string]interface{}) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		if len(d.SaltVariableOverwrite) > 0 {
+			// prompt for value
+			saltOverwriteValue = ques.Question("salt value ? ")
 		}
 	}
 	log.Println("Apps Obj:", apps)
@@ -311,15 +317,16 @@ type applications struct {
 }
 
 type application struct {
-	Enable          bool     `json:"enable"`
-	Name            string   `json:"name"`
-	OSTargets       []string `json:"ostargets"`
-	OSDeployScripts []string `json:"osdeployscripts"`
-	Package         string   `json:"package"`
-	ReadmeFile      string   `json:"readme"`
-	VersionFile     string   `json:"version"`
-	ChangelogFile   string   `json:"changelog"`
-	Files           []string `json:"files"`
+	Enable                bool     `json:"enable"`
+	Name                  string   `json:"name"`
+	OSTargets             []string `json:"ostargets"`
+	OSDeployScripts       []string `json:"osdeployscripts"`
+	Package               string   `json:"package"`
+	ReadmeFile            string   `json:"readme"`
+	VersionFile           string   `json:"version"`
+	ChangelogFile         string   `json:"changelog"`
+	Files                 []string `json:"files"`
+	SaltVariableOverwrite string   `json:"salt_variable_overwrite"`
 }
 
 func Help() {
@@ -650,16 +657,15 @@ func Auto() error {
 			fmt.Println("issue setup :", err)
 		}
 
-			_, err = io.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
-			if err != nil {
-				return err
-			}
+		_, err = io.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
+		if err != nil {
+			return err
+		}
 
-			//_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
-			//if err != nil {
-			//	return err
-			//}
-
+		//_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		//if err != nil {
+		//	return err
+		//}
 
 		err = scpCopy(d.Name)
 		if err != nil {
@@ -1229,6 +1235,9 @@ func setup(app application) error {
 	fmt.Println("  setup ldflag version templates")
 	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
 	fmt.Println("Version Fields: ", versionFields)
+	if len(app.SaltVariableOverwrite) > 0 {
+		versionFields += " " + fmt.Sprintf(app.SaltVariableOverwrite, saltOverwriteValue)
+	}
 	goLDFlags = fmt.Sprintf(goLDFlagsTemplate, versionFields)
 	goLDFlagsStatic = fmt.Sprintf(goLDFlagsStaticTemplate, versionFields)
 
