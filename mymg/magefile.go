@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -15,7 +17,7 @@ import (
 
 	"github.com/colt3k/utils/ques"
 
-	"github.com/colt3k/utils/io"
+	iout "github.com/colt3k/utils/io"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
 	toml "github.com/pelletier/go-toml"
@@ -38,6 +40,8 @@ var (
 	apps      applications
 	arts      artifactories
 	scpS      scps
+	sftpS     sftps
+	scpCustom scpcustoms
 	timestamp = time.Now().Unix()
 	baseDir   = ""
 	buildDir  = ""
@@ -69,6 +73,7 @@ var (
 	gitExe    = "/bin/git"
 	tarExe    = "/bin/tar"
 	scpExe    = "/bin/scp"
+	sftpExe   = "/bin/sftp"
 	whichExe  = "/usr/bin/which"
 )
 
@@ -87,6 +92,41 @@ func setupScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Scps Obj:", scpS)
+	return nil
+}
+func setupCustomScps(props map[string]interface{}) error {
+	mapProps := props["scp-custom"]
+	wrapper := make(map[string]interface{}, 1)
+	wrapper["scp-custom"] = mapProps
+
+	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bytesWrapper, &scpCustom)
+	if err != nil {
+		return err
+	}
+	log.Println("Custom Scps Obj:", scpCustom)
+
+	return nil
+}
+func setupSftps(props map[string]interface{}) error {
+	mapProps := props["sftp"]
+	wrapper := make(map[string]interface{}, 1)
+	wrapper["sftp"] = mapProps
+
+	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bytesWrapper, &sftpS)
+	if err != nil {
+		return err
+	}
+	log.Println("Sftps Obj:", sftpS)
 	return nil
 }
 func setupArtifacts(props map[string]interface{}) error {
@@ -257,8 +297,18 @@ func parseToml() error {
 	gitExe = props["gitExe"].(string)
 	tarExe = props["tarExe"].(string)
 	scpExe = props["scpExe"].(string)
-
+	if props["sftpExe"] != nil {
+		sftpExe = props["sftpExe"].(string)
+	}
 	err = setupScps(props)
+	if err != nil {
+		return err
+	}
+	err = setupCustomScps(props)
+	if err != nil {
+		return err
+	}
+	err = setupSftps(props)
 	if err != nil {
 		return err
 	}
@@ -300,8 +350,23 @@ type scps struct {
 	Instance []scp `json:"scp"`
 }
 type scp struct {
-	Host string `json:"host"`
-	Path string `json:"path"`
+	Host     string `json:"host"`
+	Path     string `json:"path"`
+	SkipPing string `json:"skip_ping"`
+}
+type scpcustoms struct {
+	Instance []scpcust `json:"scp-custom"`
+}
+type scpcust struct {
+	Exec string `json:"exec"`
+}
+type sftps struct {
+	Instance []sftp `json:"sftp"`
+}
+type sftp struct {
+	Host     string `json:"host"`
+	Path     string `json:"path"`
+	SkipPing string `json:"skip_ping"`
 }
 type artifactories struct {
 	Instance []artifactory `json:"artifactory"`
@@ -333,6 +398,7 @@ func Help() {
 	fmt.Println()
 	fmt.Println("Mage Usage:")
 	fmt.Println("Global Parameters")
+	fmt.Println("  dry=    Dry Run")
 	fmt.Println("  bump=	Bump to next version")
 	fmt.Println("  help=	Show this help")
 	fmt.Println("  names=	Single or Comma separated list of targets to build")
@@ -457,7 +523,7 @@ func BumpVersion() error {
 			}
 			fmt.Printf("  Bumping VERSION.txt from %s to %s\n", ver, nVersion)
 			if !dryRun {
-				_, err = io.WriteOut([]byte(nVersion), d.VersionFile)
+				_, err = iout.WriteOut([]byte(nVersion), d.VersionFile)
 				if err != nil {
 					return err
 				}
@@ -472,7 +538,7 @@ func BumpVersion() error {
 					return err
 				}
 				readmeContent := strings.Replace(out2, ver, nVersion, -1)
-				_, err = io.WriteOut([]byte(readmeContent), d.ReadmeFile)
+				_, err = iout.WriteOut([]byte(readmeContent), d.ReadmeFile)
 				if err != nil {
 					return err
 				}
@@ -580,6 +646,7 @@ func BuildCross() error {
 	}
 	return nil
 }
+
 func Release() error {
 	mg.SerialDeps(parseToml, BumpVersion)
 
@@ -630,7 +697,15 @@ func Release() error {
 
 		err = scpCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue ssh copy :", err)
+			fmt.Println("issue scp copy :", err)
+		}
+		err = scpCustomCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue scp custom copy :", err)
+		}
+		err = sftpCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue sftp copy :", err)
 		}
 		err = artifactoryPush(d.Name)
 		if err != nil {
@@ -657,19 +732,27 @@ func Auto() error {
 			fmt.Println("issue setup :", err)
 		}
 
-		_, err = io.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
+		_, err = iout.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
 		if err != nil {
 			return err
 		}
 
-		//_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		//_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
 		//if err != nil {
 		//	return err
 		//}
 
 		err = scpCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue ssh copy :", err)
+			fmt.Println("issue scp copy :", err)
+		}
+		err = scpCustomCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue scp custom copy :", err)
+		}
+		err = sftpCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue sftp copy :", err)
 		}
 		err = artifactoryPush(d.Name)
 		if err != nil {
@@ -696,14 +779,22 @@ func NoAuto() error {
 			fmt.Println("issue setup :", err)
 		}
 
-		_, err = io.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
 		if err != nil {
 			return err
 		}
 
 		err = scpCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue ssh copy :", err)
+			fmt.Println("issue scp copy :", err)
+		}
+		err = scpCustomCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue scp custom copy :", err)
+		}
+		err = sftpCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue sftp copy :", err)
 		}
 		err = artifactoryPush(d.Name)
 		if err != nil {
@@ -812,7 +903,7 @@ func cross(app application) error {
 			scriptName = "deploy_" + goos + ".txt"
 		}
 		if !dryRun {
-			_, err = io.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
+			_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 			if err != nil {
 				return err
 			}
@@ -827,7 +918,7 @@ func cross(app application) error {
 			}
 			md5sumParts := strings.Fields(md5sum)
 
-			_, err = io.WriteOut([]byte(md5sumParts[0]), executableName+".md5")
+			_, err = iout.WriteOut([]byte(md5sumParts[0]), executableName+".md5")
 			if err != nil {
 				return err
 			}
@@ -842,7 +933,7 @@ func cross(app application) error {
 				return err
 			}
 			sha256Parts := strings.Fields(shasum)
-			_, err = io.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
+			_, err = iout.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
 			if err != nil {
 				return err
 			}
@@ -913,7 +1004,7 @@ func cross(app application) error {
 		}
 		fmt.Println("  ", string(updater))
 		if !dryRun {
-			_, err = io.WriteOut(updater, filepath.Join(baseDir, osarchName+".update"))
+			_, err = iout.WriteOut(updater, filepath.Join(baseDir, osarchName+".update"))
 			if err != nil {
 				return err
 			}
@@ -947,7 +1038,12 @@ func scpCopy(projectName string) error {
 	for _, k := range scpS.Instance {
 		fmt.Println("SCP... ")
 		if len(k.Host) > 0 {
-			foundHost := ping(k.Host)
+			foundHost := false
+			if strings.ToLower(k.SkipPing) != "true" && strings.ToLower(k.SkipPing) != "y" {
+				foundHost = ping(k.Host)
+			} else {
+				foundHost = true
+			}
 
 			if foundHost {
 				matches := findFiles(projectName)
@@ -968,6 +1064,93 @@ func scpCopy(projectName string) error {
 			}
 		} else {
 			fmt.Println("  scp not configured")
+		}
+	}
+	return nil
+}
+
+func scpCustomCopy(projectName string) error {
+
+	for _, k := range scpCustom.Instance {
+		fmt.Println("SCP Custom... ")
+
+		matches := findFiles(projectName)
+		if len(matches) == 0 {
+			fmt.Println("  no files to transfer")
+		}
+		for _, d := range matches {
+			f := filepath.Base(d)
+			fmt.Printf("\tpassing \n\tparameter 1 %v,\n\tparameter 2 %v\n\tto %v\n", d, f, k.Exec)
+			out(k.Exec, d, f)
+		}
+	}
+	return nil
+}
+func sftpCopy(projectName string) error {
+
+	for _, k := range sftpS.Instance {
+		fmt.Println("SFTP... ")
+		if len(k.Host) > 0 {
+			foundHost := false
+			if strings.ToLower(k.SkipPing) != "true" && strings.ToLower(k.SkipPing) != "y" {
+				foundHost = ping(k.Host)
+			} else {
+				foundHost = true
+			}
+
+			if foundHost {
+				matches := findFiles(projectName)
+				if len(matches) == 0 {
+					fmt.Println("  no files to transfer")
+				}
+				for _, d := range matches {
+					f := filepath.Base(d)
+					exe := "echo put " + d + " " + k.Path + f + " | " + sftpExe + " " + k.Host
+					fmt.Printf("Exe: |%v|\n", exe)
+
+					var errorBuffer bytes.Buffer
+					var errorBuffer2 bytes.Buffer
+					c1 := exec.Command("echo", "put", d, k.Path+f)
+					c2 := exec.Command(sftpExe, k.Host)
+					c1.Stderr = &errorBuffer
+					c2.Stderr = &errorBuffer2
+					pr, pw := io.Pipe()
+					c1.Stdout = pw
+					c2.Stdin = pr
+
+					var b2 bytes.Buffer
+					c2.Stdout = &b2
+
+					err := c1.Start()
+					if err != nil {
+						log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+					}
+					err = c2.Start()
+					if err != nil {
+						log.Printf("err: %v\n%v", err,string(errorBuffer2.Bytes()))
+					}
+					err = c1.Wait()
+					if err != nil {
+						log.Printf("err: %v\n%v", err,string(errorBuffer.Bytes()))
+					}
+					err = pw.Close()
+					if err != nil {
+						log.Printf("err :%v\n", err)
+					}
+					err = c2.Wait()
+					if err != nil {
+						log.Printf("err :%v\n%v", err,string(errorBuffer2.Bytes()))
+					}
+					_, err = io.Copy(os.Stdout, &b2)
+					if err != nil {
+						log.Printf("err :%v\n%v", err,string(errorBuffer2.Bytes()))
+					}
+				}
+			} else if !foundHost {
+				fmt.Println("  sftp not configured")
+			}
+		} else {
+			fmt.Println("  sftp not configured")
 		}
 	}
 	return nil

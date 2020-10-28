@@ -23,6 +23,7 @@ catExe="/bin/cat"
 gitExe="/usr/local/bin/git"
 tarExe="/usr/bin/tar"
 scpExe="/usr/bin/scp"
+sftpExe="/usr/bin/sftp"
 whichExe="/usr/bin/which"
 
 ###### Deployment
@@ -32,6 +33,15 @@ whichExe="/usr/bin/which"
 [[scp]]
 host="main.domain.com"
 path="main:/root/apps/"
+
+[[sftp]]
+host="main.domain.com"
+path="/apps/"
+skip_ping="true"
+
+# this will call your exec and pass two parameters 1 original local file location, 2 name of file
+[[scp-custom]]
+exec="./folder/in/project/script-example.sh"
 
 # host must be available via http check
 [[artifactory]]
