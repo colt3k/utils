@@ -88,7 +88,7 @@ func aesCrypt(a *AES, derivedKey []byte) []byte {
 		panic(err)
 	}
 
-	/** DOING IT WITHOUT OPENSSL REQUIRES BLOCKS OF 32, unless using PKCS5 Padding ***/
+	/** DOING IT WITHOUT OPENSSL REQUIRES BLOCKS OF 32, unless using PKCS5 Padding(also referred to PKCS7) ***/
 	encMode := cipher.NewCBCEncrypter(block, aesIv2)
 
 	//Convert string to byte[]

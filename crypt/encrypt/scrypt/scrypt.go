@@ -177,7 +177,6 @@ func Cost(hash []byte) (Params, error) {
 // The returned params will not use more memory than the given (MiB);
 // will not take more time than the given timeout, but more than timeout/2.
 //
-//
 //   The default timeout (when the timeout arg is zero) is 200ms.
 //   The default memMiBytes (when memMiBytes is zero) is 16MiB.
 //   The default parameters (when params == Params{}) is DefaultParams.
