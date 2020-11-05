@@ -75,6 +75,7 @@ var (
 	scpExe    = "/bin/scp"
 	sftpExe   = "/bin/sftp"
 	whichExe  = "/usr/bin/which"
+
 )
 
 func setupScps(props map[string]interface{}) error {
@@ -214,6 +215,14 @@ func setupApps(props map[string]interface{}) error {
 		if len(d.SaltVariableOverwrite) > 0 {
 			// prompt for value
 			saltOverwriteValue = ques.Question("salt value ? ")
+		}
+
+		if len(d.YNPrompt) > 0 {
+			prompt = ques.Confirm(d.YNPrompt)
+			if !prompt {
+				fmt.Println("Please pull first!!!, Exiting...")
+				os.Exit(1)
+			}
 		}
 	}
 	log.Println("Apps Obj:", apps)
@@ -392,6 +401,7 @@ type application struct {
 	ChangelogFile         string   `json:"changelog"`
 	Files                 []string `json:"files"`
 	SaltVariableOverwrite string   `json:"salt_variable_overwrite"`
+	YNPrompt              string   `json:"ynprompt"`
 }
 
 func Help() {
@@ -1127,11 +1137,11 @@ func sftpCopy(projectName string) error {
 					}
 					err = c2.Start()
 					if err != nil {
-						log.Printf("err: %v\n%v", err,string(errorBuffer2.Bytes()))
+						log.Printf("err: %v\n%v", err, string(errorBuffer2.Bytes()))
 					}
 					err = c1.Wait()
 					if err != nil {
-						log.Printf("err: %v\n%v", err,string(errorBuffer.Bytes()))
+						log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
 					}
 					err = pw.Close()
 					if err != nil {
@@ -1139,11 +1149,11 @@ func sftpCopy(projectName string) error {
 					}
 					err = c2.Wait()
 					if err != nil {
-						log.Printf("err :%v\n%v", err,string(errorBuffer2.Bytes()))
+						log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
 					}
 					_, err = io.Copy(os.Stdout, &b2)
 					if err != nil {
-						log.Printf("err :%v\n%v", err,string(errorBuffer2.Bytes()))
+						log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
 					}
 				}
 			} else if !foundHost {

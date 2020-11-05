@@ -28,7 +28,6 @@ whichExe="/usr/bin/which"
 
 ###### Deployment
 
-
 # host must be available via ping check, requires ppk setup
 [[scp]]
 host="main.domain.com"
@@ -65,3 +64,5 @@ version="cmd/appname/VERSION.txt"
 readme="cmd/appname/README.md"
 changelog="cmd/appname/CHANGES.txt"
 files=["./pkgr/bash_autocomplete","cmd/appname/README.md"]
+###### PROMPT to PULL
+ynprompt="Did you pull the latest? (y/n), will exit on 'n'"
