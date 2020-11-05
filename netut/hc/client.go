@@ -96,13 +96,12 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 		ResponseHeaderTimeout: c.ResponseHeaderTimeout, //time spent reading the headers of the response
 		TLSClientConfig:       tlsConfig,
 	}
-	if c.httpClient == nil {
+	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert{
 		c.httpClient = &http.Client{
 			Timeout:   c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
 			Transport: netTransport,
 		}
 	}
-
 		// Can be used instead of all timers to perform cancel based on time set for the client
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	//ctx, cancel := context.WithCancel(context.Background())
@@ -135,6 +134,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	//	fmt.Println(string(dump))
 	//}
 	// Perform said network call.
+	//log.Logf(log.DEBUG, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		//glog.Error(err.Error()) // use glog it's amazing
@@ -266,6 +266,7 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	httpClient.disableVerifyCert = disableVerifyCert
+	//log.Logf(log.DEBUG, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
