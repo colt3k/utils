@@ -49,7 +49,7 @@ var (
 
 	versionPkg              = "github.com/colt3k/utils"
 	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
-	saltOverwriteValue      = ""
+	overwriteValues         []string
 	goLDFlagsTemplate       = "-s -w %s"
 	goLDFlags               string
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
@@ -75,7 +75,6 @@ var (
 	scpExe    = "/bin/scp"
 	sftpExe   = "/bin/sftp"
 	whichExe  = "/usr/bin/which"
-
 )
 
 func setupScps(props map[string]interface{}) error {
@@ -212,9 +211,15 @@ func setupApps(props map[string]interface{}) error {
 			}
 		}
 
-		if len(d.SaltVariableOverwrite) > 0 {
-			// prompt for value
-			saltOverwriteValue = ques.Question("salt value ? ")
+		if len(d.OverrideVariables) > 0 {
+			// Split on semi-colon, create an array to store answers
+			overrides := strings.Split(d.OverrideVariables, ";")
+			overwriteValues = make([]string, 0)
+			for _,k := range overrides {
+				ans := ques.Question(k+" value ? ")
+				overwriteValues = append(overwriteValues, ans)
+			}
+			fmt.Printf("Answers: %v\n", overwriteValues)
 		}
 
 		if len(d.YNPrompt) > 0 {
@@ -400,7 +405,7 @@ type application struct {
 	VersionFile           string   `json:"version"`
 	ChangelogFile         string   `json:"changelog"`
 	Files                 []string `json:"files"`
-	SaltVariableOverwrite string   `json:"salt_variable_overwrite"`
+	OverrideVariables     string   `json:"override_variables"`
 	YNPrompt              string   `json:"ynprompt"`
 }
 
@@ -1428,8 +1433,14 @@ func setup(app application) error {
 	fmt.Println("  setup ldflag version templates")
 	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
 	fmt.Println("Version Fields: ", versionFields)
-	if len(app.SaltVariableOverwrite) > 0 {
-		versionFields += " " + fmt.Sprintf(app.SaltVariableOverwrite, saltOverwriteValue)
+	if len(app.OverrideVariables) > 0 {
+		overrides := strings.Split(app.OverrideVariables, ";")
+		for i,k := range overrides {
+			val := fmt.Sprintf(k, overwriteValues[i])
+			fmt.Printf("IDX: %d. VARIABLE: %v VALUE: %v - together %v \n", i, k, overwriteValues[i], val)
+			versionFields += " " + val
+		}
+		fmt.Printf("version fields: %v\n", versionFields)
 	}
 	goLDFlags = fmt.Sprintf(goLDFlagsTemplate, versionFields)
 	goLDFlagsStatic = fmt.Sprintf(goLDFlagsStaticTemplate, versionFields)
