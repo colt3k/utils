@@ -12,7 +12,6 @@ type AppConfig struct {
 	Arch              string `json:"arch"`
 	Name              string `json:"name"`
 	Timestamp         int64  `json:"timestamp"`
-	Hash              string `json:"hash"`
 	Version           string `json:"version"`
 	Changelog         string `json:"changelog"`
 	BaseURL           string
@@ -21,6 +20,7 @@ type AppConfig struct {
 	User              []byte
 	Pass              []byte
 	DisableVerifyCert bool
+	Issue             string
 }
 
 func (a *AppConfig) String() string {
@@ -33,8 +33,6 @@ func (a *AppConfig) String() string {
 	byt.WriteString(a.Name)
 	byt.WriteString(",  TS: ")
 	byt.WriteString(mathut.FmtInt(int(a.Timestamp)))
-	byt.WriteString(",  Hash: ")
-	byt.WriteString(a.Hash)
 	byt.WriteString(",  Version: ")
 	byt.WriteString(a.Version)
 	byt.WriteString(",  Changelog: ")

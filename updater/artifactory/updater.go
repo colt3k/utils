@@ -2,8 +2,12 @@ package artifactory
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -18,7 +22,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/colt3k/nglog/ers/bserr"
 	log "github.com/colt3k/nglog/ng"
-	"github.com/colt3k/utils/io"
+	iout "github.com/colt3k/utils/io"
 	"github.com/colt3k/utils/netut/hc"
 	"github.com/colt3k/utils/osut"
 	"github.com/colt3k/utils/ques"
@@ -181,7 +185,7 @@ func downloadUpdate(ac *updater.AppConfig) {
 	} else {
 		// failed
 		log.DisableTimestamp()
-		log.Println("\nupdate failed")
+		log.Printf("\nupdate failed %v", ac.Issue)
 		log.EnableTimestamp()
 	}
 }
@@ -231,26 +235,44 @@ func download(ac *updater.AppConfig) bool {
 		defer resp.Body.Close()
 	}
 	if bserr.WarnErr(err) {
-		log.Logf(log.WARN, "update site unreachable %v", err.Error())
+		log.Logf(log.ERROR, "update site unreachable %v", err.Error())
+		ac.Issue = "update site unreachable"
 		return success
 	}
 
 	// Read body to buffer
 	body, err := ioutil.ReadAll(resp.Body)
 	if bserr.Err(err, "Error reading body") {
+		ac.Issue = "unable to read response"
 		return success
 	}
 
 	// write out
 	log.Logln(log.DEBUG, "Writing out update to ", ac.ArchiveName)
-	io.WriteOut(body, ac.ArchiveName)
+	_, err = iout.WriteOut(body, ac.ArchiveName)
+	if err != nil {
+		log.Logf(log.ERROR, "issue writing out %v, %v", ac.ArchiveName, err)
+		ac.Issue = "unable to write out archive"
+		return success
+	}
 
 	// Pull executable from archive 'tgz'
-
+	log.Logln(log.DEBUG, "Extracting executable ", ac.Name)
 	cmd := "tar xvf " + ac.ArchiveName + " " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name
 	_, err = exec.Command("sh", "-c", cmd).Output()
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("Failed to execute command: %s %s", cmd, err.Error()))
+		ac.Issue = "failed to extract"
+		return success
+	}
+
+	// Validate HASH, pull file(s)
+	archivePathDir := strings.TrimSuffix(ac.ArchiveName, ".tgz")
+	sha256HashFileName := ac.Name + ".sha256"
+	validHash := validateHash(sha256HashFileName, archivePathDir, ac.Name)
+	if !validHash {
+		log.Logln(log.INFO, "sha256 hash invalid")
+		ac.Issue = "invalid sha256 hash"
 		return success
 	}
 
@@ -262,12 +284,14 @@ func download(ac *updater.AppConfig) bool {
 	}
 	if strings.HasSuffix(s, "main") {
 		log.Logln(log.WARN, "not a packaged executable")
+		ac.Issue = "not a packaged executable"
 		return success
 	}
 	cmd = "mv " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
 	_, err = exec.Command("sh", "-c", cmd).Output()
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("Failed to execute command: %s %s", cmd, err.Error()))
+		ac.Issue = "failed to move/replace application"
 		return success
 	}
 
@@ -276,6 +300,7 @@ func download(ac *updater.AppConfig) bool {
 	_, err = exec.Command("sh", "-c", cmd).Output()
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("Failed to execute command: %s %s", cmd, err.Error()))
+		ac.Issue = "failed to clean archive"
 		return success
 	}
 
@@ -341,4 +366,72 @@ func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string
 		return "", fmt.Errorf("reading %s: %v", url_, err)
 	}
 	return string(slurp), nil
+}
+
+func hash_file_md5(filePath string) (string, error) {
+	var returnMD5String string
+	file, err := os.Open(filePath)
+	if err != nil {
+		return returnMD5String, err
+	}
+	defer file.Close()
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return returnMD5String, err
+	}
+	hashInBytes := hash.Sum(nil)[:16]
+	returnMD5String = hex.EncodeToString(hashInBytes)
+	return returnMD5String, nil
+
+}
+func validateHash(hashFileName, archivePathDir, appName string) bool {
+	log.Logln(log.DEBUG, "Extracting hash file ", hashFileName)
+	cmd := "tar xvf " + ac.ArchiveName + " " + archivePathDir + "/" + hashFileName
+	_, err := exec.Command("sh", "-c", cmd).Output()
+	if err != nil {
+		log.Logln(log.WARN, fmt.Sprintf("Failed to execute command: %s %s", cmd, err.Error()))
+		return false
+	}
+
+	// Read file contents
+	hashContent, err := ioutil.ReadFile(archivePathDir + "/" + hashFileName)
+	if err != nil {
+		log.Logln(log.WARN, fmt.Sprintf("Failed to read hash: %s", err.Error()))
+		return false
+	}
+	// create hash from downloaded application
+	var hash string
+	if strings.HasSuffix(hashFileName, ".md5") {
+		hash, err = hash_file_md5(archivePathDir + "/" + appName)
+	} else if strings.HasSuffix(hashFileName, ".sha256") {
+		hash, err = hash_file_sha256(archivePathDir + "/" + appName)
+	}
+	if err != nil {
+		log.Logln(log.WARN, fmt.Sprintf("Failed to create hash from application: %s", err.Error()))
+		return false
+	}
+
+	if string(hashContent) == hash {
+		log.Logln(log.INFO, "VALID hash")
+		return true
+	} else {
+		log.Logf(log.INFO, "INVALID hash %s", hash)
+	}
+	return false
+}
+func hash_file_sha256(filePath string) (string, error) {
+	var returnSHA256String string
+	file, err := os.Open(filePath)
+	if err != nil {
+		return returnSHA256String, err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return returnSHA256String, err
+	}
+	hashInBytes := hash.Sum(nil)[:32]
+	returnSHA256String = hex.EncodeToString(hashInBytes)
+	return returnSHA256String, nil
+
 }
