@@ -493,13 +493,13 @@ func Build() error {
 		}
 
 		if !dryRun {
-			err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, "./cmd/"+d.Name+"/.")
+			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, "./cmd/"+d.Name+"/.")
 			if err != nil {
 				return err
 			}
 		} else {
 			var byt bytes.Buffer
-			byt.WriteString(gocmd + " build -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " ./cmd/" + d.Name + "/.")
+			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " ./cmd/" + d.Name + "/.")
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
 
@@ -878,7 +878,7 @@ func cross(app application) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, "./cmd/"+app.Name+"/.")
+			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, "./cmd/"+app.Name+"/.")
 			if err != nil {
 				return err
 			}
@@ -886,7 +886,7 @@ func cross(app application) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			fmt.Println("DRY_RUN: " + gocmd + " build -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " ./cmd/" + app.Name + "/.")
+			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " ./cmd/" + app.Name + "/.")
 		}
 		// make release dir for this OS
 
