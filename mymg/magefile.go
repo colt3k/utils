@@ -52,6 +52,8 @@ var (
 	overwriteValues         []string
 	goLDFlagsTemplate       = "-s -w %s"
 	goLDFlags               string
+	// extldflags	Set space-separated flags to pass to the external linker.
+	// -static 		means do not link against shared libraries
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
 	goLDFlagsStatic         string
 	bump                    bool
@@ -453,11 +455,13 @@ func Build() error {
 	fmt.Println("Building...")
 	//$(GO) build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o $(NAME) .
 	var err error
-	if _, ok := os.LookupEnv("CGO"); !ok {
-		err = os.Setenv("CGO", "0")
+	if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
+		err = os.Setenv("CGO_ENABLED", "0")
 		if err != nil {
-			fmt.Println("issue setting CGO to 0:", err)
+			fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		}
+	}else {
+		fmt.Printf("CGO_ENABLED set to %v\n", cgoval)
 	}
 
 	for _, d := range apps.Apps {
@@ -839,20 +843,33 @@ func cross(app application) error {
 		err := os.Setenv("GOOS", goos)
 		if err != nil {
 			fmt.Println("issue setting GOOS :", goos, err)
+		} else {
+			fmt.Printf("GOOS set to %v\n", goos)
 		}
 		err = os.Setenv("GOARCH", arch)
 		if err != nil {
 			fmt.Println("issue setting GOARCH :", arch, err)
+		} else {
+			fmt.Printf("GOARCH set to %v\n", arch)
 		}
 		err = os.Setenv("GOARM", arm)
 		if err != nil {
 			fmt.Println("issue setting GOARM :", arm, err)
-		}
-		if _, ok := os.LookupEnv("CGO"); !ok {
-			err = os.Setenv("CGO", "0")
-			if err != nil {
-				fmt.Println("issue setting CGO to 0:", err)
+		} else {
+			if len(arm) > 0 {
+				fmt.Printf("GOARM set to %v\n", arm)
+			} else {
+				fmt.Println("GOARM NOT set")
 			}
+		}
+
+		if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
+			err = os.Setenv("CGO_ENABLED", "0")
+			if err != nil {
+				fmt.Println("issue setting CGO_ENABLED to 0:", err)
+			}
+		} else {
+			fmt.Printf("CGO_ENABLED set to %v\n", cgoval)
 		}
 
 		name := app.Name
