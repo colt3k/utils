@@ -1,14 +1,15 @@
 package qrand
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestGenerateSeedData(t *testing.T) {
-	i, err := GenerateSeedData(10)
+	i, err := GenerateSeedData(300)
 	if err != nil {
 		t.Errorf("issue %v", err)
+		t.Failed()
 	}
-	fmt.Printf("vals: %v", i)
+	t.Logf("vals: %v", i)
+
 }
