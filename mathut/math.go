@@ -1,31 +1,41 @@
 package mathut
 
 import (
+	"fmt"
+	"github.com/colt3k/utils/stats"
 	"math"
 	"strconv"
 )
 
+// Round
 func Round(x, unit float64) float64 {
 	return math.Round(x/unit) * unit
 }
 
-// The format fmt is one of
-// 'b' (-ddddp±ddd, a binary exponent),
-// 'e' (-d.dddde±dd, a decimal exponent),
-// 'E' (-d.ddddE±dd, a decimal exponent),
-// 'f' (-ddd.dddd, no exponent),
-// 'g' ('e' for large exponents, 'f' otherwise), or
-// 'G' ('E' for large exponents, 'f' otherwise).
+/*
+The format fmt is one of
+ 	'b' (-ddddp±ddd, a binary exponent),
+ 	'e' (-d.dddde±dd, a decimal exponent),
+ 	'E' (-d.ddddE±dd, a decimal exponent),
+ 	'f' (-ddd.dddd, no exponent),
+ 	'g' ('e' for large exponents, 'f' otherwise), or
+ 	'G' ('E' for large exponents, 'f' otherwise).
+ */
+
+// FmtFloat formats a float to string
 func FmtFloat(val float64) string {
 	return FmtFloatWithPrecision(val,  -1)
 }
+
+// FmtFloatWithPrecision formats a float to precision to string
 func FmtFloatWithPrecision(val float64, precision int) string {
 	return strconv.FormatFloat(val, 'f', precision, 64)
 }
-func FmtFloatExpon(val float64) string {
+// FmtFloatExponentiation formats float using exponentiation to string
+func FmtFloatExponentiation(val float64) string {
 	return strconv.FormatFloat(val, 'E', -1, 64)
 }
-// FmtInt parse 32 or 64 cast to int
+// FmtInt formats int to string
 func FmtInt(val int) string {
 	switch IntSize() {
 	case 32:
@@ -46,6 +56,38 @@ func IntSize() int {
 func ParseInt(val string) int64 {
 	v, _ := strconv.ParseInt(val, 10, 64)
 	return v
+}
+
+/*
+Percentile returns percentile rounded to 4 positions after decimal
+	i.e.
+		Median percentile = .5
+		90th Percentile	  = .90
+		99th Percentile	  = .99
+ */
+func Percentile(vals []float64, percentile float64) (float64,error) {
+	s := stats.Sample{Xs: vals}
+	median := s.Percentile(percentile)
+	fVal, err := strconv.ParseFloat(fmt.Sprintf("%.4f", median), 64)
+	if err != nil {
+		return 0, err
+	}
+	return fVal, nil
+}
+
+// Median returns percentile rounded to 4 positions after decimal
+func Median(vals []float64) (float64,error) {
+	return Percentile(vals, .5)
+}
+
+// PercentDiff percentage difference between 2 values
+func PercentDiff(val1, val2 float64) float64 {
+	pctDiff := (math.Abs(val1 - val2) / ((val1 + val2) / 2)) * 100
+	if pctDiff <= 0 {
+		return 0
+	}
+
+	return math.Round(pctDiff)
 }
 /* Bitwise operations
 
