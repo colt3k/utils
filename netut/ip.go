@@ -124,7 +124,7 @@ func Ping(server string) (bool, error) {
 		valid = false
 		err = fmt.Errorf("invalid format for ipv4 or ipv6")
 	}
-	log.Logln(log.DEBUG, "******************** END PING - resolution *************************\n")
+	log.Logln(log.DEBUG, "******************** END PING - resolution *************************")
 	return valid, err
 }
 

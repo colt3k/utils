@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"strings"
@@ -83,7 +84,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	}
 	// Test for HTTP_PROXY and HTTPS_PROXY and use appropriate one
 	var netTransport = &http.Transport{
-		Proxy:http.ProxyFromEnvironment,
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout, // time spent establishing a TCP connection
 			KeepAlive: c.DialKeepAliveTimeout,
@@ -96,13 +97,13 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 		ResponseHeaderTimeout: c.ResponseHeaderTimeout, //time spent reading the headers of the response
 		TLSClientConfig:       tlsConfig,
 	}
-	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert{
+	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert {
 		c.httpClient = &http.Client{
 			Timeout:   c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
 			Transport: netTransport,
 		}
 	}
-		// Can be used instead of all timers to perform cancel based on time set for the client
+	// Can be used instead of all timers to perform cancel based on time set for the client
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	//ctx, cancel := context.WithCancel(context.Background())
 	//timer := time.AfterFunc(5*time.Second, func() {
@@ -163,7 +164,7 @@ func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]strin
 	}
 
 	var netTransport = &http.Transport{
-		Proxy:http.ProxyFromEnvironment,
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout,
 			KeepAlive: c.DialKeepAliveTimeout,
@@ -292,4 +293,88 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 		return true, nil
 	}
 	return false, nil
+}
+
+type TraceInfo struct {
+	Start                time.Time `json:"start"`
+	DNS                  Info      `json:"dns"`
+	Connect              Info      `json:"connect"`
+	TLSHandshake         Info      `json:"tls_handshake"`
+	Connection           Info      `json:"connection"`
+	GotFirstResponseByte Info      `json:"got_first_response_byte"`
+	WroteHeaders         Info      `json:"wrote_headers"`
+	WroteRequest         Info      `json:"wrote_request"`
+}
+type Info struct {
+	Host      string        `json:"host,omitempty"`
+	Start     time.Time     `json:"start"`
+	End       time.Time     `json:"end,omitempty"`
+	Stop      time.Duration `json:"stop"`
+	Completed bool          `json:"completed"`
+	Error     error         `json:"error,omitempty"`
+}
+
+func Trace() (*httptrace.ClientTrace, *TraceInfo) {
+	ti := &TraceInfo{}
+
+	t := &httptrace.ClientTrace{
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			ti.DNS.Start = time.Now()
+			ti.DNS.Host = info.Host
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			ti.DNS.Stop = time.Since(ti.DNS.Start)
+			ti.DNS.End = time.Now()
+			ti.DNS.Completed = true
+			log.Logf(log.DEBUG, "dns_lookup - %v seconds", ti.DNS.Stop.Seconds())
+		},
+		ConnectStart: func(network, addr string) {
+			ti.Connect.Start = time.Now()
+		},
+		ConnectDone: func(network, addr string, err error) {
+			ti.Connect.Stop = time.Since(ti.Connect.Start)
+			ti.Connect.End = time.Now()
+			ti.Connect.Completed = true
+			log.Logf(log.DEBUG, "time_connect - %v seconds", ti.Connect.Stop.Seconds())
+			ti.Connect.Error = err
+		},
+		TLSHandshakeStart: func() {
+			ti.TLSHandshake.Start = time.Now()
+		},
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			ti.TLSHandshake.Stop = time.Since(ti.TLSHandshake.Start)
+			ti.TLSHandshake.End = time.Now()
+			ti.TLSHandshake.Completed = true
+			log.Logf(log.DEBUG, "tls_handshake - %v seconds", ti.TLSHandshake.Stop.Seconds())
+			ti.TLSHandshake.Error = err
+		},
+		GetConn: func(hostPort string) {
+			ti.Connection.Start = time.Now()
+		},
+		GotConn: func(info httptrace.GotConnInfo) {
+			ti.Connection.Stop = time.Since(ti.Connection.Start)
+			ti.Connection.End = time.Now()
+			ti.Connection.Completed = true
+			log.Logf(log.DEBUG, "connection - %v seconds", ti.Connection.Stop.Seconds())
+		},
+		WroteHeaders: func() {
+			ti.WroteHeaders.End = time.Now()
+			ti.WroteHeaders.Stop = time.Since(ti.Connection.End)
+			ti.WroteHeaders.Completed = true
+			log.Logf(log.DEBUG, "wrote_headers - %v seconds", ti.WroteHeaders.Stop.Seconds())
+		},
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			ti.WroteRequest.Start = time.Now()
+			ti.WroteRequest.Completed = true
+			log.Logf(log.DEBUG, "wrote_request - %v", ti.WroteRequest.Start.UTC())
+		},
+		GotFirstResponseByte: func() {
+			ti.GotFirstResponseByte.Stop = time.Since(ti.Start)
+			ti.GotFirstResponseByte.End = time.Now()
+			ti.GotFirstResponseByte.Completed = true
+			log.Logf(log.DEBUG, "got_first_response_byte - %v seconds", ti.GotFirstResponseByte.Stop.Seconds())
+		},
+	}
+
+	return t, ti
 }
