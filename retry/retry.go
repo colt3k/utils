@@ -9,7 +9,7 @@ import (
 
 type Task func() error
 
-type RetryRule struct {
+type Rule struct {
 	MaxAttempts    uint
 	currentAttempt uint
 	MaxInterval    time.Duration // 60 sec
@@ -17,15 +17,15 @@ type RetryRule struct {
 	Elapsed        time.Duration
 }
 
-func NewNextBackoff() RetryRule {
-	n := RetryRule{
+func NewNextBackoff() Rule {
+	n := Rule{
 		MaxAttempts: 10,
 		MaxInterval: 5 * time.Minute,
 		MaxElapsed: 15 * time.Minute,
 	}
 	return n
 }
-func (r *RetryRule) NextBackoff() time.Duration {
+func (r *Rule) NextBackoff() time.Duration {
 
 	jitter := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(int64(1000))
 	pow := math.Pow(float64(2), float64(r.currentAttempt))
@@ -35,7 +35,7 @@ func (r *RetryRule) NextBackoff() time.Duration {
 	return d
 }
 
-func Retry(o Task, r RetryRule) error {
+func Process(o Task, r Rule) error {
 	r.currentAttempt = 1
 	if r.MaxInterval == 0 {
 		r.MaxInterval = 5 * time.Minute

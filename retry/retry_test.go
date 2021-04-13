@@ -11,7 +11,7 @@ var (
 	counter = 0
 )
 func TestRetry(t *testing.T) {
-	err := Retry(func() error {
+	err := Process(func() error {
 		return doSomething("somevalue")
 	}, NewNextBackoff())
 	if err != nil {
