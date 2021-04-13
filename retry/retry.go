@@ -17,7 +17,7 @@ type Rule struct {
 	Elapsed        time.Duration
 }
 
-func NewNextBackoff() Rule {
+func NewRule() Rule {
 	n := Rule{
 		MaxAttempts: 10,
 		MaxInterval: 5 * time.Minute,

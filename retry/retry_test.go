@@ -13,7 +13,7 @@ var (
 func TestRetry(t *testing.T) {
 	err := Process(func() error {
 		return doSomething("somevalue")
-	}, NewNextBackoff())
+	}, NewRule())
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
