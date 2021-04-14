@@ -1,15 +1,13 @@
 package config
 
 import (
+	log "github.com/colt3k/nglog/ng"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 
 	goup "github.com/ufoscout/go-up"
-
-	ers "github.com/colt3k/nglog/ers/bserr"
-	log "github.com/colt3k/nglog/ng"
 )
 
 type Config struct {
@@ -41,12 +39,14 @@ func (c *Config) Load(file string) {
 	envdir := path.Join(exPath, file)
 	ignoreFileNotFound := false
 	c.Util, err = goup.NewGoUp().AddFile(envdir, ignoreFileNotFound).Build()
-	if ers.NoPrintErr(err) {
+	if err != nil {
 		envdir = path.Join(appdir, file)
 		c.Util, err = goup.NewGoUp().AddFile(envdir, ignoreFileNotFound).Build()
-		if ers.NoPrintErr(err) {
+		if err != nil {
 			c.Util, err = goup.NewGoUp().AddFile(file, ignoreFileNotFound).Build()
-			ers.StopErr(err)
+			if err != nil {
+				log.Logf(log.FATAL, "%v",err)
+			}
 		}
 	}
 }
