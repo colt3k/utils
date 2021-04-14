@@ -1,5 +1,5 @@
 // All you need to work with stackgo stacks
-//
+// 11/27/2017
 // For an example usage visit http://github.com/alediaferia/stackgo
 /*
 The MIT License (MIT)
