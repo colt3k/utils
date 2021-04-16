@@ -1,6 +1,11 @@
+github.com/colt3k/nglog v0.0.1 h1:25rOKKVvmomcpNxapY9yIsECbahaL52HdPK/ZNC0uxM=
 github.com/colt3k/nglog v0.0.1/go.mod h1:1uzjsWq3W1tGYxZ3/kGrXpmeaVPvt9chX7n5cn/Qp8c=
+github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
+github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 golang.org/x/crypto v0.0.0-20180515001509-1a580b3eff78/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/crypto v0.0.0-20190102171810-8d7daa0c54b3 h1:35ZwriXqdZtBGoFgUpW71Z7xz5o23fRpWHFAO2PlnIA=
 golang.org/x/crypto v0.0.0-20190102171810-8d7daa0c54b3/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/sys v0.0.0-20190526052359-791d8a0f4d09 h1:IlD35wZE03o2qJy2o37WIskL33b7PT6cHdGnE8bieZs=
 golang.org/x/sys v0.0.0-20190526052359-791d8a0f4d09/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
