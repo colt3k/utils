@@ -496,14 +496,22 @@ func Build() error {
 			name += ".exe"
 		}
 
+		projectMainDir := "./cmd/"+d.Name+"/"
+		if !exists(projectMainDir) {
+			fmt.Println("Path doesn't exist: " + projectMainDir)
+			projectMainDir = "."
+		} else {
+			projectMainDir = projectMainDir+"."
+		}
+
 		if !dryRun {
-			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, "./cmd/"+d.Name+"/.")
+			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
 			if err != nil {
 				return err
 			}
 		} else {
 			var byt bytes.Buffer
-			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " ./cmd/" + d.Name + "/.")
+			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " "+projectMainDir)
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
 
@@ -891,11 +899,20 @@ func cross(app application) error {
 		}
 		fmt.Printf("  Packaging %s\n", goos)
 		executableName := filepath.Join(path, name)
+
+		projectMainDir := "./cmd/"+app.Name+"/"
+		if !exists(projectMainDir) {
+			fmt.Println("Path doesn't exist: " + projectMainDir)
+			projectMainDir = "."
+		} else {
+			projectMainDir = projectMainDir+"."
+		}
+
 		if !dryRun {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, "./cmd/"+app.Name+"/.")
+			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				return err
 			}
@@ -903,7 +920,7 @@ func cross(app application) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " ./cmd/" + app.Name + "/.")
+			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " "+projectMainDir)
 		}
 		// make release dir for this OS
 
@@ -1358,13 +1375,20 @@ func Install() error {
 			continue
 		}
 		var err error
+		projectMainDir := "./cmd/"+d.Name+"/"
+		if !exists(projectMainDir) {
+			fmt.Println("Path doesn't exist: " + projectMainDir)
+			projectMainDir = "."
+		} else {
+			projectMainDir = projectMainDir+"."
+		}
 		if !dryRun {
-			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, "./cmd/"+d.Name+"/.")
+			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, projectMainDir)
 			if err != nil {
 				fmt.Println("!!!error: ", err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: " + gocmd + " install -a -tags " + buildTags + " -ldflags " + goLDFlags + " ./cmd/" + d.Name + "/.")
+			fmt.Println("DRY_RUN: " + gocmd + " install -a -tags " + buildTags + " -ldflags " + goLDFlags + " "+projectMainDir)
 		}
 		goPath := os.Getenv("GOPATH")
 		binPath := filepath.Join(goPath, "/bin/", d.Name)
@@ -1553,4 +1577,18 @@ func PPK() error {
 	*/
 
 	return nil
+}
+
+func exists(path string) bool {
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		return true
+	}
+	return false
+}
+func fileExistsAndIsNotADir(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
