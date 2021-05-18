@@ -118,7 +118,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	}
 	// Add any required headers.
 	for key, value := range header {
-		log.Logf(log.DEBUG, "adding header setting %s=%s", key, value)
+		log.Logf(log.DBGL3, "adding header setting %s=%s", key, value)
 		req.Header.Add(key, value)
 
 		if key == "Content-Length" {
@@ -135,7 +135,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	//	fmt.Println(string(dump))
 	//}
 	// Perform said network call.
-	//log.Logf(log.DEBUG, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
+	//log.Logf(log.DBGL3, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		//glog.Error(err.Error()) // use glog it's amazing
@@ -267,7 +267,7 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	httpClient.disableVerifyCert = disableVerifyCert
-	//log.Logf(log.DEBUG, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
+	//log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -326,7 +326,7 @@ func Trace() (*httptrace.ClientTrace, *TraceInfo) {
 			ti.DNS.Stop = time.Since(ti.DNS.Start)
 			ti.DNS.End = time.Now()
 			ti.DNS.Completed = true
-			log.Logf(log.DEBUG, "dns_lookup - %v seconds", ti.DNS.Stop.Seconds())
+			log.Logf(log.DBGL3, "dns_lookup - %v seconds", ti.DNS.Stop.Seconds())
 		},
 		ConnectStart: func(network, addr string) {
 			ti.Connect.Start = time.Now()
@@ -335,7 +335,7 @@ func Trace() (*httptrace.ClientTrace, *TraceInfo) {
 			ti.Connect.Stop = time.Since(ti.Connect.Start)
 			ti.Connect.End = time.Now()
 			ti.Connect.Completed = true
-			log.Logf(log.DEBUG, "time_connect - %v seconds", ti.Connect.Stop.Seconds())
+			log.Logf(log.DBGL3, "time_connect - %v seconds", ti.Connect.Stop.Seconds())
 			ti.Connect.Error = err
 		},
 		TLSHandshakeStart: func() {
@@ -345,7 +345,7 @@ func Trace() (*httptrace.ClientTrace, *TraceInfo) {
 			ti.TLSHandshake.Stop = time.Since(ti.TLSHandshake.Start)
 			ti.TLSHandshake.End = time.Now()
 			ti.TLSHandshake.Completed = true
-			log.Logf(log.DEBUG, "tls_handshake - %v seconds", ti.TLSHandshake.Stop.Seconds())
+			log.Logf(log.DBGL3, "tls_handshake - %v seconds", ti.TLSHandshake.Stop.Seconds())
 			ti.TLSHandshake.Error = err
 		},
 		GetConn: func(hostPort string) {
@@ -355,24 +355,24 @@ func Trace() (*httptrace.ClientTrace, *TraceInfo) {
 			ti.Connection.Stop = time.Since(ti.Connection.Start)
 			ti.Connection.End = time.Now()
 			ti.Connection.Completed = true
-			log.Logf(log.DEBUG, "connection - %v seconds", ti.Connection.Stop.Seconds())
+			log.Logf(log.DBGL3, "connection - %v seconds", ti.Connection.Stop.Seconds())
 		},
 		WroteHeaders: func() {
 			ti.WroteHeaders.End = time.Now()
 			ti.WroteHeaders.Stop = time.Since(ti.Connection.End)
 			ti.WroteHeaders.Completed = true
-			log.Logf(log.DEBUG, "wrote_headers - %v seconds", ti.WroteHeaders.Stop.Seconds())
+			log.Logf(log.DBGL3, "wrote_headers - %v seconds", ti.WroteHeaders.Stop.Seconds())
 		},
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
 			ti.WroteRequest.Start = time.Now()
 			ti.WroteRequest.Completed = true
-			log.Logf(log.DEBUG, "wrote_request - %v", ti.WroteRequest.Start.UTC())
+			log.Logf(log.DBGL3, "wrote_request - %v", ti.WroteRequest.Start.UTC())
 		},
 		GotFirstResponseByte: func() {
 			ti.GotFirstResponseByte.Stop = time.Since(ti.Start)
 			ti.GotFirstResponseByte.End = time.Now()
 			ti.GotFirstResponseByte.Completed = true
-			log.Logf(log.DEBUG, "got_first_response_byte - %v seconds", ti.GotFirstResponseByte.Stop.Seconds())
+			log.Logf(log.DBGL3, "got_first_response_byte - %v seconds", ti.GotFirstResponseByte.Stop.Seconds())
 		},
 	}
 

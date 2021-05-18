@@ -105,13 +105,13 @@ func Ping(server string) (bool, error) {
 
 	var valid bool
 	var err error
-	log.Logln(log.DEBUG, "******************** PING - resolution ****************************")
+	log.Logln(log.DBGL3, "******************** PING - resolution ****************************")
 	ip, err := net.ResolveIPAddr("ip4:icmp", server)
 	if err != nil {
-		log.Logln(log.DEBUG, "******************** END PING - resolution *************************")
+		log.Logln(log.DBGL3, "******************** END PING - resolution *************************")
 		return valid, err
 	}
-	log.Logf(log.DEBUG, "%s resolved to IP %s", server, ip.IP.String())
+	log.Logf(log.DBGL3, "%s resolved to IP %s", server, ip.IP.String())
 	addr := net.ParseIP(ip.IP.String())
 	if addr == nil {
 		valid = false
@@ -124,7 +124,7 @@ func Ping(server string) (bool, error) {
 		valid = false
 		err = fmt.Errorf("invalid format for ipv4 or ipv6")
 	}
-	log.Logln(log.DEBUG, "******************** END PING - resolution *************************")
+	log.Logln(log.DBGL3, "******************** END PING - resolution *************************")
 	return valid, err
 }
 
@@ -139,20 +139,20 @@ func buildPingCmd(addr string) []string {
 func call(addr string) bool {
 	var available bool
 	parms := buildPingCmd(addr)
-	log.Logln(log.DEBUG, "******************** START PING ****************************")
-	log.Logln(log.DEBUG, "executing ping ", parms)
+	log.Logln(log.DBGL3, "******************** START PING ****************************")
+	log.Logln(log.DBGL3, "executing ping ", parms)
 	out, _ := exec.Command("ping", parms...).Output()
-	log.Logf(log.DEBUG, "ping output |%s|", string(out))
+	log.Logf(log.DBGL3, "ping output |%s|", string(out))
 	if strings.Contains(string(out), "Destination Host Unreachable") {
-		log.Logln(log.DEBUG, "destination host unreachable")
+		log.Logln(log.DBGL3, "destination host unreachable")
 		available = false
 	} else if strings.Contains(string(out), "100.0% packet loss") {
-		log.Logln(log.DEBUG, "100.0% packet lost")
+		log.Logln(log.DBGL3, "100.0% packet lost")
 		available = false
 	} else {
 		available = true
 	}
-	log.Logln(log.DEBUG, "******************** END PING ****************************")
+	log.Logln(log.DBGL3, "******************** END PING ****************************")
 	return available
 }
 

@@ -32,21 +32,21 @@ func (c *NetworkClient) Client(contype string, hostAr []string, proxy string) *[
 		if len(hostdata) > 1 {
 			hosts[i] = netut.Host{IP: hostdata[0], Port: hostdata[1]}
 		}
-		log.Logln(log.DEBUG, "")
-		log.Logln(log.DEBUG, "*********************** TEST  ***********************")
+		log.Logln(log.DBGL3, "")
+		log.Logln(log.DBGL3, "*********************** TEST  ***********************")
 
-		log.Logln(log.DEBUG, "Resovling: ", d)
+		log.Logln(log.DBGL3, "Resovling: ", d)
 		tcpAdr, err := net.ResolveTCPAddr(contype, d)
-		log.Logln(log.DEBUG, "Resolved: ", d)
+		log.Logln(log.DBGL3, "Resolved: ", d)
 		if err != nil {
-			log.Logf(log.DEBUG, "failed to resolve address: %s on %s\n%+v", d, contype, err)
+			log.Logf(log.ERROR, "failed to resolve address: %s on %s\n%+v", d, contype, err)
 			hosts[i].Pass = false
 			continue
 		}
 
 		con, err := net.DialTCP(contype, nil, tcpAdr)
 		if err != nil {
-			log.Logf(log.DEBUG, "dial failed on: %s\n%+v", d, err)
+			log.Logf(log.ERROR, "dial failed on: %s\n%+v", d, err)
 			hosts[i].Pass = false
 			continue
 		}
@@ -54,7 +54,7 @@ func (c *NetworkClient) Client(contype string, hostAr []string, proxy string) *[
 		if con != nil {
 			_, err = con.Write([]byte(fmt.Sprintf("Connection Test from:%s", ip)))
 			if err != nil {
-				log.Logf(log.DEBUG, "write to server %s failed\n%+v", d, err)
+				log.Logf(log.ERROR, "write to server %s failed\n%+v", d, err)
 				hosts[i].Pass = false
 				if con != nil {
 					err = con.Close()
@@ -71,7 +71,7 @@ func (c *NetworkClient) Client(contype string, hostAr []string, proxy string) *[
 				}
 			}
 		} else {
-			log.Logln(log.DEBUG, "TCP Write to server: ", d, " failed.")
+			log.Logln(log.ERROR, "TCP Write to server: ", d, " failed.")
 			hosts[i].Pass = false
 
 			continue
@@ -81,7 +81,7 @@ func (c *NetworkClient) Client(contype string, hostAr []string, proxy string) *[
 
 		repLen, err := con.Read(reply)
 		if err != nil {
-			log.Logf(log.DEBUG, "TCP read from server failed\n%+v", err)
+			log.Logf(log.ERROR, "TCP read from server failed\n%+v", err)
 			hosts[i].Pass = false
 			if con != nil {
 				err = con.Close()
@@ -92,7 +92,7 @@ func (c *NetworkClient) Client(contype string, hostAr []string, proxy string) *[
 			continue
 		}
 
-		log.Logln(log.DEBUG, "TCP  Reply from Server: ", d, " Response: ", string(reply[:repLen]))
+		log.Logln(log.DBGL3, "TCP  Reply from Server: ", d, " Response: ", string(reply[:repLen]))
 		hosts[i].Pass = true
 	}
 
