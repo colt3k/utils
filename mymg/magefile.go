@@ -37,6 +37,7 @@ import (
 
 var (
 	dryRun    bool
+	config 	  configuration
 	apps      applications
 	arts      artifactories
 	scpS      scps
@@ -94,8 +95,10 @@ func setupScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Scps Obj:", scpS)
+	config.Scps=scpS
 	return nil
 }
+
 func setupCustomScps(props map[string]interface{}) error {
 	mapProps := props["scp-custom"]
 	wrapper := make(map[string]interface{}, 1)
@@ -111,7 +114,7 @@ func setupCustomScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Custom Scps Obj:", scpCustom)
-
+	config.ScpsCustom = scpCustom
 	return nil
 }
 func setupSftps(props map[string]interface{}) error {
@@ -129,6 +132,7 @@ func setupSftps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Sftps Obj:", sftpS)
+	config.Sftp = sftpS
 	return nil
 }
 func setupArtifacts(props map[string]interface{}) error {
@@ -146,6 +150,7 @@ func setupArtifacts(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Artifacts Obj:", arts)
+	config.Artifactories=arts
 	return nil
 }
 func setupApps(props map[string]interface{}) error {
@@ -232,7 +237,8 @@ func setupApps(props map[string]interface{}) error {
 			}
 		}
 	}
-	log.Println("Apps Obj:", apps)
+
+	config.Applications=apps
 	return nil
 }
 
@@ -242,7 +248,6 @@ func setupCleanFiles() {
 	for _, d := range apps.Apps {
 		toCleanFiles = append(toCleanFiles, d.Name)
 	}
-
 }
 
 func parseTargets() error {
@@ -316,6 +321,16 @@ func parseToml() error {
 	if props["sftpExe"] != nil {
 		sftpExe = props["sftpExe"].(string)
 	}
+	config.Apps=make(map[string]string)
+	config.Apps["md5Exe"]=md5Exe
+	config.Apps["sha1Exe"]=sha1Exe
+	config.Apps["sha256Exe"]=sha256Exe
+	config.Apps["curlExe"]=curlExe
+	config.Apps["catExe"]=catExe
+	config.Apps["gitExe"]=gitExe
+	config.Apps["tarExe"]=tarExe
+	config.Apps["scpExe"]=scpExe
+	config.Apps["sftpExe"]=sftpExe
 	err = setupScps(props)
 	if err != nil {
 		return err
@@ -352,16 +367,27 @@ func parseToml() error {
 
 	// Cleaning
 	toCleanDirs = convertInterfaceArToStringAr(props["to_clean_dirs"].([]interface{}))
-
+	config.CleanDirs=toCleanDirs
 	// Building
 	buildTags = props["build_tags"].(string)
+	config.BuildTags=buildTags
 
 	log.Println("toCleanFiles: ", toCleanFiles)
 	log.Println("toCleanDirs: ", toCleanDirs)
 
 	return nil
 }
-
+type configuration struct {
+	EnvVars map[string]string `json:"env_vars"`
+	BuildTags string `json:"build_tags"`
+	CleanDirs []string `json:"clean_dirs"`
+	Apps  map[string]string `json:"apps"`
+	Scps scps `json:"scps"`
+	ScpsCustom scpcustoms `json:"scps_custom"`
+	Sftp sftps `json:"sftp"`
+	Artifactories artifactories `json:"artifactories"`
+	Applications applications `json:"applications"`
+}
 type scps struct {
 	Instance []scp `json:"scp"`
 }
@@ -427,6 +453,7 @@ func Help() {
 	fmt.Println("  buildCross   create based on current local code and don't clean up")
 	fmt.Println("  release      create and push release based on current local code")
 	fmt.Println("  targets      show current project configured command's to build")
+	fmt.Println("  display      show information after reading configuration")
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
 	fmt.Println("Flags")
@@ -435,7 +462,36 @@ func Help() {
 	fmt.Println()
 
 }
-
+func Display() {
+	mg.SerialDeps(parseToml)
+	fmt.Println()
+	s, _ := json.MarshalIndent(config, "", "  ")
+	log.Println("Configuration:", string(s))
+}
+func Comment() {
+	mg.SerialDeps(parseToml)
+	fmt.Println()
+	lastTag, _ := sh.Output(gitExe, "describe", "--tags", "--abbrev=0")
+	//fmt.Printf("last Tag : %v\n", lastTag)
+	comments, _ := sh.Output(gitExe, "log", lastTag+"..HEAD", "--oneline")
+	fmt.Printf("Comments : %v\n", comments)
+	lines := strings.Split(comments, "\n")
+	var byt bytes.Buffer
+	for _,l := range lines {
+		// all after first space
+		var bytLn bytes.Buffer
+		flds := strings.Fields(l)
+		for i,k := range flds {
+			if i > 0 {
+				bytLn.WriteString(k)
+				bytLn.WriteString(" ")
+			}
+		}
+		byt.WriteString(bytLn.String())
+		byt.WriteString("\n")
+	}
+	fmt.Printf("formatted comments: %v\n", byt.String())
+}
 func Targets() {
 	mg.SerialDeps(parseTargets)
 	fmt.Println()
