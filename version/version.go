@@ -1,7 +1,7 @@
 package version
 
 // VERSION indicates which version of the binary is running.
-var VERSION = "0.1"// OR go run -ldflags '-X version.VERSION=1.0'
+var VERSION = "0.0.1"// OR go run -ldflags '-X version.VERSION=1.0'
 
 // GITCOMMIT indicates which git hash the binary was built off of
 var GITCOMMIT = "0abc12d" //go run -ldflags "-X version.GITCOMMIT=`git rev-parse --short HEAD`"
