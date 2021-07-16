@@ -17,8 +17,8 @@ func Process(ctx context.Context, initTimer, repeatTimer int, o Task) error {
 			return nil
 		case t := <-timer.C:
 			fmt.Printf("timer fired: %v\n", t)
-			if err := o(); err == nil {
-				return nil
+			if err := o(); err != nil {
+				return err
 			}
 			timer.Reset(time.Second * time.Duration(repeatTimer))
 		}
