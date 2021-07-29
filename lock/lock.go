@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/colt3k/nglog/ng"
+	"log"
 )
 
 type Lock struct {
@@ -33,6 +33,6 @@ func (l *Lock) Try() bool {
 func (l *Lock) Unlock() {
 	err := os.Remove(l.name)
 	if err != nil {
-		log.Logf(log.ERROR, "issue removing lock file %+v", err)
+		log.Printf("ERROR: issue removing lock file %+v\n", err)
 	}
 }
