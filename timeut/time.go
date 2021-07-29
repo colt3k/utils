@@ -1,13 +1,13 @@
 package timeut
 
 import (
+	"github.com/colt3k/utils/debug"
 	"strconv"
 	"time"
 
 	"github.com/peterhellberg/duration"
 
-	ers "github.com/colt3k/nglog/ers/bserr"
-	log "github.com/colt3k/nglog/ng"
+	"log"
 )
 
 // https://golang.org/pkg/time/#pkg-constants
@@ -23,12 +23,13 @@ const (
 // i.e. "P1DT30H4S"  Output: 54h0m4s
 func ParseRFC3339(dateTime string) time.Duration {
 	d, err := duration.Parse(dateTime)
-	if ers.NotErr(err) {
-		log.Println(d)
-		return d
+	if err != nil {
+		debug.PrintStack()
+		log.Printf("%v\n",err)
+		return -1
 	}
-
-	return -1
+	log.Println(d)
+	return d
 }
 
 func ConvertUnix2Time(unxTime int64) time.Time {
