@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/colt3k/nglog/ng"
+	"log"
 )
 
 type Writer struct {
@@ -43,19 +43,19 @@ func (s *Writer) Connect() (*net.TCPConn, error) {
 		s.Connection = con
 		err := s.Connection.SetLinger(0)
 		if err != nil {
-			log.Logf(log.ERROR, "issue set linger %+v", err)
+			log.Printf("ERROR: issue set linger %+v\n", err)
 		}
 		err = s.Connection.SetNoDelay(true)
 		if err != nil {
-			log.Logf(log.ERROR, "issue set no delay %+v", err)
+			log.Printf("ERROR: issue set no delay %+v\n", err)
 		}
 		err = s.Connection.SetKeepAlive(true)
 		if err != nil {
-			log.Logf(log.ERROR, "issue set keep alive %+v", err)
+			log.Printf("ERROR: issue set keep alive %+v\n", err)
 		}
 		err = s.Connection.SetKeepAlivePeriod(5 * time.Second)
 		if err != nil {
-			log.Logf(log.ERROR, "issue set keep alive period %+v", err)
+			log.Printf("ERROR: issue set keep alive period %+v\n", err)
 		}
 		s.UpdateTimeout()
 	}
@@ -71,7 +71,7 @@ func (s *Writer) Write(p []byte) (n int, err error) {
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				err = s.Connection.Close()
 				if err != nil {
-					log.Logf(log.ERROR, "issue closing connection %+v", err)
+					log.Printf("ERROR: issue closing connection %+v\n", err)
 				}
 				s.Connection = nil
 				if err != nil {
@@ -80,7 +80,7 @@ func (s *Writer) Write(p []byte) (n int, err error) {
 			} else {
 				err = s.Connection.Close()
 				if err != nil {
-					log.Logf(log.ERROR, "issue closing connection %+v", err)
+					log.Printf("ERROR: issue closing connection %+v\n", err)
 				}
 				s.Connection = nil
 				return i, err
@@ -96,14 +96,14 @@ func (s *Writer) UpdateTimeout() {
 	end := time.Now().Add(time.Duration(s.Timeout) * time.Second)
 	err := s.Connection.SetDeadline(end)
 	if err != nil {
-		log.Logf(log.ERROR, "issue set deadline %+v", err)
+		log.Printf("ERROR: issue set deadline %+v\n", err)
 	}
 	err = s.Connection.SetWriteDeadline(end)
 	if err != nil {
-		log.Logf(log.ERROR, "issue set write deadline %+v", err)
+		log.Printf("ERROR: issue set write deadline %+v\n", err)
 	}
 	err = s.Connection.SetReadDeadline(end)
 	if err != nil {
-		log.Logf(log.ERROR, "issue set read deadline %+v", err)
+		log.Printf("ERROR: issue set read deadline %+v\n", err)
 	}
 }

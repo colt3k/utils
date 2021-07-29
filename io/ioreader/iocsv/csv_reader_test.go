@@ -2,14 +2,14 @@ package iocsv
 
 import (
 	"bytes"
-
-	ers "github.com/colt3k/nglog/ers/bserr"
-	log "github.com/colt3k/nglog/ng"
+	"log"
 )
 
 func ExampleReadCSV() {
 	data, err := ReadCSV("./test.csv", true, nil)
-	ers.StopErr(err)
+	if err != nil {
+		log.Fatalf("%v",err)
+	}
 	log.Println("Rows", len(data.Rows))
 	var buff bytes.Buffer
 	for _, row := range data.Rows {

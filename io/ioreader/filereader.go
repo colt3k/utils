@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+
+	"github.com/colt3k/utils/debug"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 
-	ers "github.com/colt3k/nglog/ers/bserr"
-	log "github.com/colt3k/nglog/ng"
 	"github.com/iancoleman/orderedmap"
+	"log"
 
 	cio "github.com/colt3k/utils/io"
 	"github.com/colt3k/utils/io/data"
@@ -57,9 +58,8 @@ func (r *FileReader) LineScanner(maxBuf, maxScanTokenSize int) (string, error) {
 			buffer.WriteString("\n")
 		}
 
-		if err := scanner.Err(); err != nil {
-			log.Logf(log.FATAL, "issue scanning\n%+v", err)
-			return "", err
+		if errScan := scanner.Err(); errScan != nil {
+			log.Fatalf("ERROR: issue scanning\n%+v", errScan)
 		}
 		return buffer.String(), nil
 	}
@@ -69,19 +69,20 @@ func (r *FileReader) LineScanner(maxBuf, maxScanTokenSize int) (string, error) {
 
 // AsString read file as a string
 func (r *FileReader) AsString() (string, error) {
-	log.Logln(log.DEBUG, "ToOpen:", r.file)
 	f, err := openFile(r.file)
 	if err != nil {
-		log.Logf(log.FATAL, "issue opening file\n%+v", err)
+		log.Fatalf("issue opening file\n%+v", err)
 	}
 	defer f.Close()
 
 	rdr := bufio.NewReader(f)
 	str, err := cio.ReadLine(rdr)
-	if ers.NotErr(err, "filereader: read line error") {
-		return str, nil
+	if err != nil {
+		log.Printf("ERROR: filereader: read line error %v\n", err)
+		debug.PrintStack()
+		return "", errors.New("unable to open file")
 	}
-	return "", errors.New("unable to open file")
+	return str, nil
 }
 func (r *FileReader) ReadCSVFromFile(filePath string, skipHeader bool, headAr []string) (*data.Table, error) {
 	return iocsv.ReadCSVFromFile(r.file, skipHeader, headAr)
@@ -100,19 +101,22 @@ func (r *FileReader) AsCSVIntoOrderedMap() (*orderedmap.OrderedMap, error) {
 //AsBytes read file into []byte
 func (r *FileReader) AsBytes() ([]byte, error) {
 	dat, err := ioutil.ReadFile(r.file)
-	if ers.NotErr(err, "filereader: read file error") {
-		return dat, nil
+	if err != nil {
+		log.Printf("filereader: read file error %v\n", err)
+		debug.PrintStack()
+		return nil, err
 	}
-	return nil, err
+
+	return dat, nil
 }
 
 //Bytes read file into passed byte array
 func (r *FileReader) Bytes(buf []byte) {
 	if f, err := os.Open(r.file); err != nil {
 		defer f.Close()
-		_, err := f.Read(buf)
-		if err != nil {
-			log.Logf(log.ERROR, "issue reading bytes %+v", err)
+		_, errReadBuf := f.Read(buf)
+		if errReadBuf != nil {
+			log.Printf("ERROR: issue reading bytes %+v\n", errReadBuf)
 		}
 	}
 }

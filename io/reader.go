@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	log "github.com/colt3k/nglog/ng"
 	"github.com/gorilla/http"
 	"github.com/iancoleman/orderedmap"
+	"log"
 
 	"github.com/colt3k/utils/io/data"
 )
@@ -147,7 +147,7 @@ func LastLineWithSeek(filepath string, amt int) ([]string, error) {
 		if len(tmpInput) == 0 {
 			err = fileHandle.Close()
 			if err != nil {
-				log.Logf(log.FATAL, "issue closing file\n%+v", err)
+				log.Fatalf("FATAL: issue closing file\n%+v", err)
 			}
 			err = os.Truncate(filepath, 0)
 			if err != nil {
@@ -166,13 +166,13 @@ func LastLineWithSeek(filepath string, amt int) ([]string, error) {
 		cursor -= 1
 		_, err = fileHandle.Seek(cursor, io.SeekEnd)
 		if err != nil {
-			log.Logf(log.ERROR, "issue seeking %+v", err)
+			log.Printf("ERROR: issue seeking %+v\n", err)
 		}
 
 		char := make([]byte, 1)
 		_, err := fileHandle.Read(char)
 		if err != nil {
-			log.Logf(log.ERROR, "issue reading %+v", err)
+			log.Printf("ERROR: issue reading %+v\n", err)
 		}
 
 		// 10 line feed, 13 carriage return

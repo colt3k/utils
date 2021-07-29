@@ -7,7 +7,7 @@ import (
 	_ "image/png"
 	"os"
 
-	log "github.com/colt3k/nglog/ng"
+	"log"
 )
 
 type ImageMeta struct {
@@ -28,12 +28,12 @@ func (i *ImageMeta) Dimensions(imagePath string) (int, int, string) {
 	file, err := os.Open(imagePath)
 	defer file.Close()
 	if err != nil {
-		log.Logf(log.ERROR, "\n%+v", err)
+		log.Printf("ERROR: \n%+v\n", err)
 	}
 
 	cfg, imgtype, err := image.DecodeConfig(file)
 	if err != nil {
-		log.Logf(log.ERROR, "%s:\n%+v", imagePath, err)
+		log.Printf("ERROR: %s:\n%+v\n", imagePath, err)
 	}
 
 	return cfg.Width, cfg.Height, imgtype

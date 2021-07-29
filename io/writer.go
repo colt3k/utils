@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
 
-	ers "github.com/colt3k/nglog/ers/bserr"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -24,48 +24,57 @@ type Writer interface {
 }
 
 // WriteOut write out []byte data to designated file path
-func WriteOut(data []byte, filePath string) (int,error) {
+func WriteOut(data []byte, filePath string) (int, error) {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		return 0,fmt.Errorf("error opening \n%+v", err)
+		return 0, fmt.Errorf("ERROR: opening \n%+v", err)
 	}
 	w := bufio.NewWriter(f)
 	n, err := w.Write(data)
 	if err != nil {
-		return 0,fmt.Errorf("write out file error\n%+v", err)
+		return 0, fmt.Errorf("ERROR: write out file\n%+v", err)
 	}
 	err = w.Flush()
 	if err != nil {
-		return 0,fmt.Errorf("error flushing\n%+v", err)
+		return 0, fmt.Errorf("ERROR: flushing\n%+v", err)
 	}
 	err = f.Close()
 	if err != nil {
-		return 0,fmt.Errorf("error closing\n%+v", err)
+		return 0, fmt.Errorf("ERROR: closing\n%+v", err)
 	}
-	return n,nil
+	return n, nil
 }
+
 // WriteOut write out []byte data to designated file path
 func WriteOutAppend(data []byte, filePath string) {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	ers.NotErr(err, "openfile: error opening")
+	if err != nil {
+		log.Printf("ERROR: openfile %v\n", err)
+	}
 	w := bufio.NewWriter(f)
 	_, err = w.Write(data)
-	ers.NotErr(err, "writer: write out file error")
+	if err != nil {
+		log.Printf("ERROR: write out file %v\n", err)
+	}
 	w.Flush()
 	f.Close()
 }
 
 // WriteOutStr write out string data to designated file path
-func WriteOutStr(data, filePath string) (int,error) {
+func WriteOutStr(data, filePath string) (int, error) {
 	return WriteOut([]byte(data), filePath)
 }
 
 // WriteOutString send file to create and returns File object to use
 func WriteOutString(filePath string) *os.File {
 	path, err := filepath.Abs(filePath)
-	ers.NotErr(err, "writer: determine abs path error")
+	if err != nil {
+		log.Printf("ERROR: determine abs path %v\n", err)
+	}
 	f, err := os.Create(path)
-	ers.NotErr(err, "writer: create file error")
+	if err != nil {
+		log.Printf("ERROR: create file %v\n", err)
+	}
 
 	return f
 }

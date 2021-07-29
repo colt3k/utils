@@ -5,8 +5,8 @@ import (
 
 	"github.com/rwcarlsen/goexif/exif"
 
-	log "github.com/colt3k/nglog/ng"
-	ers "github.com/colt3k/nglog/ers/bserr"
+	"log"
+
 	"github.com/colt3k/utils/io/ioreader/ioimage"
 )
 
@@ -14,7 +14,9 @@ func ExampleFileExif_ReadALLDataAsJSON() {
 	var file = "/Users/gcollins/Desktop/tester/pics2/12-23-05_0543.jpg"
 
 	f, err := os.Open(file)
-	ers.NotErr(err)
+	if err != nil {
+		log.Println(err)
+	}
 	defer f.Close()
 
 	d := &FileExif{}
@@ -39,13 +41,13 @@ func ExampleFileExif_ReadALLDataAsJSON() {
 	keys = append(keys, exif.DateTimeDigitized)
 	err = d.ReadDataByKey(f, keys)
 	if err != nil {
-		log.Logf(log.ERROR,"issue reading by key\n%+v", err)
+		log.Printf("ERROR: issue reading by key\n%+v\n", err)
 	}
 	//w x h
 	t := ioimage.NewImageMeta()
 	w, h, imgtype := t.Dimensions(file)
-	log.Logf(log.INFO, "W: %d, H: %d Type: %s", w, h, imgtype)
-	log.Logln(log.INFO, "print data found")
+	log.Printf("W: %d, H: %d Type: %s\n", w, h, imgtype)
+	log.Println("print data found")
 	for k, v := range d.Data {
 		log.Println(k, ":", v)
 	}

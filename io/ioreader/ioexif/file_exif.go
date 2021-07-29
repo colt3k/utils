@@ -1,14 +1,16 @@
 package ioexif
 
 import (
+
+	"github.com/colt3k/utils/debug"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/rwcarlsen/goexif/exif"
 
-	log "github.com/colt3k/nglog/ng"
-	ers "github.com/colt3k/nglog/ers/bserr"
+	"log"
+
 )
 
 //FileExif data store for exif data
@@ -25,9 +27,16 @@ func New() *FileExif {
 //ReadLatLongData find lat/long data and return
 func (x *FileExif) ReadLatLongData(f *os.File) {
 	xif, err := exif.Decode(f)
-	ers.NotErr(err, "exif: read error")
+	if err != nil {
+		log.Printf("ERROR: exif read %v\n",err)
+		debug.PrintStack()
+	}
+
 	lat, long, err := xif.LatLong()
-	ers.NotErr(err, "exif: read latlong data")
+	if err != nil {
+		log.Printf("ERROR: exif read latlong data %v\n",err)
+		debug.PrintStack()
+	}
 
 	x.Data["lat"] = strconv.FormatFloat(lat, 'f', -1, 64)
 	x.Data["long"] = strconv.FormatFloat(long, 'f', -1, 64)
@@ -37,7 +46,10 @@ func (x *FileExif) ReadLatLongData(f *os.File) {
 //ReadALLDataAsJSON read data from exif metadata and set to our datastore
 func (x *FileExif) ReadALLDataAsJSON(f *os.File) {
 	xif, err := exif.Decode(f)
-	ers.NotErr(err, "exif: read data as json")
+	if err != nil {
+		log.Printf("ERROR: exif read data as json %v\n",err)
+		debug.PrintStack()
+	}
 	json, _ := xif.MarshalJSON()
 	x.Data["jsondata"] = string(json)
 }
@@ -60,7 +72,7 @@ func (x *FileExif) ReadDataByKey(f *os.File, key []exif.FieldName) error {
 	xif, err := exif.Decode(f)
 
 	if err != nil {
-		log.Logf(log.WARN, "file_exif ReadDataByKey, no exif data %s\n%+v", f.Name(),err)
+		log.Printf("WARN: file_exif ReadDataByKey, no exif data %s\n%+v\n", f.Name(),err)
 		return nil
 	}
 
@@ -71,21 +83,31 @@ func (x *FileExif) ReadDataByKey(f *os.File, key []exif.FieldName) error {
 			switch d {
 			case exif.ThumbJPEGInterchangeFormat:
 				data, err := val.Int64(0)
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["jpgformat"] = strconv.FormatInt(data, 10)
 			case exif.ExifVersion:
 				str := string(val.Val)
 				x.Data["exifversion"] = str
 			case exif.PixelYDimension:
-				if ers.NotErrSkipTrace(err) {
+				if err != nil {
+					log.Println(err)
+				} else {
 					data, err := val.Int64(0)
-					ers.NotErrSkipTrace(err)
+					if err != nil {
+						log.Println(err)
+					}
 					x.Data["ydimension_height"] = strconv.FormatInt(data, 10)
 				}
 			case exif.PixelXDimension:
-				if ers.NotErrSkipTrace(err) {
+				if err != nil {
+					log.Println(err)
+				} else {
 					data, err := val.Int64(0)
-					ers.NotErrSkipTrace(err)
+					if err != nil {
+						log.Println(err)
+					}
 					x.Data["xdimension_width"] = strconv.FormatInt(data, 10)
 				}
 			case exif.FocalLength:
@@ -94,40 +116,58 @@ func (x *FileExif) ReadDataByKey(f *os.File, key []exif.FieldName) error {
 				x.Data["focaldenominator"] = strconv.FormatInt(denom, 10)
 			case exif.ThumbJPEGInterchangeFormatLength:
 				data, err := val.Int64(0)
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["jpgintercahngeformatlength"] = strconv.FormatInt(data, 10)
 			case exif.Make:
 				str, err := val.StringVal()
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["make"] = str
 			case exif.Model:
 				str, err := val.StringVal()
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["model"] = str
 			case exif.Flash:
 				data, err := val.Int64(0)
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["flash"] = strconv.FormatInt(data, 10)
 			case exif.ExposureTime:
 				str, err := val.Rat(0)
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["exposuretimenumerator"] = strconv.FormatInt(str.Num().Int64(), 10)
 				x.Data["exposuretimedenominator"] = strconv.FormatInt(str.Denom().Int64(), 10)
 			case exif.DigitalZoomRatio:
 				one, two, err := val.Rat2(0)
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["digitalzoomratio"] = strconv.FormatInt(one, 10) + "/" + strconv.FormatInt(two, 10)
 			case exif.DateTimeOriginal:
 				str, err := val.StringVal()
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["datecreated"] = str
 			case exif.DateTime:
 				str, err := val.StringVal()
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["datetime"] = str
 			case exif.DateTimeDigitized:
 				str, err := val.StringVal()
-				ers.NotErrSkipTrace(err)
+				if err != nil {
+					log.Println(err)
+				}
 				x.Data["datedigitized"] = str
 			}
 		}
@@ -141,7 +181,7 @@ func (x *FileExif) Exif(fileName string) error {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Logf(log.FATAL,"issue opening\n%+v", err)
+		log.Fatalf("ERROR: issue opening\n%+v", err)
 	}
 	//Tell the program to call the following function when the current function returns
 	defer file.Close()

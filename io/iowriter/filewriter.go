@@ -3,8 +3,8 @@ package iowriter
 import (
 	"os"
 
-	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/file"
+	"log"
 
 	"github.com/colt3k/utils/io"
 )
@@ -21,7 +21,7 @@ func NewFileWriter() *FileWriter {
 func (w *FileWriter) WriteOut(data []byte, filePath string) {
 	_,err := io.WriteOut(data, filePath)
 	if err != nil {
-		log.Logf(log.ERROR, "issue writing out %+v",err)
+		log.Printf("ERROR: issue writing out %+v\n",err)
 	}
 }
 
@@ -29,7 +29,7 @@ func (w *FileWriter) WriteOut(data []byte, filePath string) {
 func (w *FileWriter) WriteOutStr(data, filePath string) {
 	_,err := io.WriteOutStr(data, filePath)
 	if err != nil {
-		log.Logf(log.ERROR, "issue writing out %+v",err)
+		log.Printf("ERROR: issue writing out %+v",err)
 	}
 }
 

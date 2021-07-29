@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/colt3k/nglog/ng"
 	"github.com/iancoleman/orderedmap"
+	"log"
 
 	"github.com/colt3k/utils/io/data"
 )
@@ -103,7 +103,7 @@ func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, er
 	r := csv.NewReader(sr)
 	lines, err := r.ReadAll()
 	if err != nil {
-		log.Logf(log.FATAL, "error reading all lines\n%+v", err)
+		log.Fatalf("error reading all lines\n%+v\n", err)
 	}
 
 	// If no lines then add empty set ???
