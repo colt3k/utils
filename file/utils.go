@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/colt3k/nglog/ng"
+	"log"
 
 	"github.com/colt3k/utils/file/filesize"
 )
@@ -46,13 +46,13 @@ func CopyDir(source, dest string) (err error) {
 			// create sub-directories - recursively
 			err = CopyDir(sourcefilepointer, destinationfilepointer)
 			if err != nil {
-				log.Logf(log.ERROR, "issue copying\n%+v", err)
+				log.Printf("ERROR: issue copying\n%+v\n", err)
 			}
 		} else {
 			// perform copy
 			err = CopyFile(sourcefilepointer, destinationfilepointer)
 			if err != nil {
-				log.Logf(log.ERROR, "issue copying\n%+v", err)
+				log.Printf("ERROR: issue copying\n%+v\n", err)
 			}
 		}
 	}
@@ -76,7 +76,7 @@ func CopyFile(source string, dest string) (err error) {
 		sourceinfo, err := os.Stat(source)
 		if err != nil {
 			err = os.Chmod(dest, sourceinfo.Mode())
-			log.Logf(log.ERROR, "issue chmod\n%+v", err)
+			log.Printf("ERROR: issue chmod\n%+v\n", err)
 		}
 	}
 	return
@@ -102,14 +102,12 @@ func MkDir(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
-			log.Logf(log.ERROR, "issue making dir\n%+v", err)
+			log.Printf("ERROR: issue making dir\n%+v\n", err)
 		}
 	}
 }
 
 func Available(path string) bool {
-
-	log.Logln(log.DEBUG, "File:", path)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -169,7 +167,7 @@ func HomeFolder() string {
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		log.Logf(log.FATAL, "home dir not defined %+v", err)
+		log.Fatalf("FATAL: home dir not defined %+v", err)
 	}
 	return home
 }

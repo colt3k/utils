@@ -3,9 +3,9 @@ package filecloud
 import (
 	"path/filepath"
 
-	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/encode/encodeenum"
 	"github.com/colt3k/utils/hash"
+	"log"
 
 	"github.com/colt3k/utils/file"
 	"github.com/colt3k/utils/file/filesize"

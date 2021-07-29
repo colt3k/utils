@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/encode/encodeenum"
 	"github.com/colt3k/utils/hash"
 	"github.com/colt3k/utils/stringut"
+	"log"
 
 	"github.com/colt3k/utils/file"
 )
@@ -124,7 +124,7 @@ func (f *BasicFile) Type() string {
 		return f.ftype
 	}
 	tmp := filepath.Ext(f.Path())
-	log.Logln(log.DEBUG, "file type:", tmp)
+	//log.Printf("file type: %v\n", tmp)
 	if len(tmp) > 0 {
 		f.ftype = tmp[1:]
 		return f.ftype

@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	log "github.com/colt3k/nglog/ng"
+	"log"
 
 	"github.com/colt3k/utils/file"
 	"github.com/colt3k/utils/file/fileperm"
@@ -41,7 +41,7 @@ func (b BaseFileMeta) Hidden() bool {
 		//	}
 		//}
 	} else {
-		log.Logln(log.FATAL, "Unable to check if file is hidden under this OS")
+		log.Fatalln("FATAL: Unable to check if file is hidden under this OS")
 	}
 	return false
 }
