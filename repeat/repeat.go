@@ -8,12 +8,18 @@ import (
 
 type Task func() error
 
-func Process(ctx context.Context, initTimer, repeatTimer int, o Task) error {
+func Process(ctx context.Context, initTimer, repeatTimer int, o Task, stop Task) error {
 	timer := time.NewTimer(time.Second * time.Duration(initTimer))
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Done or Signal")
+			if stop != nil {
+				fmt.Println("Cleanup started")
+				if err := stop(); err != nil {
+					return err
+				}
+				fmt.Println("Cleanup complete")
+			}
 			return nil
 		case t := <-timer.C:
 			fmt.Printf("timer fired: %v\n", t)
