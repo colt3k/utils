@@ -14,11 +14,9 @@ func Process(ctx context.Context, initTimer, repeatTimer int, o Task, stop Task)
 		select {
 		case <-ctx.Done():
 			if stop != nil {
-				fmt.Println("Cleanup started")
 				if err := stop(); err != nil {
 					return err
 				}
-				fmt.Println("Cleanup complete")
 			}
 			return nil
 		case t := <-timer.C:
