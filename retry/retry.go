@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -35,7 +36,7 @@ func (r *Rule) NextBackoff() time.Duration {
 	return d
 }
 
-func Process(o Task, r Rule) error {
+func Process(ctx context.Context, o Task, r Rule) error {
 	r.currentAttempt = 1
 	if r.MaxInterval == 0 {
 		r.MaxInterval = 5 * time.Minute
@@ -43,21 +44,28 @@ func Process(o Task, r Rule) error {
 	if r.MaxAttempts == 0 && r.MaxElapsed == 0 {
 		fmt.Println("note: no max attempts or max elapsed time has been set, this will continue until success")
 	}
+	// first time execute after 1 millisecond
+	timer := time.NewTimer(time.Millisecond * 1)
 	for {
-		if r.currentAttempt == r.MaxAttempts+1 {
-			return fmt.Errorf("exceeded attempts")
-		}
-		// Only exit if set to something other than 0
-		if r.MaxElapsed > 0 && (r.Elapsed > r.MaxElapsed) {
-			return fmt.Errorf("exceeded maximum elapsed")
-		}
-		// if no error then exit
-		if err := o(); err == nil {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-timer.C:
+			if r.currentAttempt == r.MaxAttempts+1 {
+				return fmt.Errorf("exceeded attempts")
+			}
+			// Only exit if set to something other than 0
+			if r.MaxElapsed > 0 && (r.Elapsed > r.MaxElapsed) {
+				return fmt.Errorf("exceeded maximum elapsed")
+			}
+			// if no error then exit
+			if err := o(); err == nil {
+				return nil
+			}
+			d := r.NextBackoff()
+			r.Elapsed+=d
+			r.currentAttempt++
+			timer.Reset(d)
 		}
-		d := r.NextBackoff()
-		r.Elapsed+=d
-		time.Sleep(d)
-		r.currentAttempt++
 	}
 }
