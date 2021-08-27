@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/colt3k/utils/stringut"
 	"io"
 	"io/ioutil"
 	"log"
@@ -77,6 +78,7 @@ var (
 	tarExe    = "/bin/tar"
 	scpExe    = "/bin/scp"
 	sftpExe   = "/bin/sftp"
+	upxExe	  = "/usr/local/bin/upx"
 	whichExe  = "/usr/bin/which"
 )
 
@@ -318,6 +320,11 @@ func parseToml() error {
 	gitExe = props["gitExe"].(string)
 	tarExe = props["tarExe"].(string)
 	scpExe = props["scpExe"].(string)
+	if props["upxExe"] != nil {
+		upxExe = props["upxExe"].(string)
+	} else {
+		upxExe = ""
+	}
 	if props["sftpExe"] != nil {
 		sftpExe = props["sftpExe"].(string)
 	}
@@ -331,6 +338,7 @@ func parseToml() error {
 	config.Apps["tarExe"]=tarExe
 	config.Apps["scpExe"]=scpExe
 	config.Apps["sftpExe"]=sftpExe
+	config.Apps["upxExe"]=upxExe
 	err = setupScps(props)
 	if err != nil {
 		return err
@@ -441,12 +449,12 @@ func Help() {
 	fmt.Println()
 	fmt.Println("Mage Usage:")
 	fmt.Println("Global Parameters")
-	fmt.Println("  dry=    Dry Run")
-	fmt.Println("  bump=	Bump to next version")
-	fmt.Println("  help=	Show this help")
+	fmt.Println("  dry=		Dry Run")
+	fmt.Println("  bump=		Bump to next version")
+	fmt.Println("  help=		Show this help")
 	fmt.Println("  names=	Single or Comma separated list of targets to build")
 	fmt.Println("  config=	Location of build.toml default is ./build.toml")
-	fmt.Println("  nostatic= Do not set static flag for build")
+	fmt.Println("  nostatic=	Do not set static flag for build")
 	fmt.Println("Targets")
 	fmt.Println("  help         show this help information")
 	fmt.Println("  install      install the application to local machine")
@@ -971,6 +979,22 @@ func cross(app application) error {
 			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				return err
+			}
+			if exists(upxExe) {
+				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", executableName)
+				fi, _ := os.Stat(executableName)
+				fmt.Printf("\n")
+				err = sh.RunV(upxExe, "-q", executableName)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("\n")
+				fmt.Printf("    - prior to compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fi, _ = os.Stat(executableName)
+				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", executableName)
+			} else {
+				fmt.Println("- no upx available for binary compression - ")
 			}
 		} else {
 			if nostatic {

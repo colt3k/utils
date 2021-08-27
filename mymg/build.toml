@@ -24,6 +24,7 @@ gitExe="/usr/local/bin/git"
 tarExe="/usr/bin/tar"
 scpExe="/usr/bin/scp"
 sftpExe="/usr/bin/sftp"
+upxExe="/usr/local/bin/upx"
 whichExe="/usr/bin/which"
 
 ###### Deployment
