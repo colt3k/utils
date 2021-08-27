@@ -984,7 +984,7 @@ func cross(app application) error {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", executableName)
 				fi, _ := os.Stat(executableName)
 				fmt.Printf("\n")
-				err = sh.RunV(upxExe, "-q", executableName)
+				err = sh.RunV(upxExe, "-q", "-q", "-q", executableName)
 				if err != nil {
 					return err
 				}
