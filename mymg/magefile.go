@@ -573,9 +573,29 @@ func Build() error {
 			if err != nil {
 				return err
 			}
+			if exists(upxExe) {
+				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", name)
+				fi, _ := os.Stat(name)
+				fmt.Printf("\n")
+				err = sh.RunV(upxExe, "-q", "-q", "-q", name)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("\n")
+				fmt.Printf("    - prior to compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fi, _ = os.Stat(name)
+				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", name)
+			} else {
+				fmt.Println("- no upx available for binary compression - ")
+			}
 		} else {
 			var byt bytes.Buffer
 			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " "+projectMainDir)
+			if exists(upxExe) {
+				byt.WriteString("\n")
+				byt.WriteString(upxExe+" -q -q -q "+name)
+			}
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
 
@@ -1472,6 +1492,24 @@ func Install() error {
 		}
 		goPath := os.Getenv("GOPATH")
 		binPath := filepath.Join(goPath, "/bin/", d.Name)
+		if exists(binPath) {
+			if exists(upxExe) {
+				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", binPath)
+				fi, _ := os.Stat(binPath)
+				fmt.Printf("\n")
+				err = sh.RunV(upxExe, "-q", "-q", "-q", binPath)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("\n")
+				fmt.Printf("    - prior to compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fi, _ = os.Stat(binPath)
+				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
+				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", binPath)
+			} else {
+				fmt.Println("- no upx available for binary compression - ")
+			}
+		}
 		err = os.Setenv("PROG", binPath)
 		if err != nil {
 			fmt.Println("issue setting PROG :", binPath, err)
