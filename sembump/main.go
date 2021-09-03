@@ -3,12 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/blang/semver"
-
-	log "github.com/colt3k/nglog/ng"
 )
 
 const (
@@ -53,7 +52,7 @@ func main() {
 
 	v, err := semver.Make(version)
 	if err != nil {
-		log.Logf(log.FATAL,"issue performing make\n%+v", err)
+		log.Fatalf("issue performing make\n%+v", err)
 	}
 
 	switch {
@@ -70,7 +69,7 @@ func main() {
 			v.Pre[1].VersionNum++
 			break
 		}
-		log.Logf(log.FATAL, `can't handle prerelease tags not of the form "-tag.number" or "-number"`)
+		log.Fatalln(`can't handle prerelease tags not of the form "-tag.number" or "-number"`)
 	case kind == "patch":
 		if pre {
 			s, _ := semver.NewPRVersion("rc")
@@ -96,7 +95,7 @@ func main() {
 		v.Minor = 0
 		v.Patch = 0
 	default:
-		log.Logf(log.FATAL, "kind %s is not valid", kind)
+		log.Fatalf("kind %s is not valid", kind)
 	}
 
 	version = v.String()
@@ -105,27 +104,27 @@ func main() {
 		version = "v" + version
 	}
 
-	_,err = fmt.Fprintln(os.Stdout, version)
+	_, err = fmt.Fprintln(os.Stdout, version)
 	if err != nil {
-		log.Logf(log.ERROR, "issue printing %+v", err)
+		fmt.Errorf("issue printing %+v", err)
 	}
 }
 
 func usageAndExit(exitCode int, message string, args ...interface{}) {
 	if message != "" {
-		_,err := fmt.Fprintf(os.Stderr, message, args...)
+		_, err := fmt.Fprintf(os.Stderr, message, args...)
 		if err != nil {
-			log.Logf(log.ERROR, "issue printing %+v", err)
+			fmt.Errorf("issue printing %+v", err)
 		}
-		_,err =fmt.Fprint(os.Stderr, "\n\n")
+		_, err = fmt.Fprint(os.Stderr, "\n\n")
 		if err != nil {
-			log.Logf(log.ERROR, "issue printing %+v", err)
+			fmt.Errorf("issue printing %+v", err)
 		}
 	}
 	flag.Usage()
-	_,err := fmt.Fprintln(os.Stderr, "")
+	_, err := fmt.Fprintln(os.Stderr, "")
 	if err != nil {
-		log.Logf(log.ERROR, "issue printing %+v", err)
+		fmt.Errorf("issue printing %+v", err)
 	}
 	os.Exit(exitCode)
 }
