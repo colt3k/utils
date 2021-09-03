@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 )
 
 const (
@@ -106,7 +106,7 @@ func main() {
 
 	_, err = fmt.Fprintln(os.Stdout, version)
 	if err != nil {
-		fmt.Errorf("issue printing %+v", err)
+		fmt.Println(fmt.Errorf("issue printing %+v", err))
 	}
 }
 
@@ -114,17 +114,17 @@ func usageAndExit(exitCode int, message string, args ...interface{}) {
 	if message != "" {
 		_, err := fmt.Fprintf(os.Stderr, message, args...)
 		if err != nil {
-			fmt.Errorf("issue printing %+v", err)
+			fmt.Println(fmt.Errorf("issue printing %+v", err))
 		}
 		_, err = fmt.Fprint(os.Stderr, "\n\n")
 		if err != nil {
-			fmt.Errorf("issue printing %+v", err)
+			fmt.Println(fmt.Errorf("issue printing %+v", err))
 		}
 	}
 	flag.Usage()
 	_, err := fmt.Fprintln(os.Stderr, "")
 	if err != nil {
-		fmt.Errorf("issue printing %+v", err)
+		fmt.Println(fmt.Errorf("issue printing %+v", err))
 	}
 	os.Exit(exitCode)
 }
