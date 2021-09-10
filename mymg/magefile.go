@@ -140,11 +140,11 @@ func setupApps(props map[string]interface{}) error {
 		apps.SHA256Exe = propRtv(mp, "sha256Exe")
 		apps.CurlExe = propRtv(mp, "curlExe")
 		apps.CatExe = propRtv(mp, "catExe")
-		apps.GitExe = propRtv(mp, "apps.GitExe")
+		apps.GitExe = propRtv(mp, "gitExe")
 		apps.TarExe = propRtv(mp, "tarExe")
 		apps.ScpExe = propRtv(mp, "scpExe")
 		apps.SftpExe = propRtv(mp, "sftpExe")
-		apps.UPXExe = propRtv(mp, "apps.UPXExe")
+		apps.UPXExe = propRtv(mp, "upxExe")
 		apps.WhichExe = propRtv(mp, "whichExe")
 	}
 	log.Println("Apps Obj:", apps)
@@ -243,7 +243,7 @@ func setupProjects(props map[string]interface{}) error {
 	if sz == 1 {
 		prompt = false
 	}
-	fmt.Printf("Apps available %d\n\n", sz)
+	fmt.Printf("Projects available %d\n", sz)
 	// find absolute paths for files
 	for i, d := range prjkts.Projects {
 		if prompt && sz > 1 && ques.Confirm("process ("+d.Name+")? ") {
@@ -416,7 +416,7 @@ func parseToml() error {
 	var processApp bool
 	fmt.Println("") // clear line output
 	for _, d := range prjkts.Projects {
-		fmt.Println("App ", d.Name, "Enabled? ", d.Enable)
+		fmt.Println("Project", d.Name, "Enabled? ", d.Enable)
 		if d.Enable {
 			processApp = true
 		}
@@ -517,14 +517,14 @@ type Config struct {
 	Project     Projects      `json:"projects"`
 }
 type GenConfig struct  {
-	Build       BuildData     `json:"build"`
-	PostClean   PostClean     `json:"postclean"`
-	Apps        Apps          `json:"apps"`
-	SCP         []ScpData `json:"scp"`
-	SFTP        []SftpData `json:"sftp"`
-	SCPCustom   []ScpCustom `json:"scp-custom"`
-	Artifactory []ArtifactoryData `json:"artifactory"`
-	Project     []Project `json:"project"`
+	Build       BuildData     `toml:"build" comment:"Build Options"`
+	PostClean   PostClean     `toml:"postclean" comment:"Directories to clean when complete"`
+	Apps        Apps          `toml:"apps" comment:"Application paths"`
+	SCP         []ScpData `toml:"scp" comment:"Array of Secure Copy Configurations"`
+	SFTP        []SftpData `toml:"sftp" comment:"Array of SFTP Configurations"`
+	SCPCustom   []ScpCustom `toml:"scp-custom" comment:"Array of Custom SCP using script"`
+	Artifactory []ArtifactoryData `toml:"artifactory" comment:"Array of Artifactory instances"`
+	Project     []Project `toml:"project" comment:"Array of projects to build"`
 }
 type Projects struct {
 	Projects []Project `json:"project"`
@@ -576,7 +576,7 @@ type Project struct {
 	ChangelogFile     string   `json:"changelog"`
 	Files             []string `json:"files"`
 	OverrideVariables string   `json:"override_variables"`
-	YNPrompt          string   `json:"ynprompt"`
+	YNPrompt          string   `json:"ynprompt,comment='mycomment'"`
 }
 type Apps struct {
 	MD5Exe string `json:"md5Exe"`
@@ -619,31 +619,18 @@ func GenConf() {
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
 		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}
 
-	b, err := json.Marshal(c)
+	b, err := toml.Marshal(c)
 	if err != nil {
 		log.Fatalf("issue marshalling config %v", err)
 	}
-	jsonMap := make(map[string]interface{})
-	err = json.Unmarshal(b, &jsonMap)
-	if err != nil {
-		log.Fatalf("issue unmarshalling to map[string]interface %v", err)
-	}
-	tree, err := toml.TreeFromMap(jsonMap)
-	if err != nil {
-		log.Fatalf("issue convert to toml %v", err)
-	}
-	str, err := tree.ToTomlString()
-	if err != nil {
-		log.Fatalf("issue convert toml to string %v", err)
-	}
-	iout.WriteOut([]byte(str), "demo.toml")
+	iout.WriteOut(b, "demo.toml")
 }
 
 func Display() {
 	mg.SerialDeps(parseToml)
 	fmt.Println()
 	s, _ := json.MarshalIndent(config, "", "  ")
-	log.Println("Configuration:", string(s))
+	fmt.Println("Configuration:", string(s))
 }
 
 func Comment() {
