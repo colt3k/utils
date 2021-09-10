@@ -516,6 +516,16 @@ type Config struct {
 	Artifactory Artifactories `json:"artifactory"`
 	Project     Projects      `json:"projects"`
 }
+type GenConfig struct  {
+	Build       BuildData     `json:"build"`
+	PostClean   PostClean     `json:"postclean"`
+	Apps        Apps          `json:"apps"`
+	SCP         []ScpData `json:"scp"`
+	SFTP        []SftpData `json:"sftp"`
+	SCPCustom   []ScpCustom `json:"scp-custom"`
+	Artifactory []ArtifactoryData `json:"artifactory"`
+	Project     []Project `json:"project"`
+}
 type Projects struct {
 	Projects []Project `json:"project"`
 }
@@ -556,7 +566,7 @@ type ArtifactoryData struct {
 	Creds string `json:"creds"`
 }
 type Project struct {
-	Enable            bool     `json:"enable"`
+	Enable            bool `json:"-"`
 	Name              string   `json:"name"`
 	OSTargets         []string `json:"ostargets"`
 	OSDeployScripts   []string `json:"osdeployscripts"`
@@ -574,18 +584,18 @@ type Apps struct {
 	SHA256Exe string `json:"sha256Exe"`
 	CurlExe   string `json:"curlExe"`
 	CatExe    string `json:"catExe"`
-	GitExe    string `json:"apps.GitExe"`
+	GitExe    string `json:"GitExe"`
 	TarExe    string `json:"tarExe"`
 	ScpExe    string `json:"scpExe"`
 	SftpExe   string `json:"sftpExe"`
-	UPXExe    string `json:"apps.UPXExe"`
+	UPXExe    string `json:"UPXExe"`
 	WhichExe  string `json:"whichExe"`
 }
 
 func GenConf() {
 	fmt.Println()
 	fmt.Println("building config")
-	c := &Config{}
+	c := &GenConfig{}
 	c.Build.Tags = ""
 	c.PostClean.Dirs = []string{"PREP/", "cross"}
 	c.Apps.MD5Exe = "/sbin/md5sum"
@@ -599,15 +609,15 @@ func GenConf() {
 	c.Apps.SftpExe = "/usr/bin/sftp"
 	c.Apps.UPXExe = "/usr/local/bin/upx"
 	c.Apps.WhichExe = "/usr/bin/which"
-	c.SCP = SCPs{Instance: []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}}
-	c.SFTP = SFTPs{[]SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}}
-	c.SCPCustom = SCPCustoms{[]ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}}
-	c.Artifactory = Artifactories{[]ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
-		Creds: "/Users/username/tckey/keys/auths/.myartifactorycreds"}}}
-	c.Project = Projects{[]Project{{Enable: true, Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
+	c.SCP = []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}
+	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
+	c.SCPCustom = []ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}
+	c.Artifactory = []ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
+		Creds: "/Users/username/tckey/keys/auths/.myartifactorycreds"}}
+	c.Project = []Project{{Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
 		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
-		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}}
+		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}
 
 	b, err := json.Marshal(c)
 	if err != nil {
