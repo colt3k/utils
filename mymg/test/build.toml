@@ -6,15 +6,15 @@
 # names=one,two mage release | install
 
 ###### Build
-
-build_tags=""
+[build]
+tags=""
 
 ###### Clean
-
-to_clean_dirs=["PREP/","cross"]
+[postclean]
+dirs=["PREP/","cross"]
 
 ###### APPS
-
+[apps]
 md5Exe="/sbin/md5sum"
 sha1Exe="/usr/local/bin/sha1sum"
 sha256Exe="/usr/local/bin/sha256sum"
@@ -56,7 +56,7 @@ creds="/Users/username/.artifactorycreds"
 
 ###### Project Properties
 
-[[application]]
+[[project]]
 name="appname"
 ostargets=["darwin/amd64"]
 osdeployscripts=["./pkgr/deploy_darwin.sh"]
@@ -66,4 +66,4 @@ readme="cmd/appname/README.md"
 changelog="cmd/appname/CHANGES.txt"
 files=["./pkgr/bash_autocomplete","cmd/appname/README.md"]
 ###### PROMPT to PULL
-ynprompt="Did you pull the latest? (y/n), will exit on 'n'"
+#ynprompt="Did you pull the latest? (y/n), will exit on 'n'"

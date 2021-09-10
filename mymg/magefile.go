@@ -21,7 +21,7 @@ import (
 	iout "github.com/colt3k/utils/io"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
-	toml "github.com/pelletier/go-toml"
+	"github.com/pelletier/go-toml"
 
 	"github.com/colt3k/utils/crypt/genppk"
 )
@@ -38,22 +38,25 @@ import (
 
 var (
 	dryRun    bool
-	config 	  configuration
-	apps      applications
-	arts      artifactories
-	scpS      scps
-	sftpS     sftps
-	scpCustom scpcustoms
+	config    Config
+	build     BuildData
+	postclean PostClean
+	apps      Apps
+	prjkts    Projects
+	arts      Artifactories
+	scpS      SCPs
+	sftpS     SFTPs
+	scpCustom SCPCustoms
 	timestamp = time.Now().Unix()
 	baseDir   = ""
 	buildDir  = ""
 	prepDir   = ""
 
-	versionPkg              = "github.com/colt3k/utils"
-	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
-	overwriteValues         []string
-	goLDFlagsTemplate       = "-s -w %s"
-	goLDFlags               string
+	versionPkg            = "github.com/colt3k/utils"
+	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
+	overwriteValues       []string
+	goLDFlagsTemplate     = "-s -w %s"
+	goLDFlags             string
 	// extldflags	Set space-separated flags to pass to the external linker.
 	// -static 		means do not link against shared libraries
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
@@ -67,21 +70,87 @@ var (
 	crossBuildDir = "cross"
 
 	toCleanFiles []string
-	toCleanDirs  []string
 
-	md5Exe    = "/bin/md5sum"
-	sha1Exe   = "/bin/sha1sum"
-	sha256Exe = "/bin/sha256sum"
-	curlExe   = "/bin/curl"
-	catExe    = "/bin/cat"
-	gitExe    = "/bin/git"
-	tarExe    = "/bin/tar"
-	scpExe    = "/bin/scp"
-	sftpExe   = "/bin/sftp"
-	upxExe	  = "/usr/local/bin/upx"
-	whichExe  = "/usr/bin/which"
 )
 
+func setupBuild(props map[string]interface{}) error {
+	mapProps := props["build"]
+	if mapProps != nil  {
+		mp := mapProps.(map[string]interface{})
+		build.Tags = propRtv(mp,"tags")
+	}
+
+	log.Println("Build Obj:", build)
+	config.Build = build
+	return nil
+}
+func setupPostClean(props map[string]interface{}) error {
+	mapProps := props["postclean"]
+	if mapProps != nil  {
+		mp := mapProps.(map[string]interface{})
+		dirs := make([]string,0)
+		if val, ok := mp["dirs"]; ok {
+			for _, v := range val.([]interface{}) {
+				dirs = append(dirs, v.(string))
+			}
+		}
+		postclean.Dirs = dirs
+	}
+	log.Println("PostClean Obj:", postclean)
+	config.PostClean = postclean
+	return nil
+}
+func propRtv(p map[string]interface{}, key string) string {
+	if val, ok := p[key]; ok {
+		return val.(string)
+	} else {
+		if runtime.GOOS == "linux" {
+			switch key {
+			case "md5Exe":
+				return "/bin/md5sum"
+			case "sha1Exe":
+				return "/bin/sha1sum"
+			case "sha256Exe":
+				return "/bin/sha256sum"
+			case "curlExe":
+				return "/bin/curl"
+			case "catExe":
+				return "/bin/cat"
+			case "apps.GitExe":
+				return "/bin/git"
+			case "tarExe":
+				return "/bin/tar"
+			case "scpExe":
+				return "/bin/scp"
+			case "sftpExe":
+				return "/bin/sftp"
+			case "whichExe":
+				return "/usr/bin/which"
+			}
+		}
+	}
+	return ""
+}
+func setupApps(props map[string]interface{}) error {
+	mapProps := props["apps"]
+	if mapProps != nil  {
+		mp := mapProps.(map[string]interface{})
+		apps.MD5Exe = propRtv(mp, "md5Exe")
+		apps.SHA1Exe = propRtv(mp, "sha1Exe")
+		apps.SHA256Exe = propRtv(mp, "sha256Exe")
+		apps.CurlExe = propRtv(mp, "curlExe")
+		apps.CatExe = propRtv(mp, "catExe")
+		apps.GitExe = propRtv(mp, "apps.GitExe")
+		apps.TarExe = propRtv(mp, "tarExe")
+		apps.ScpExe = propRtv(mp, "scpExe")
+		apps.SftpExe = propRtv(mp, "sftpExe")
+		apps.UPXExe = propRtv(mp, "apps.UPXExe")
+		apps.WhichExe = propRtv(mp, "whichExe")
+	}
+	log.Println("Apps Obj:", apps)
+	config.Apps = apps
+	return nil
+}
 func setupScps(props map[string]interface{}) error {
 	mapProps := props["scp"]
 	wrapper := make(map[string]interface{}, 1)
@@ -97,7 +166,7 @@ func setupScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Scps Obj:", scpS)
-	config.Scps=scpS
+	config.SCP = scpS
 	return nil
 }
 
@@ -116,7 +185,7 @@ func setupCustomScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Custom Scps Obj:", scpCustom)
-	config.ScpsCustom = scpCustom
+	config.SCPCustom = scpCustom
 	return nil
 }
 func setupSftps(props map[string]interface{}) error {
@@ -134,7 +203,7 @@ func setupSftps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Sftps Obj:", sftpS)
-	config.Sftp = sftpS
+	config.SFTP = sftpS
 	return nil
 }
 func setupArtifacts(props map[string]interface{}) error {
@@ -152,69 +221,69 @@ func setupArtifacts(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Artifacts Obj:", arts)
-	config.Artifactories=arts
+	config.Artifactory = arts
 	return nil
 }
-func setupApps(props map[string]interface{}) error {
-	appMap := props["application"]
+func setupProjects(props map[string]interface{}) error {
+	appMap := props["project"]
 	appWrapper := make(map[string]interface{}, 1)
-	appWrapper["application"] = appMap
+	appWrapper["project"] = appMap
 
 	bytesAppWrapper, err := json.MarshalIndent(appWrapper, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(bytesAppWrapper, &apps)
+	err = json.Unmarshal(bytesAppWrapper, &prjkts)
 	if err != nil {
 		return err
 	}
 
-	sz := len(apps.Apps)
+	sz := len(prjkts.Projects)
 	if sz == 1 {
 		prompt = false
 	}
 	fmt.Printf("Apps available %d\n\n", sz)
 	// find absolute paths for files
-	for i, d := range apps.Apps {
+	for i, d := range prjkts.Projects {
 		if prompt && sz > 1 && ques.Confirm("process ("+d.Name+")? ") {
-			apps.Apps[i].Enable = true
+			prjkts.Projects[i].Enable = true
 		} else if !prompt && sz == 1 {
 			// if only one app enabled just run it, no confirmation needed
-			apps.Apps[i].Enable = true
+			prjkts.Projects[i].Enable = true
 		}
 		if !prompt && len(names) > 0 {
 			for _, k := range names {
 				if d.Name == k {
-					apps.Apps[i].Enable = true
+					prjkts.Projects[i].Enable = true
 				}
 			}
 		}
 
-		apps.Apps[i].VersionFile, err = filepath.Abs(d.VersionFile)
+		prjkts.Projects[i].VersionFile, err = filepath.Abs(d.VersionFile)
 		if err != nil {
 			return err
 		}
 
-		apps.Apps[i].ReadmeFile, err = filepath.Abs(d.ReadmeFile)
+		prjkts.Projects[i].ReadmeFile, err = filepath.Abs(d.ReadmeFile)
 		if err != nil {
 			return err
 		}
 
-		apps.Apps[i].ChangelogFile, err = filepath.Abs(d.ChangelogFile)
+		prjkts.Projects[i].ChangelogFile, err = filepath.Abs(d.ChangelogFile)
 		if err != nil {
 			return err
 		}
 
 		for j, k := range d.Files {
-			apps.Apps[i].Files[j], err = filepath.Abs(k)
+			prjkts.Projects[i].Files[j], err = filepath.Abs(k)
 			if err != nil {
 				return err
 			}
 		}
 
 		for j, k := range d.OSDeployScripts {
-			apps.Apps[i].OSDeployScripts[j], err = filepath.Abs(k)
+			prjkts.Projects[i].OSDeployScripts[j], err = filepath.Abs(k)
 			if err != nil {
 				return err
 			}
@@ -224,8 +293,8 @@ func setupApps(props map[string]interface{}) error {
 			// Split on semi-colon, create an array to store answers
 			overrides := strings.Split(d.OverrideVariables, ";")
 			overwriteValues = make([]string, 0)
-			for _,k := range overrides {
-				ans := ques.Question(k+" value ? ")
+			for _, k := range overrides {
+				ans := ques.Question(k + " value ? ")
 				overwriteValues = append(overwriteValues, ans)
 			}
 			fmt.Printf("Answers: %v\n", overwriteValues)
@@ -240,14 +309,14 @@ func setupApps(props map[string]interface{}) error {
 		}
 	}
 
-	config.Applications=apps
+	config.Project = prjkts
 	return nil
 }
 
 func setupCleanFiles() {
 	toCleanFiles = make([]string, 0)
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		toCleanFiles = append(toCleanFiles, d.Name)
 	}
 }
@@ -267,7 +336,7 @@ func parseTargets() error {
 	}
 	props := tree.ToMap()
 
-	err = setupApps(props)
+	err = setupProjects(props)
 	if err != nil {
 		return err
 	}
@@ -312,33 +381,18 @@ func parseToml() error {
 	props := tree.ToMap()
 
 	// APPS
-	md5Exe = props["md5Exe"].(string)
-	sha1Exe = props["sha1Exe"].(string)
-	sha256Exe = props["sha256Exe"].(string)
-	curlExe = props["curlExe"].(string)
-	catExe = props["catExe"].(string)
-	gitExe = props["gitExe"].(string)
-	tarExe = props["tarExe"].(string)
-	scpExe = props["scpExe"].(string)
-	if props["upxExe"] != nil {
-		upxExe = props["upxExe"].(string)
-	} else {
-		upxExe = ""
+	err = setupBuild(props)
+	if err != nil {
+		return err
 	}
-	if props["sftpExe"] != nil {
-		sftpExe = props["sftpExe"].(string)
+	err = setupPostClean(props)
+	if err != nil {
+		return err
 	}
-	config.Apps=make(map[string]string)
-	config.Apps["md5Exe"]=md5Exe
-	config.Apps["sha1Exe"]=sha1Exe
-	config.Apps["sha256Exe"]=sha256Exe
-	config.Apps["curlExe"]=curlExe
-	config.Apps["catExe"]=catExe
-	config.Apps["gitExe"]=gitExe
-	config.Apps["tarExe"]=tarExe
-	config.Apps["scpExe"]=scpExe
-	config.Apps["sftpExe"]=sftpExe
-	config.Apps["upxExe"]=upxExe
+	err = setupApps(props)
+	if err != nil {
+		return err
+	}
 	err = setupScps(props)
 	if err != nil {
 		return err
@@ -355,95 +409,75 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
-	err = setupApps(props)
+	err = setupProjects(props)
 	if err != nil {
 		return err
 	}
 	var processApp bool
 	fmt.Println("") // clear line output
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		fmt.Println("App ", d.Name, "Enabled? ", d.Enable)
 		if d.Enable {
 			processApp = true
 		}
 	}
 	if !processApp {
-		fmt.Println("\nNo application selected to process.")
+		fmt.Println("\nNo project selected to process.")
 		os.Exit(-1)
 	}
 	setupCleanFiles()
 
-	// Cleaning
-	toCleanDirs = convertInterfaceArToStringAr(props["to_clean_dirs"].([]interface{}))
-	config.CleanDirs=toCleanDirs
-	// Building
-	buildTags = props["build_tags"].(string)
-	config.BuildTags=buildTags
-
 	log.Println("toCleanFiles: ", toCleanFiles)
-	log.Println("toCleanDirs: ", toCleanDirs)
+	log.Println("toCleanDirs: ", postclean.Dirs)
 
 	return nil
 }
-type configuration struct {
-	EnvVars map[string]string `json:"env_vars"`
-	BuildTags string `json:"build_tags"`
-	CleanDirs []string `json:"clean_dirs"`
-	Apps  map[string]string `json:"apps"`
-	Scps scps `json:"scps"`
-	ScpsCustom scpcustoms `json:"scps_custom"`
-	Sftp sftps `json:"sftp"`
-	Artifactories artifactories `json:"artifactories"`
-	Applications applications `json:"applications"`
-}
-type scps struct {
-	Instance []scp `json:"scp"`
-}
-type scp struct {
-	Host     string `json:"host"`
-	Path     string `json:"path"`
-	SkipPing string `json:"skip_ping"`
-}
-type scpcustoms struct {
-	Instance []scpcust `json:"scp-custom"`
-}
-type scpcust struct {
-	Exec string `json:"exec"`
-}
-type sftps struct {
-	Instance []sftp `json:"sftp"`
-}
-type sftp struct {
-	Host     string `json:"host"`
-	Path     string `json:"path"`
-	SkipPing string `json:"skip_ping"`
-}
-type artifactories struct {
-	Instance []artifactory `json:"artifactory"`
-}
-type artifactory struct {
-	Host  string `json:"host"`
-	Path  string `json:"path"`
-	Creds string `json:"creds"`
-}
 
-type applications struct {
-	Apps []application `json:"application"`
-}
-
-type application struct {
-	Enable                bool     `json:"enable"`
-	Name                  string   `json:"name"`
-	OSTargets             []string `json:"ostargets"`
-	OSDeployScripts       []string `json:"osdeployscripts"`
-	Package               string   `json:"package"`
-	ReadmeFile            string   `json:"readme"`
-	VersionFile           string   `json:"version"`
-	ChangelogFile         string   `json:"changelog"`
-	Files                 []string `json:"files"`
-	OverrideVariables     string   `json:"override_variables"`
-	YNPrompt              string   `json:"ynprompt"`
-}
+//type configuration struct {
+//	EnvVars       map[string]string `json:"env_vars"`
+//	BuildTags     string            `json:"build_tags"`
+//	CleanDirs     []string          `json:"clean_dirs"`
+//	Apps          map[string]string `json:"apps"`
+//	Scps          scps              `json:"scps"`
+//	ScpsCustom    scpcustoms        `json:"scps_custom"`
+//	Sftp          sftps             `json:"sftp"`
+//	Artifactories artifactories     `json:"artifactories"`
+//	Applications  projects          `json:"projects"`
+//}
+//type scps struct {
+//	Instance []scp `json:"scp"`
+//}
+//type scp struct {
+//	Host     string `json:"host"`
+//	Path     string `json:"path"`
+//	SkipPing string `json:"skip_ping"`
+//}
+//type scpcustoms struct {
+//	Instance []scpcust `json:"scp-custom"`
+//}
+//type scpcust struct {
+//	Exec string `json:"exec"`
+//}
+//type sftps struct {
+//	Instance []sftp `json:"sftp"`
+//}
+//type sftp struct {
+//	Host     string `json:"host"`
+//	Path     string `json:"path"`
+//	SkipPing string `json:"skip_ping"`
+//}
+//type artifactories struct {
+//	Instance []artifactory `json:"artifactory"`
+//}
+//type artifactory struct {
+//	Host  string `json:"host"`
+//	Path  string `json:"path"`
+//	Creds string `json:"creds"`
+//}
+//
+//type projects struct {
+//	Projects []Project `json:"project"`
+//}
 
 func Help() {
 	fmt.Println()
@@ -457,11 +491,12 @@ func Help() {
 	fmt.Println("  nostatic=	Do not set static flag for build")
 	fmt.Println("Targets")
 	fmt.Println("  help         show this help information")
-	fmt.Println("  install      install the application to local machine")
+	fmt.Println("  install      install the project to local machine")
 	fmt.Println("  buildCross   create based on current local code and don't clean up")
 	fmt.Println("  release      create and push release based on current local code")
 	fmt.Println("  targets      show current project configured command's to build")
 	fmt.Println("  display      show information after reading configuration")
+	fmt.Println("  genconf      create an empty configuration build.toml")
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
 	fmt.Println("Flags")
@@ -470,26 +505,151 @@ func Help() {
 	fmt.Println()
 
 }
+
+type Config struct {
+	Build       BuildData     `json:"build"`
+	PostClean   PostClean     `json:"postclean"`
+	Apps        Apps          `json:"apps"`
+	SCP         SCPs          `json:"scp"`
+	SFTP        SFTPs         `json:"sftp"`
+	SCPCustom   SCPCustoms    `json:"scp-custom"`
+	Artifactory Artifactories `json:"artifactory"`
+	Project     Projects      `json:"projects"`
+}
+type Projects struct {
+	Projects []Project `json:"project"`
+}
+type SCPs struct {
+	Instance []ScpData `json:"scp"`
+}
+type SCPCustoms struct {
+	Instance []ScpCustom `json:"scp-custom"`
+}
+type SFTPs struct {
+	Instance []SftpData `json:"sftp"`
+}
+type Artifactories struct {
+	Instance []ArtifactoryData `json:"artifactory"`
+}
+type BuildData struct {
+	Tags string `json:"tags"`
+}
+type PostClean struct {
+	Dirs []string `json:"dirs"`
+}
+type ScpData struct {
+	Host     string `json:"host"`
+	Path     string `json:"path"`
+	SkipPing string `json:"skip_ping"`
+}
+type SftpData struct {
+	Host     string `json:"host"`
+	Path     string `json:"path"`
+	SkipPing string `json:"skip_ping"`
+}
+type ScpCustom struct {
+	Exec string `json:"exec"`
+}
+type ArtifactoryData struct {
+	Host  string `json:"host"`
+	Path  string `json:"path"`
+	Creds string `json:"creds"`
+}
+type Project struct {
+	Enable            bool     `json:"enable"`
+	Name              string   `json:"name"`
+	OSTargets         []string `json:"ostargets"`
+	OSDeployScripts   []string `json:"osdeployscripts"`
+	Package           string   `json:"package"`
+	VersionFile       string   `json:"version"`
+	ReadmeFile        string   `json:"readme"`
+	ChangelogFile     string   `json:"changelog"`
+	Files             []string `json:"files"`
+	OverrideVariables string   `json:"override_variables"`
+	YNPrompt          string   `json:"ynprompt"`
+}
+type Apps struct {
+	MD5Exe string `json:"md5Exe"`
+	SHA1Exe   string `json:"sha1Exe"`
+	SHA256Exe string `json:"sha256Exe"`
+	CurlExe   string `json:"curlExe"`
+	CatExe    string `json:"catExe"`
+	GitExe    string `json:"apps.GitExe"`
+	TarExe    string `json:"tarExe"`
+	ScpExe    string `json:"scpExe"`
+	SftpExe   string `json:"sftpExe"`
+	UPXExe    string `json:"apps.UPXExe"`
+	WhichExe  string `json:"whichExe"`
+}
+
+func GenConf() {
+	fmt.Println()
+	fmt.Println("building config")
+	c := &Config{}
+	c.Build.Tags = ""
+	c.PostClean.Dirs = []string{"PREP/", "cross"}
+	c.Apps.MD5Exe = "/sbin/md5sum"
+	c.Apps.SHA1Exe = "/usr/local/bin/sha1sum"
+	c.Apps.SHA256Exe = "/usr/local/bin/sha256sum"
+	c.Apps.CurlExe = "/usr/bin/curl"
+	c.Apps.CatExe = "/bin/cat"
+	c.Apps.GitExe = "/usr/local/bin/git"
+	c.Apps.TarExe = "/usr/bin/tar"
+	c.Apps.ScpExe = "/usr/bin/scp"
+	c.Apps.SftpExe = "/usr/bin/sftp"
+	c.Apps.UPXExe = "/usr/local/bin/upx"
+	c.Apps.WhichExe = "/usr/bin/which"
+	c.SCP = SCPs{Instance: []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}}
+	c.SFTP = SFTPs{[]SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}}
+	c.SCPCustom = SCPCustoms{[]ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}}
+	c.Artifactory = Artifactories{[]ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
+		Creds: "/Users/username/tckey/keys/auths/.myartifactorycreds"}}}
+	c.Project = Projects{[]Project{{Enable: true, Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
+		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
+		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
+		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}}
+
+	b, err := json.Marshal(c)
+	if err != nil {
+		log.Fatalf("issue marshalling config %v", err)
+	}
+	jsonMap := make(map[string]interface{})
+	err = json.Unmarshal(b, &jsonMap)
+	if err != nil {
+		log.Fatalf("issue unmarshalling to map[string]interface %v", err)
+	}
+	tree, err := toml.TreeFromMap(jsonMap)
+	if err != nil {
+		log.Fatalf("issue convert to toml %v", err)
+	}
+	str, err := tree.ToTomlString()
+	if err != nil {
+		log.Fatalf("issue convert toml to string %v", err)
+	}
+	iout.WriteOut([]byte(str), "demo.toml")
+}
+
 func Display() {
 	mg.SerialDeps(parseToml)
 	fmt.Println()
 	s, _ := json.MarshalIndent(config, "", "  ")
 	log.Println("Configuration:", string(s))
 }
+
 func Comment() {
 	mg.SerialDeps(parseToml)
 	fmt.Println()
-	lastTag, _ := sh.Output(gitExe, "describe", "--tags", "--abbrev=0")
+	lastTag, _ := sh.Output(apps.GitExe, "describe", "--tags", "--abbrev=0")
 	//fmt.Printf("last Tag : %v\n", lastTag)
-	comments, _ := sh.Output(gitExe, "log", lastTag+"..HEAD", "--oneline")
+	comments, _ := sh.Output(apps.GitExe, "log", lastTag+"..HEAD", "--oneline")
 	fmt.Printf("Comments : %v\n", comments)
 	lines := strings.Split(comments, "\n")
 	var byt bytes.Buffer
-	for _,l := range lines {
+	for _, l := range lines {
 		// all after first space
 		var bytLn bytes.Buffer
 		flds := strings.Fields(l)
-		for i,k := range flds {
+		for i, k := range flds {
 			if i > 0 {
 				bytLn.WriteString(k)
 				bytLn.WriteString(" ")
@@ -504,7 +664,7 @@ func Targets() {
 	mg.SerialDeps(parseTargets)
 	fmt.Println()
 	fmt.Println("Targets")
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		fmt.Println("  ", d.Name)
 	}
 
@@ -524,11 +684,11 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		}
-	}else {
+	} else {
 		fmt.Printf("CGO_ENABLED set to %v\n", cgoval)
 	}
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 
 		if !d.Enable {
 			continue
@@ -560,12 +720,12 @@ func Build() error {
 			name += ".exe"
 		}
 
-		projectMainDir := "./cmd/"+d.Name+"/"
+		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
 			fmt.Println("Path doesn't exist: " + projectMainDir)
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
 
 		if !dryRun {
@@ -573,11 +733,11 @@ func Build() error {
 			if err != nil {
 				return err
 			}
-			if exists(upxExe) {
+			if exists(apps.UPXExe) {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", name)
 				fi, _ := os.Stat(name)
 				fmt.Printf("\n")
-				err = sh.RunV(upxExe, "-q", "-q", "-q", name)
+				err = sh.RunV(apps.UPXExe, "-q", "-q", "-q", name)
 				if err != nil {
 					return err
 				}
@@ -591,10 +751,10 @@ func Build() error {
 			}
 		} else {
 			var byt bytes.Buffer
-			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " "+projectMainDir)
-			if exists(upxExe) {
+			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " " + projectMainDir)
+			if exists(apps.UPXExe) {
 				byt.WriteString("\n")
-				byt.WriteString(upxExe+" -q -q -q "+name)
+				byt.WriteString(apps.UPXExe + " -q -q -q " + name)
 			}
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
@@ -609,7 +769,7 @@ func BumpVersion() error {
 	gocmd := mg.GoCmd()
 
 	if !dryRun {
-		_, err := sh.Output(whichExe, "sembump")
+		_, err := sh.Output(apps.WhichExe, "sembump")
 		if err != nil {
 			//update if not found
 			fmt.Println("Updating sembump")
@@ -624,7 +784,7 @@ func BumpVersion() error {
 		fmt.Println("DRY_RUN: " + gocmd + " get -u github.com/colt3k/utils/sembump@latest")
 	}
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if d.Enable && bump {
 			fmt.Println("Bumping Version...")
 			ver := version(d.VersionFile)
@@ -644,7 +804,7 @@ func BumpVersion() error {
 			// read in modify content and write out instead
 			if !dryRun {
 				var out2 string
-				out2, err = sh.Output(catExe, d.ReadmeFile)
+				out2, err = sh.Output(apps.CatExe, d.ReadmeFile)
 				if err != nil {
 					return err
 				}
@@ -659,22 +819,22 @@ func BumpVersion() error {
 
 			if !dryRun {
 				// Add Version and Readme file to git prep
-				err = sh.RunV(gitExe, "add", d.VersionFile, d.ReadmeFile)
+				err = sh.RunV(apps.GitExe, "add", d.VersionFile, d.ReadmeFile)
 				if err != nil {
 					fmt.Println("issue on git add bump:", err)
 				}
 			} else {
-				fmt.Println("DRY_RUN: " + gitExe + " add " + d.VersionFile + " " + d.ReadmeFile)
+				fmt.Println("DRY_RUN: " + apps.GitExe + " add " + d.VersionFile + " " + d.ReadmeFile)
 			}
 
 			if !dryRun {
 				// Commit tag
-				err = sh.RunV(gitExe, "commit", "-vsam", "Bump version to "+nVersion)
+				err = sh.RunV(apps.GitExe, "commit", "-vsam", "Bump version to "+nVersion)
 				if err != nil {
 					fmt.Println("issue committing bump:", err)
 				}
 			} else {
-				fmt.Println("DRY_RUN: " + gitExe + " commit -vsam Bump version to " + nVersion)
+				fmt.Println("DRY_RUN: " + apps.GitExe + " commit -vsam Bump version to " + nVersion)
 			}
 
 			// if there is more than one command for this project create a unique tag for it
@@ -683,21 +843,21 @@ func BumpVersion() error {
 			}
 			if !dryRun {
 				// "Run make tag to create and push the tag for new version $(NEW_VERSION)"
-				err = sh.RunV(gitExe, "tag", "-a", nVersion, "-m", nVersion)
+				err = sh.RunV(apps.GitExe, "tag", "-a", nVersion, "-m", nVersion)
 				if err != nil {
 					fmt.Println("issue tagging bump :", err)
 				}
 			} else {
-				fmt.Println("DRY_RUN: " + gitExe + " tag -a " + nVersion + " -m " + nVersion)
+				fmt.Println("DRY_RUN: " + apps.GitExe + " tag -a " + nVersion + " -m " + nVersion)
 			}
 			// Push Tag
 			if !dryRun {
-				err = sh.RunV(gitExe, "push", "origin", nVersion)
+				err = sh.RunV(apps.GitExe, "push", "origin", nVersion)
 				if err != nil {
 					fmt.Println("issue pushing tag :", err)
 				}
 			} else {
-				fmt.Println("DRY_RUN: " + gitExe + "push origin " + nVersion)
+				fmt.Println("DRY_RUN: " + apps.GitExe + "push origin " + nVersion)
 			}
 
 		}
@@ -707,7 +867,7 @@ func BumpVersion() error {
 func BuildCross() error {
 	mg.SerialDeps(parseToml, BumpVersion)
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
@@ -761,7 +921,7 @@ func BuildCross() error {
 func Release() error {
 	mg.SerialDeps(parseToml, BumpVersion)
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
@@ -833,7 +993,7 @@ func Auto() error {
 
 	mg.SerialDeps(parseToml, BumpVersion)
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
@@ -880,7 +1040,7 @@ func NoAuto() error {
 
 	mg.SerialDeps(parseToml, BumpVersion)
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
@@ -919,7 +1079,7 @@ func NoAuto() error {
 }
 
 // Build for all defined Architectures
-func cross(app application) error {
+func cross(app Project) error {
 
 	fmt.Println("CrossBuilding...")
 	gocmd := mg.GoCmd()
@@ -984,27 +1144,27 @@ func cross(app application) error {
 		fmt.Printf("  Packaging %s\n", goos)
 		executableName := filepath.Join(path, name)
 
-		projectMainDir := "./cmd/"+app.Name+"/"
+		projectMainDir := "./cmd/" + app.Name + "/"
 		if !exists(projectMainDir) {
 			fmt.Println("Path doesn't exist: " + projectMainDir)
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
 
 		if !dryRun {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
+			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				return err
 			}
-			if exists(upxExe) {
+			if exists(apps.UPXExe) {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", executableName)
 				fi, _ := os.Stat(executableName)
 				fmt.Printf("\n")
-				err = sh.RunV(upxExe, "-q", "-q", "-q", executableName)
+				err = sh.RunV(apps.UPXExe, "-q", "-q", "-q", executableName)
 				if err != nil {
 					return err
 				}
@@ -1020,7 +1180,7 @@ func cross(app application) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " "+projectMainDir)
+			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " " + projectMainDir)
 		}
 		// make release dir for this OS
 
@@ -1061,7 +1221,7 @@ func cross(app application) error {
 		}
 		// create sha files
 		if !dryRun {
-			md5sum, err := sh.Output(md5Exe, executableName)
+			md5sum, err := sh.Output(apps.MD5Exe, executableName)
 			if err != nil {
 				return err
 			}
@@ -1077,7 +1237,7 @@ func cross(app application) error {
 
 		if !dryRun {
 			var shasum string
-			shasum, err = sh.Output(sha256Exe, executableName)
+			shasum, err = sh.Output(apps.SHA256Exe, executableName)
 			if err != nil {
 				return err
 			}
@@ -1137,7 +1297,7 @@ func cross(app application) error {
 
 		if !dryRun {
 			fmt.Println("  Creating archive ", osarchName)
-			err = sh.RunV(tarExe, "cfz", osarchName+".tgz", osarchName)
+			err = sh.RunV(apps.TarExe, "cfz", osarchName+".tgz", osarchName)
 			if err != nil {
 				return err
 			}
@@ -1203,7 +1363,7 @@ func scpCopy(projectName string) error {
 					fmt.Println("  scp'ing ", d)
 					fmt.Println("    to ", k.Path)
 					if !dryRun {
-						out(scpExe, d, k.Path)
+						out(apps.ScpExe, d, k.Path)
 					} else {
 						fmt.Println("DRY_RUN: scp " + d + " to " + k.Path)
 					}
@@ -1254,13 +1414,13 @@ func sftpCopy(projectName string) error {
 				}
 				for _, d := range matches {
 					f := filepath.Base(d)
-					exe := "echo put " + d + " " + k.Path + f + " | " + sftpExe + " " + k.Host
+					exe := "echo put " + d + " " + k.Path + f + " | " + apps.SftpExe + " " + k.Host
 					fmt.Printf("Exe: |%v|\n", exe)
 
 					var errorBuffer bytes.Buffer
 					var errorBuffer2 bytes.Buffer
 					c1 := exec.Command("echo", "put", d, k.Path+f)
-					c2 := exec.Command(sftpExe, k.Host)
+					c2 := exec.Command(apps.SftpExe, k.Host)
 					c1.Stderr = &errorBuffer
 					c2.Stderr = &errorBuffer2
 					pr, pw := io.Pipe()
@@ -1329,25 +1489,25 @@ func artifactoryPush(projectName string) error {
 						// hash each before uploading
 						if !dryRun {
 
-							md5sum, err := sh.Output(md5Exe, d)
+							md5sum, err := sh.Output(apps.MD5Exe, d)
 							if err != nil {
 								return err
 							}
 							md5parts := strings.Fields(md5sum)
 							md5sum = md5parts[0]
-							sha1sum, err := sh.Output(sha1Exe, d)
+							sha1sum, err := sh.Output(apps.SHA1Exe, d)
 							if err != nil {
 								return err
 							}
 							shaParts := strings.Fields(sha1sum)
 
-							shasum256, err := sh.Output(sha256Exe, d)
+							shasum256, err := sh.Output(apps.SHA256Exe, d)
 							if err != nil {
 								return err
 							}
 							sha256Parts := strings.Fields(shasum256)
 
-							out(curlExe, "-u"+string(creds), "-sS", "-T", d, "-H", "X-Checksum-MD5:"+md5sum, "-H", "X-Checksum-Sha1:"+shaParts[0], "-H", "X-Checksum-Sha256:"+sha256Parts[0], k.Path)
+							out(apps.CurlExe, "-u"+string(creds), "-sS", "-T", d, "-H", "X-Checksum-MD5:"+md5sum, "-H", "X-Checksum-Sha1:"+shaParts[0], "-H", "X-Checksum-Sha256:"+sha256Parts[0], k.Path)
 						}
 					}
 					// Upload all at once without hashes
@@ -1421,7 +1581,7 @@ func buildDeployScript(scriptPath, name string) []byte {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// replace $name with name of application
+	// replace $name with name of project
 	s := strings.Replace(string(b), "$name", name, -1)
 	return []byte(s)
 
@@ -1470,17 +1630,17 @@ func Install() error {
 	fmt.Println("Installing...")
 	gocmd := mg.GoCmd()
 
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
 		var err error
-		projectMainDir := "./cmd/"+d.Name+"/"
+		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
 			fmt.Println("Path doesn't exist: " + projectMainDir)
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
 		if !dryRun {
 			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, projectMainDir)
@@ -1488,16 +1648,16 @@ func Install() error {
 				fmt.Println("!!!error: ", err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: " + gocmd + " install -a -tags " + buildTags + " -ldflags " + goLDFlags + " "+projectMainDir)
+			fmt.Println("DRY_RUN: " + gocmd + " install -a -tags " + buildTags + " -ldflags " + goLDFlags + " " + projectMainDir)
 		}
 		goPath := os.Getenv("GOPATH")
 		binPath := filepath.Join(goPath, "/bin/", d.Name)
 		if exists(binPath) {
-			if exists(upxExe) {
+			if exists(apps.UPXExe) {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", binPath)
 				fi, _ := os.Stat(binPath)
 				fmt.Printf("\n")
-				err = sh.RunV(upxExe, "-q", "-q", "-q", binPath)
+				err = sh.RunV(apps.UPXExe, "-q", "-q", "-q", binPath)
 				if err != nil {
 					return err
 				}
@@ -1531,7 +1691,7 @@ func Install() error {
 
 func Clean() {
 	mg.SerialDeps(parseToml)
-	for _, d := range apps.Apps {
+	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
 		}
@@ -1542,7 +1702,7 @@ func Clean() {
 // Clean up after yourself
 func cleaner(projectName string, dirsOnly bool) {
 	fmt.Println("Cleaning...")
-	for _, d := range toCleanDirs {
+	for _, d := range postclean.Dirs {
 		fmt.Println("  Cleaning...", d)
 		err := os.RemoveAll(d)
 		if err != nil {
@@ -1572,7 +1732,7 @@ func cleaner(projectName string, dirsOnly bool) {
 // *********** ONE OFF TASKS BELOW
 
 // Setup preTask
-func setup(app application) error {
+func setup(app Project) error {
 
 	mg.SerialDeps(parseToml)
 	fmt.Println("  retrieve version")
@@ -1594,7 +1754,7 @@ func setup(app application) error {
 	fmt.Println("Version Fields: ", versionFields)
 	if len(app.OverrideVariables) > 0 {
 		overrides := strings.Split(app.OverrideVariables, ";")
-		for i,k := range overrides {
+		for i, k := range overrides {
 			val := fmt.Sprintf(k, overwriteValues[i])
 			fmt.Printf("IDX: %d. VARIABLE: %v VALUE: %v - together %v \n", i, k, overwriteValues[i], val)
 			versionFields += " " + val
@@ -1684,7 +1844,7 @@ func PPK() error {
 		1. check for key.go
 		2. create if it doesn't exist for the project
 		3. create signature with private key and place in update file
-		4. on update verify sig with public key in application
+		4. on update verify sig with public key in project
 
 		var publicKey = []byte(`
 		-----BEGIN PUBLIC KEY-----
