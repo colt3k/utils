@@ -497,6 +497,7 @@ func Help() {
 	fmt.Println("  targets      show current project configured command's to build")
 	fmt.Println("  display      show information after reading configuration")
 	fmt.Println("  genconf      create an empty configuration build.toml")
+	fmt.Println("  clean        clean any artifacts or build directories")
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
 	fmt.Println("Flags")
