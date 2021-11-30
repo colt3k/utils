@@ -15,6 +15,7 @@ https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 */
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -29,10 +30,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/colt3k/utils/mathut"
-
-	"github.com/colt3k/nglog/ers/bserr"
 	log "github.com/colt3k/nglog/ng"
+	"github.com/colt3k/utils/mathut"
 
 	"github.com/colt3k/utils/netut/nettools"
 )
@@ -77,8 +76,10 @@ func NewClient(opts ...ClientOption) *Client {
 
 	return t
 }
-
 func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
+	return c.FetchWithContext(context.Background(), method, url, auth, header, body)
+}
+func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
@@ -110,8 +111,7 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	//	cancel()
 	//})
 
-	req, _ := http.NewRequest(method, url, body)
-	//req = req.WithContext(ctx)
+	req, _ := http.NewRequestWithContext(ctx, method, url, body)
 	req.Close = true
 	if auth != nil {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
@@ -148,8 +148,10 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	}
 	return res, nil
 }
-
 func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]string, body io.Reader, serverCAPath string, cert ClientCert) (*http.Response, error) {
+	return c.FetchTLSWithContext(context.Background(), method, url, auth, header, body, serverCAPath, cert)
+}
+func (c *Client) FetchTLSWithContext(ctx context.Context, method, url string, auth Auth, header map[string]string, body io.Reader, serverCAPath string, cert ClientCert) (*http.Response, error) {
 
 	cp, _ := x509.SystemCertPool()
 	data, _ := ioutil.ReadFile(serverCAPath)
@@ -183,7 +185,7 @@ func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]strin
 		}
 	}
 
-	req, _ := http.NewRequest(method, url, body)
+	req, _ := http.NewRequestWithContext(ctx, method, url, body)
 	req.Close = true
 	if len(strings.TrimSpace(string(auth.Username))) > 0 {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
@@ -281,7 +283,9 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 	}
 	// Read body to buffer
 	body, err := ioutil.ReadAll(resp.Body)
-	if bserr.Err(err, "Error reading body") {
+	if err != nil {
+		log.Logf(log.ERROR, "Error reading body %v", err)
+		//debug.PrintStack()
 		return false, errors.New("unable to read response")
 	}
 
