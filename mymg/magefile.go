@@ -70,14 +70,13 @@ var (
 	crossBuildDir = "cross"
 
 	toCleanFiles []string
-
 )
 
 func setupBuild(props map[string]interface{}) error {
 	mapProps := props["build"]
-	if mapProps != nil  {
+	if mapProps != nil {
 		mp := mapProps.(map[string]interface{})
-		build.Tags = propRtv(mp,"tags")
+		build.Tags = propRtv(mp, "tags")
 	}
 
 	log.Println("Build Obj:", build)
@@ -86,9 +85,9 @@ func setupBuild(props map[string]interface{}) error {
 }
 func setupPostClean(props map[string]interface{}) error {
 	mapProps := props["postclean"]
-	if mapProps != nil  {
+	if mapProps != nil {
 		mp := mapProps.(map[string]interface{})
-		dirs := make([]string,0)
+		dirs := make([]string, 0)
 		if val, ok := mp["dirs"]; ok {
 			for _, v := range val.([]interface{}) {
 				dirs = append(dirs, v.(string))
@@ -133,7 +132,7 @@ func propRtv(p map[string]interface{}, key string) string {
 }
 func setupApps(props map[string]interface{}) error {
 	mapProps := props["apps"]
-	if mapProps != nil  {
+	if mapProps != nil {
 		mp := mapProps.(map[string]interface{})
 		apps.MD5Exe = propRtv(mp, "md5Exe")
 		apps.SHA1Exe = propRtv(mp, "sha1Exe")
@@ -517,15 +516,15 @@ type Config struct {
 	Artifactory Artifactories `json:"artifactory"`
 	Project     Projects      `json:"projects"`
 }
-type GenConfig struct  {
-	Build       BuildData     `toml:"build" comment:"Build Options"`
-	PostClean   PostClean     `toml:"postclean" comment:"Directories to clean when complete"`
-	Apps        Apps          `toml:"apps" comment:"Application paths"`
-	SCP         []ScpData `toml:"scp" comment:"Array of Secure Copy Configurations"`
-	SFTP        []SftpData `toml:"sftp" comment:"Array of SFTP Configurations"`
-	SCPCustom   []ScpCustom `toml:"scp-custom" comment:"Array of Custom SCP using script"`
+type GenConfig struct {
+	Build       BuildData         `toml:"build" comment:"Build Options"`
+	PostClean   PostClean         `toml:"postclean" comment:"Directories to clean when complete"`
+	Apps        Apps              `toml:"apps" comment:"Application paths"`
+	SCP         []ScpData         `toml:"scp" comment:"Array of Secure Copy Configurations"`
+	SFTP        []SftpData        `toml:"sftp" comment:"Array of SFTP Configurations"`
+	SCPCustom   []ScpCustom       `toml:"scp-custom" comment:"Array of Custom SCP using script"`
 	Artifactory []ArtifactoryData `toml:"artifactory" comment:"Array of Artifactory instances"`
-	Project     []Project `toml:"project" comment:"Array of projects to build"`
+	Project     []Project         `toml:"project" comment:"Array of projects to build"`
 }
 type Projects struct {
 	Projects []Project `json:"project"`
@@ -567,7 +566,7 @@ type ArtifactoryData struct {
 	Creds string `json:"creds"`
 }
 type Project struct {
-	Enable            bool `json:"-"`
+	Enable            bool     `json:"-"`
 	Name              string   `json:"name"`
 	OSTargets         []string `json:"ostargets"`
 	OSDeployScripts   []string `json:"osdeployscripts"`
@@ -580,7 +579,7 @@ type Project struct {
 	YNPrompt          string   `json:"ynprompt,comment='mycomment'"`
 }
 type Apps struct {
-	MD5Exe string `json:"md5Exe"`
+	MD5Exe    string `json:"md5Exe"`
 	SHA1Exe   string `json:"sha1Exe"`
 	SHA256Exe string `json:"sha256Exe"`
 	CurlExe   string `json:"curlExe"`
@@ -720,7 +719,7 @@ func Build() error {
 
 		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
 			projectMainDir = projectMainDir + "."
