@@ -38,7 +38,7 @@ import (
 
 var (
 	dryRun    bool
-	config 	  configuration
+	config    configuration
 	apps      applications
 	arts      artifactories
 	scpS      scps
@@ -49,11 +49,11 @@ var (
 	buildDir  = ""
 	prepDir   = ""
 
-	versionPkg              = "github.com/colt3k/utils"
-	versionFieldsTemplate   = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
-	overwriteValues         []string
-	goLDFlagsTemplate       = "-s -w %s"
-	goLDFlags               string
+	versionPkg            = "github.com/colt3k/utils"
+	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
+	overwriteValues       []string
+	goLDFlagsTemplate     = "-s -w %s"
+	goLDFlags             string
 	// extldflags	Set space-separated flags to pass to the external linker.
 	// -static 		means do not link against shared libraries
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
@@ -78,7 +78,7 @@ var (
 	tarExe    = "/bin/tar"
 	scpExe    = "/bin/scp"
 	sftpExe   = "/bin/sftp"
-	upxExe	  = "/usr/local/bin/upx"
+	upxExe    = "/usr/local/bin/upx"
 	whichExe  = "/usr/bin/which"
 )
 
@@ -97,7 +97,7 @@ func setupScps(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Scps Obj:", scpS)
-	config.Scps=scpS
+	config.Scps = scpS
 	return nil
 }
 
@@ -152,7 +152,7 @@ func setupArtifacts(props map[string]interface{}) error {
 		return err
 	}
 	log.Println("Artifacts Obj:", arts)
-	config.Artifactories=arts
+	config.Artifactories = arts
 	return nil
 }
 func setupApps(props map[string]interface{}) error {
@@ -177,6 +177,15 @@ func setupApps(props map[string]interface{}) error {
 	fmt.Printf("Apps available %d\n\n", sz)
 	// find absolute paths for files
 	for i, d := range apps.Apps {
+		if len(d.Name) == 0 {
+			continue
+		}
+		if exists(d.Name) {
+			apps.Apps[i].NameAlias = d.Name + "_colt3k_mage_tmp"
+		} else {
+			apps.Apps[i].NameAlias = d.Name
+		}
+
 		if prompt && sz > 1 && ques.Confirm("process ("+d.Name+")? ") {
 			apps.Apps[i].Enable = true
 		} else if !prompt && sz == 1 {
@@ -224,8 +233,8 @@ func setupApps(props map[string]interface{}) error {
 			// Split on semi-colon, create an array to store answers
 			overrides := strings.Split(d.OverrideVariables, ";")
 			overwriteValues = make([]string, 0)
-			for _,k := range overrides {
-				ans := ques.Question(k+" value ? ")
+			for _, k := range overrides {
+				ans := ques.Question(k + " value ? ")
 				overwriteValues = append(overwriteValues, ans)
 			}
 			fmt.Printf("Answers: %v\n", overwriteValues)
@@ -240,7 +249,7 @@ func setupApps(props map[string]interface{}) error {
 		}
 	}
 
-	config.Applications=apps
+	config.Applications = apps
 	return nil
 }
 
@@ -248,7 +257,7 @@ func setupCleanFiles() {
 	toCleanFiles = make([]string, 0)
 
 	for _, d := range apps.Apps {
-		toCleanFiles = append(toCleanFiles, d.Name)
+		toCleanFiles = append(toCleanFiles, d.NameAlias)
 	}
 }
 
@@ -328,17 +337,17 @@ func parseToml() error {
 	if props["sftpExe"] != nil {
 		sftpExe = props["sftpExe"].(string)
 	}
-	config.Apps=make(map[string]string)
-	config.Apps["md5Exe"]=md5Exe
-	config.Apps["sha1Exe"]=sha1Exe
-	config.Apps["sha256Exe"]=sha256Exe
-	config.Apps["curlExe"]=curlExe
-	config.Apps["catExe"]=catExe
-	config.Apps["gitExe"]=gitExe
-	config.Apps["tarExe"]=tarExe
-	config.Apps["scpExe"]=scpExe
-	config.Apps["sftpExe"]=sftpExe
-	config.Apps["upxExe"]=upxExe
+	config.Apps = make(map[string]string)
+	config.Apps["md5Exe"] = md5Exe
+	config.Apps["sha1Exe"] = sha1Exe
+	config.Apps["sha256Exe"] = sha256Exe
+	config.Apps["curlExe"] = curlExe
+	config.Apps["catExe"] = catExe
+	config.Apps["gitExe"] = gitExe
+	config.Apps["tarExe"] = tarExe
+	config.Apps["scpExe"] = scpExe
+	config.Apps["sftpExe"] = sftpExe
+	config.Apps["upxExe"] = upxExe
 	err = setupScps(props)
 	if err != nil {
 		return err
@@ -375,26 +384,27 @@ func parseToml() error {
 
 	// Cleaning
 	toCleanDirs = convertInterfaceArToStringAr(props["to_clean_dirs"].([]interface{}))
-	config.CleanDirs=toCleanDirs
+	config.CleanDirs = toCleanDirs
 	// Building
 	buildTags = props["build_tags"].(string)
-	config.BuildTags=buildTags
+	config.BuildTags = buildTags
 
-	log.Println("toCleanFiles: ", toCleanFiles)
-	log.Println("toCleanDirs: ", toCleanDirs)
+	log.Println("Files to Clean (After build):\t\t", toCleanFiles)
+	log.Println("Directories to Clean (After build):\t", toCleanDirs)
 
 	return nil
 }
+
 type configuration struct {
-	EnvVars map[string]string `json:"env_vars"`
-	BuildTags string `json:"build_tags"`
-	CleanDirs []string `json:"clean_dirs"`
-	Apps  map[string]string `json:"apps"`
-	Scps scps `json:"scps"`
-	ScpsCustom scpcustoms `json:"scps_custom"`
-	Sftp sftps `json:"sftp"`
-	Artifactories artifactories `json:"artifactories"`
-	Applications applications `json:"applications"`
+	EnvVars       map[string]string `json:"env_vars"`
+	BuildTags     string            `json:"build_tags"`
+	CleanDirs     []string          `json:"clean_dirs"`
+	Apps          map[string]string `json:"apps"`
+	Scps          scps              `json:"scps"`
+	ScpsCustom    scpcustoms        `json:"scps_custom"`
+	Sftp          sftps             `json:"sftp"`
+	Artifactories artifactories     `json:"artifactories"`
+	Applications  applications      `json:"applications"`
 }
 type scps struct {
 	Instance []scp `json:"scp"`
@@ -432,17 +442,18 @@ type applications struct {
 }
 
 type application struct {
-	Enable                bool     `json:"enable"`
-	Name                  string   `json:"name"`
-	OSTargets             []string `json:"ostargets"`
-	OSDeployScripts       []string `json:"osdeployscripts"`
-	Package               string   `json:"package"`
-	ReadmeFile            string   `json:"readme"`
-	VersionFile           string   `json:"version"`
-	ChangelogFile         string   `json:"changelog"`
-	Files                 []string `json:"files"`
-	OverrideVariables     string   `json:"override_variables"`
-	YNPrompt              string   `json:"ynprompt"`
+	Enable            bool     `json:"enable"`
+	Name              string   `json:"name"`
+	NameAlias         string   `json:"name_alias"`
+	OSTargets         []string `json:"ostargets"`
+	OSDeployScripts   []string `json:"osdeployscripts"`
+	Package           string   `json:"package"`
+	ReadmeFile        string   `json:"readme"`
+	VersionFile       string   `json:"version"`
+	ChangelogFile     string   `json:"changelog"`
+	Files             []string `json:"files"`
+	OverrideVariables string   `json:"override_variables"`
+	YNPrompt          string   `json:"ynprompt"`
 }
 
 func Help() {
@@ -485,11 +496,11 @@ func Comment() {
 	fmt.Printf("Comments : %v\n", comments)
 	lines := strings.Split(comments, "\n")
 	var byt bytes.Buffer
-	for _,l := range lines {
+	for _, l := range lines {
 		// all after first space
 		var bytLn bytes.Buffer
 		flds := strings.Fields(l)
-		for i,k := range flds {
+		for i, k := range flds {
 			if i > 0 {
 				bytLn.WriteString(k)
 				bytLn.WriteString(" ")
@@ -505,7 +516,7 @@ func Targets() {
 	fmt.Println()
 	fmt.Println("Targets")
 	for _, d := range apps.Apps {
-		fmt.Println("  ", d.Name)
+		fmt.Printf("\tName: %s\n", d.Name)
 	}
 
 	fmt.Println()
@@ -524,7 +535,7 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		}
-	}else {
+	} else {
 		fmt.Printf("CGO_ENABLED set to %v\n", cgoval)
 	}
 
@@ -538,7 +549,7 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue with setup :", err)
 		}
-		cleaner(d.Name, false)
+		cleaner(d.NameAlias, false)
 		err = Format()
 		if err != nil {
 			fmt.Println("issue formatting :", err)
@@ -555,17 +566,17 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue vetting :", err)
 		}
-		name := d.Name
+		name := d.NameAlias
 		if runtime.GOOS == "windows" {
 			name += ".exe"
 		}
 
-		projectMainDir := "./cmd/"+d.Name+"/"
+		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
 
 		if !dryRun {
@@ -591,14 +602,13 @@ func Build() error {
 			}
 		} else {
 			var byt bytes.Buffer
-			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " "+projectMainDir)
+			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " " + projectMainDir)
 			if exists(upxExe) {
-				byt.WriteString("\n")
-				byt.WriteString(upxExe+" -q -q -q "+name)
+				byt.WriteString("\nDRY_RUN: ")
+				byt.WriteString(upxExe + " -q -q -q " + name)
 			}
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
-
 	}
 
 	return nil
@@ -752,7 +762,7 @@ func BuildCross() error {
 			return err
 		}
 
-		cleaner(d.Name, true)
+		cleaner(d.NameAlias, true)
 
 	}
 	return nil
@@ -806,24 +816,24 @@ func Release() error {
 			return err
 		}
 
-		err = scpCopy(d.Name)
+		err = scpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = scpCustomCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp custom copy :", err)
 		}
-		err = sftpCopy(d.Name)
+		err = sftpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue sftp copy :", err)
 		}
-		err = artifactoryPush(d.Name)
+		err = artifactoryPush(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue artifactory push :", err)
 		}
 
-		cleaner(d.Name, false)
+		cleaner(d.NameAlias, false)
 
 	}
 	return nil
@@ -843,34 +853,34 @@ func Auto() error {
 			fmt.Println("issue setup :", err)
 		}
 
-		_, err = iout.WriteOut([]byte("true"), filepath.Join(baseDir, d.Name+".auto"))
+		_, err = iout.WriteOut([]byte("true"), filepath.Join(baseDir, d.NameAlias+".auto"))
 		if err != nil {
 			return err
 		}
 
-		//_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		//_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.NameAlias+".auto"))
 		//if err != nil {
 		//	return err
 		//}
 
-		err = scpCopy(d.Name)
+		err = scpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = scpCustomCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp custom copy :", err)
 		}
-		err = sftpCopy(d.Name)
+		err = sftpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue sftp copy :", err)
 		}
-		err = artifactoryPush(d.Name)
+		err = artifactoryPush(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue artifactory push :", err)
 		}
 
-		//cleaner(d.Name, false)
+		//cleaner(d.NameAlias, false)
 	}
 
 	return nil
@@ -890,35 +900,35 @@ func NoAuto() error {
 			fmt.Println("issue setup :", err)
 		}
 
-		_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.NameAlias+".auto"))
 		if err != nil {
 			return err
 		}
 
-		err = scpCopy(d.Name)
+		err = scpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = scpCustomCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue scp custom copy :", err)
 		}
-		err = sftpCopy(d.Name)
+		err = sftpCopy(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue sftp copy :", err)
 		}
-		err = artifactoryPush(d.Name)
+		err = artifactoryPush(d.NameAlias)
 		if err != nil {
 			fmt.Println("issue artifactory push :", err)
 		}
 
-		cleaner(d.Name, false)
+		cleaner(d.NameAlias, false)
 	}
 
 	return nil
 }
 
-// Build for all defined Architectures
+// BuildCross 'cross' for all defined Architectures
 func cross(app application) error {
 
 	fmt.Println("CrossBuilding...")
@@ -984,19 +994,19 @@ func cross(app application) error {
 		fmt.Printf("  Packaging %s\n", goos)
 		executableName := filepath.Join(path, name)
 
-		projectMainDir := "./cmd/"+app.Name+"/"
+		projectMainDir := "./cmd/" + app.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
 
 		if !dryRun {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-trimpath","-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
+			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				return err
 			}
@@ -1020,7 +1030,7 @@ func cross(app application) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " "+projectMainDir)
+			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " " + projectMainDir)
 		}
 		// make release dir for this OS
 
@@ -1468,48 +1478,43 @@ func Vet() error {
 func Install() error {
 	mg.SerialDeps(Build)
 	fmt.Println("Installing...")
-	gocmd := mg.GoCmd()
+	//gocmd := mg.GoCmd()
 
 	for _, d := range apps.Apps {
+		clean := true
 		if !d.Enable {
 			continue
 		}
 		var err error
-		projectMainDir := "./cmd/"+d.Name+"/"
+		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
-			projectMainDir = projectMainDir+"."
+			projectMainDir = projectMainDir + "."
 		}
-		if !dryRun {
-			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, projectMainDir)
-			if err != nil {
-				fmt.Println("!!!error: ", err)
-			}
-		} else {
-			fmt.Println("DRY_RUN: " + gocmd + " install -a -tags " + buildTags + " -ldflags " + goLDFlags + " "+projectMainDir)
+		name := d.NameAlias
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		nameStd := d.Name
+		if runtime.GOOS == "windows" {
+			nameStd += ".exe"
 		}
 		goPath := os.Getenv("GOPATH")
-		binPath := filepath.Join(goPath, "/bin/", d.Name)
-		if exists(binPath) {
-			if exists(upxExe) {
-				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", binPath)
-				fi, _ := os.Stat(binPath)
-				fmt.Printf("\n")
-				err = sh.RunV(upxExe, "-q", "-q", "-q", binPath)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("\n")
-				fmt.Printf("    - prior to compression: %v\n", stringut.HRByteCount(fi.Size(), false))
-				fi, _ = os.Stat(binPath)
-				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
-				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", binPath)
-			} else {
-				fmt.Println("- no upx available for binary compression - ")
+		binPath := filepath.Join(goPath, "/bin/", nameStd)
+		if !dryRun {
+			// as go install doesn't support custom names we use a move command into $GOPATH/bin
+			err = os.Rename(name, binPath)
+			if err != nil {
+				fmt.Errorf("issue installing %v", err)
+				clean = false
 			}
+
+		} else {
+			fmt.Printf("DRY_RUN: Move(Install) from %s to %s\n", name, binPath)
 		}
+
 		err = os.Setenv("PROG", binPath)
 		if err != nil {
 			fmt.Println("issue setting PROG :", binPath, err)
@@ -1523,7 +1528,9 @@ func Install() error {
 		} else {
 			fmt.Println("DRY_RUN copying ./pkgr/bash_autocomplete to /usr/local/etc/bash_completion.d/" + d.Name)
 		}
-		cleaner(d.Name, false)
+		if clean {
+			cleaner(d.NameAlias, false)
+		}
 	}
 
 	return nil
@@ -1535,7 +1542,7 @@ func Clean() {
 		if !d.Enable {
 			continue
 		}
-		cleaner(d.Name, false)
+		cleaner(d.NameAlias, false)
 	}
 }
 
@@ -1594,7 +1601,7 @@ func setup(app application) error {
 	fmt.Println("Version Fields: ", versionFields)
 	if len(app.OverrideVariables) > 0 {
 		overrides := strings.Split(app.OverrideVariables, ";")
-		for i,k := range overrides {
+		for i, k := range overrides {
 			val := fmt.Sprintf(k, overwriteValues[i])
 			fmt.Printf("IDX: %d. VARIABLE: %v VALUE: %v - together %v \n", i, k, overwriteValues[i], val)
 			versionFields += " " + val
