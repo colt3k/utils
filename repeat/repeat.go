@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+var (
+	loopId int64 = time.Now().Unix()
+)
+
 type Task func() error
 
 type Rule struct {
@@ -22,6 +26,9 @@ func NewRule() Rule {
 		RepeatTimer:  3 * time.Second,
 	}
 	return n
+}
+func LoopId() int64 {
+	return loopId
 }
 func Process(ctx context.Context, r Rule, processName string, repeat Task, stop Task) error {
 	var count uint = 0
@@ -44,6 +51,7 @@ func Process(ctx context.Context, r Rule, processName string, repeat Task, stop 
 				timer.Stop()
 				return nil
 			}
+			loopId = time.Now().Unix()
 			fmt.Printf("timer fired: %v - %v\n", processName, t)
 			if err := repeat(); err != nil {
 				fmt.Errorf("(in repeater) exited task iteration with error %v", err)
