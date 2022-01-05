@@ -9,17 +9,17 @@ import (
 type Task func() error
 
 type Rule struct {
-	MaxAttempts	uint
+	MaxAttempts    uint
 	currentAttempt uint
-	InitialTimer time.Duration
-	RepeatTimer time.Duration
+	InitialTimer   time.Duration
+	RepeatTimer    time.Duration
 }
 
 func NewRule() Rule {
 	n := Rule{
-		MaxAttempts: 3,
+		MaxAttempts:  3,
 		InitialTimer: 1 * time.Second,
-		RepeatTimer: 3 * time.Second,
+		RepeatTimer:  3 * time.Second,
 	}
 	return n
 }
@@ -46,8 +46,10 @@ func Process(ctx context.Context, r Rule, processName string, repeat Task, stop 
 			}
 			fmt.Printf("timer fired: %v - %v\n", processName, t)
 			if err := repeat(); err != nil {
+				fmt.Errorf("(in repeater) exited task iteration with error %v", err)
 				return err
 			}
+			fmt.Printf("(in repeater) exited task iteration without error")
 			count++
 			timer.Reset(r.RepeatTimer)
 		}
