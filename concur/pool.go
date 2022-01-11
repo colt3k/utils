@@ -49,8 +49,8 @@ func (p *Pool) work() {
 	}
 }
 
-type TaskRtrn interface {
-	Response([]byte)
+type TaskResponseReturn interface {
+	ProcessResponse(interface{}, error)
 }
 
 // Task encapsulates a work item that should go in a work
@@ -59,22 +59,24 @@ type Task struct {
 	// Err holds an error that occurred during a task. Its
 	// result is only meaningful after Run has been called
 	// for the pool that holds it.
-	Err  error
-	Rtn  TaskRtrn
-	data []byte
-	fnc  func() (error, []byte)
+	Err              error
+	responseReturner TaskResponseReturn
+	response         interface{}
+	fnc              func() (interface{}, error)
 }
 
 // NewTask initializes a new task based on a given work
 // function.
-func NewTask(fnc func() (error, []byte), rtn TaskRtrn) *Task {
-	return &Task{fnc: fnc, Rtn: rtn}
+func NewTask(fnc func() (interface{}, error), rtn TaskResponseReturn) *Task {
+	return &Task{fnc: fnc, responseReturner: rtn}
 }
 
 // Run runs a Task and does appropriate accounting via a
 // given sync.WorkGroup.
 func (t *Task) Run(wg *sync.WaitGroup) {
-	t.Err, t.data = t.fnc()
-	t.Rtn.Response(t.data)
+	t.response, t.Err = t.fnc()
+	if t.responseReturner != nil {
+		t.responseReturner.ProcessResponse(t.response, t.Err)
+	}
 	wg.Done()
 }
