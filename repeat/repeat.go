@@ -61,10 +61,10 @@ func Process(ctx context.Context, r Rule, processName string, repeat Task, stop 
 			loopId = time.Now().Unix()
 			log.Logf(log.INFO, "%v timer fired: %v - %v", loopId, processName, t)
 			if err := repeat(); err != nil {
-				log.Logf(log.ERROR, "(in repeater) %v exited task iteration with error %v\n", loopId, err)
+				log.Logf(log.ERROR, "(in repeater) %v exited task iteration with error %v", loopId, err)
 				return err
 			}
-			log.Logf(log.INFO, "(in repeater) %v exited task iteration without error\n", loopId)
+			log.Logf(log.INFO, "(in repeater) %v exited task iteration without error", loopId)
 			count++
 			timer = time.NewTimer(r.RepeatTimer)
 		}
