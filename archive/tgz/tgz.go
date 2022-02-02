@@ -59,6 +59,11 @@ func Untar(dst string, r io.Reader) error {
 			if _, err := os.Stat(target); !os.IsNotExist(err) {
 				os.Remove(target)
 			}
+			// does the path it wants to exist in exist? if not create it
+			fpath := filepath.Dir(target)
+			if _, err := os.Stat(fpath); os.IsNotExist(err) {
+				os.MkdirAll(fpath, 0777)
+			}
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err
@@ -72,6 +77,8 @@ func Untar(dst string, r io.Reader) error {
 			// manually close here after each file operation; defering would cause each file close
 			// to wait until all operations have completed.
 			f.Close()
+		default:
+			return fmt.Errorf("Untar: uknown type: %s in %s", header.Typeflag, header.Name)
 		}
 	}
 }
