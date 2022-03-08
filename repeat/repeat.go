@@ -33,7 +33,7 @@ func LoopId() int64 {
 }
 func Process(ctx context.Context, r Rule, processName string, repeat Task, stop Task) error {
 	curTime := time.Now().Format(time.RFC3339)
-	log.Logln(log.DEBUG, "setting up repeat process as of %v", curTime)
+	log.Logf(log.DEBUG, "setting up repeat process as of %v", curTime)
 	var count uint = 0
 	if r.MaxAttempts == 0 {
 		log.Logf(log.INFO, "%v - note: no max attempts has been set, this will continue forever", processName)
