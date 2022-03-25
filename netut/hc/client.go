@@ -282,6 +282,8 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 			return false, errors.New("site unreachable (no such host): " + name)
 		} else if strings.Index(err.Error(), "connection refused") > -1 {
 			return false, errors.New("site unreachable (connection refused): " + name)
+		} else if strings.Index(err.Error(), "connect: network is unreachable") > -1 {
+			return false, errors.New("site unreachable (connect: network is unreachable): " + name)
 		}
 		return false, fmt.Errorf("site unreachable\n%+v", err.Error())
 	}
