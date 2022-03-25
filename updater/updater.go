@@ -66,6 +66,7 @@ type Connection struct {
 	Repository          string
 	Path                string
 	OnAvailable         string
+	OnAvailableTimeout  int
 	available           bool
 	OnHostNamePrefix    string
 	hostNamePfx         bool

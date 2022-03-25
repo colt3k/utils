@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/colt3k/utils/debug"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/colt3k/utils/netut"
 
 	"github.com/blang/semver"
-	"github.com/colt3k/nglog/ers/bserr"
 	log "github.com/colt3k/nglog/ng"
 	iout "github.com/colt3k/utils/io"
 	"github.com/colt3k/utils/netut/hc"
@@ -86,7 +86,9 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		ac.DisableVerifyCert = d.DisableValidateCert
 
 		dec := json.NewDecoder(ioutil.NopCloser(strings.NewReader(data)))
-		if err = dec.Decode(&ac); bserr.Err(err, "error decoding") {
+		if err = dec.Decode(&ac); err != nil {
+			log.Printf("error decoding %v\n", err)
+			debug.PrintStack()
 			return ac, updateAvailable, autoUpdate
 		}
 
@@ -207,10 +209,10 @@ func downloadUpdate(ac *updater.AppConfig) {
 func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 	if ac != nil {
 		log.Logln(log.DEBUG, "- Pull Change Log and Display")
-		log.Logf(log.DEBUG,"-- change log: %v", ac.Changelog)
-		log.Logf(log.DEBUG,"-- url used: %v", ac.BaseURL)
+		log.Logf(log.DEBUG, "-- change log: %v", ac.Changelog)
+		log.Logf(log.DEBUG, "-- url used: %v", ac.BaseURL)
 		if len(ac.Changelog) > 0 {
-			httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
+			httpClient := hc.NewClient(hc.HttpClientRequestTimeout(30), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 			var err error
 			url := ac.BaseURL + "/" + ac.Changelog
 			auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
@@ -224,9 +226,12 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 
 			// Read body to buffer
 			body, err := ioutil.ReadAll(resp.Body)
-			if bserr.Err(err, "Error reading body") {
+			if err != nil {
+				debug.PrintStack()
+				log.Logf(log.ERROR, "Error reading body %v", err)
 				log.Logln(log.WARN, "--- error reading body on changelog")
 			}
+
 			var byt bytes.Buffer
 			lines := strings.SplitAfter(string(body), "\n")
 			for _, j := range lines {
@@ -243,7 +248,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 func download(ac *updater.AppConfig) bool {
 	log.Logln(log.DEBUG, "- Download")
 	var success bool
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
+	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(120), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 
 	auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
 	resp, err := httpClient.Fetch("GET", ac.URL, auth, nil, nil)
@@ -258,7 +263,9 @@ func download(ac *updater.AppConfig) bool {
 
 	// Read body to buffer
 	body, err := ioutil.ReadAll(resp.Body)
-	if bserr.Err(err, "--- error reading body") {
+	if err != nil {
+		debug.PrintStack()
+		log.Logf(log.ERROR, "--- error reading body %v", err)
 		ac.Issue = "unable to read response"
 		return success
 	}
@@ -337,13 +344,16 @@ func testHosts(hosts []updater.Connection) {
 			var err error
 			if d.OnAvailableViaHTTP {
 				log.Logf(log.DEBUG, "-- onAvailable check %v", d.OnAvailable)
-				avail, err = hc.Reachable(d.OnAvailable, d.Name, 2, d.DisableValidateCert)
+				if d.OnAvailableTimeout == 0 {
+					d.OnAvailableTimeout = 10
+				}
+				avail, err = hc.Reachable(d.OnAvailable, d.Name, d.OnAvailableTimeout, d.DisableValidateCert)
 			} else {
 				log.Logf(log.DEBUG, "-- ping host check %v", d.OnAvailable)
 				avail, err = netut.Ping(d.OnAvailable)
 			}
 			if err != nil {
-				log.Logf(log.DEBUG, "--- %v",err.Error())
+				log.Logf(log.DEBUG, "--- %v", err.Error())
 			}
 
 			log.Logf(log.DEBUG, "--- host available? %v: %s", avail, d.OnAvailable)
@@ -366,7 +376,7 @@ func testHosts(hosts []updater.Connection) {
 
 func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
 	log.Logln(log.DEBUG, "--- Pull URL Content To String")
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(20), hc.DisableVerifyClientCert(disableVerifyCert))
+	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(30), hc.DisableVerifyClientCert(disableVerifyCert))
 
 	resp, err := httpClient.Fetch("GET", url_, auth, nil, nil)
 	if resp != nil {

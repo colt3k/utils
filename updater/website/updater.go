@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/colt3k/utils/debug"
 	"io/ioutil"
 	"net/http"
 	"runtime"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/colt3k/nglog/ers/bserr"
 	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/version"
 
@@ -52,13 +52,17 @@ func CheckUpdate(appName string) bool {
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	if bserr.WarnErr(err, "update site unreachable") {
+	if err != nil {
+		log.Logf(log.WARN, "update site unreachable %v", err)
+		debug.PrintStack()
 		return updateAvailable
 	}
 
 	// Read body to buffer
 	body, err := ioutil.ReadAll(resp.Body)
-	if bserr.Err(err, "Error reading body") {
+	if err != nil {
+		log.Logf(log.ERROR, "Error reading body %v", err)
+		debug.PrintStack()
 		return updateAvailable
 	}
 
@@ -70,7 +74,9 @@ func CheckUpdate(appName string) bool {
 	ac = new(updater.AppConfig)
 
 	dec := json.NewDecoder(ioutil.NopCloser(bytes.NewBuffer(body)))
-	if err := dec.Decode(&ac); bserr.Err(err, "error decoding") {
+	if err := dec.Decode(&ac); err != nil {
+		log.Logf(log.ERROR, "error decoding %v", err)
+		debug.PrintStack()
 		return updateAvailable
 	}
 
