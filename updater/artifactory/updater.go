@@ -373,9 +373,9 @@ func testHosts(hosts []updater.Connection) {
 			}
 
 			if avail {
-				log.Logf(log.DEBUG, "--- host available? '%v' at (%v): %s", d.Name, log.Green("%v", avail), d.OnAvailable)
+				log.Logf(log.DEBUG, "--- host available? %v '%v' at (%s)", log.Green("%v", avail), d.Name, d.OnAvailable)
 			} else {
-				log.Logf(log.DEBUG, "--- host available? '%v' at (%v): %s", d.Name, log.Red("%v", avail), d.OnAvailable)
+				log.Logf(log.DEBUG, "--- host available? %v '%v' at (%s)", log.Red("%v", avail), d.Name, d.OnAvailable)
 			}
 			hosts[i].SetAvailable(avail)
 		}
