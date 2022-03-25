@@ -277,7 +277,11 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 	// 202 occurs when a http.DELETE is ran
 	if err != nil {
 		if strings.Index(err.Error(), "Client.Timeout ") > -1 {
-			return false, errors.New("site unreachable: " + name)
+			return false, errors.New("site unreachable (timeout): " + name)
+		} else if strings.Index(err.Error(), "no such host") > -1 {
+			return false, errors.New("site unreachable (no such host): " + name)
+		} else if strings.Index(err.Error(), "connection refused") > -1 {
+			return false, errors.New("site unreachable (connection refused): " + name)
 		}
 		return false, fmt.Errorf("site unreachable\n%+v", err.Error())
 	}
