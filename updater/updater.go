@@ -60,6 +60,7 @@ func NewUser(user, passOrToken, urlPrefix, repository string) *Connection {
 
 type Connection struct {
 	Name                string
+	HostName            string
 	User                string
 	PassOrToken         string
 	URLPrefix           string
