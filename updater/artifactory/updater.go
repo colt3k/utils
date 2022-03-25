@@ -349,7 +349,7 @@ func download(ac *updater.AppConfig) bool {
 }
 
 func testHosts(hosts []updater.Connection) {
-	log.Logln(log.DEBUG, "- test hosts")
+	log.Logln(log.DEBUG, "- START testHosts process")
 	host := osut.Hostname()
 	log.Logf(log.DEBUG, "-- local host %v", host)
 	for i, d := range hosts {
@@ -378,9 +378,6 @@ func testHosts(hosts []updater.Connection) {
 				log.Logf(log.DEBUG, "--- host available? '%v' at (%v): %s", d.Name, log.Red("%v", avail), d.OnAvailable)
 			}
 			hosts[i].SetAvailable(avail)
-			//if avail {
-			//	break
-			//}
 		}
 		// if OnAvailable is set and OnHostname is NOT set but host is not resolvable skip
 		if len(d.OnHostNamePrefix) > 0 && strings.HasPrefix(strings.ToLower(host), d.OnHostNamePrefix) {
@@ -392,6 +389,7 @@ func testHosts(hosts []updater.Connection) {
 			hosts[i].SetHostSfx(true)
 		}
 	}
+	log.Logln(log.DEBUG, "- END testHosts process")
 }
 
 func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
