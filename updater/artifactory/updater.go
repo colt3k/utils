@@ -34,21 +34,23 @@ var ac *updater.AppConfig
 func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool, bool) {
 	test := false
 	testHosts(hosts)
-	log.Logln(log.DEBUG, "")
-	log.Logln(log.DEBUG, "- START CheckUpdate process")
 	if len(hosts) == 0 {
 		log.Logln(log.DEBUG, "-- no configured hosts")
 	}
-	hostCount := 0
+	disabledHostCount := 0
 	for _, d := range hosts {
 		if !d.Available() && !d.HostPfx() && !d.HostSuffix() {
-			hostCount++
+			disabledHostCount++
 			continue
 		}
 	}
-	if hostCount == len(hosts) {
+	if disabledHostCount == len(hosts) {
 		log.Logln(log.DEBUG, "-- no reachable hosts")
 	}
+
+	log.Logln(log.DEBUG, "")
+	log.Logln(log.DEBUG, "- START CheckUpdate process")
+
 	for _, d := range hosts {
 		var autoUpdate bool
 
@@ -353,6 +355,7 @@ func testHosts(hosts []updater.Connection) {
 	host := osut.Hostname()
 	log.Logf(log.DEBUG, "-- local host %v", host)
 	for i, d := range hosts {
+		log.Logln(log.DEBUG, "")
 		// if neither is set skip entry
 		if len(d.OnAvailable) > 0 {
 			// test available
@@ -389,6 +392,15 @@ func testHosts(hosts []updater.Connection) {
 			hosts[i].SetHostSfx(true)
 		}
 	}
+	log.Logln(log.DEBUG, "")
+	log.Logln(log.DEBUG, "-- Available Hosts Found --")
+	for _, d := range hosts {
+		if !d.Available() && !d.HostPfx() && !d.HostSuffix() {
+			continue
+		}
+		log.Logf(log.DEBUG, "    %v at (%s)", d.Name, d.OnAvailable)
+	}
+	log.Logln(log.DEBUG, "")
 	log.Logln(log.DEBUG, "- END testHosts process")
 }
 
