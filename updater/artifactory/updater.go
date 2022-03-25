@@ -34,7 +34,21 @@ var ac *updater.AppConfig
 func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool, bool) {
 	test := false
 	testHosts(hosts)
-	log.Logf(log.DEBUG, "- CheckUpdate")
+	log.Logln(log.DEBUG, "")
+	log.Logln(log.DEBUG, "- START CheckUpdate process")
+	if len(hosts) == 0 {
+		log.Logln(log.DEBUG, "-- no configured hosts")
+	}
+	hostCount := 0
+	for _, d := range hosts {
+		if !d.Available() && !d.HostPfx() && !d.HostSuffix() {
+			hostCount++
+			continue
+		}
+	}
+	if hostCount == len(hosts) {
+		log.Logln(log.DEBUG, "-- no reachable hosts")
+	}
 	for _, d := range hosts {
 		var autoUpdate bool
 
@@ -129,7 +143,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 
 		} else if localTime.Before(remoteTime) { // if current app is older than remote pull, could be a roll back
 			//Check build time instead
-			log.Logln(log.DEBUG, "-- remote time is newer than local %v > %v", remoteTime, localTime)
+			log.Logf(log.DEBUG, "-- remote time is newer than local %v > %v", remoteTime, localTime)
 			base.WriteString(appName + compressdSuffix)
 			ac.URL = base.String()
 			ac.ArchiveName = appName + compressdSuffix
@@ -143,7 +157,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 		return ac, updateAvailable, autoUpdate
 	}
-	log.Logln(log.DEBUG, "- CheckUpdate END")
+	log.Logln(log.DEBUG, "- END CheckUpdate process")
 	return nil, false, false
 }
 
@@ -172,7 +186,8 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 		2. Place in proper location (same as normal install)
 		3. exit application and notify to restart - due to update or make option via input
 	*/
-	log.Logln(log.DEBUG, "- Perform Update")
+	log.Logln(log.DEBUG, "")
+	log.Logln(log.DEBUG, "**** START Update process ****")
 	if ac, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
 		s := UpdateAvailableMsg()
 		fmt.Println(s)
@@ -184,7 +199,7 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 			return found
 		}
 	}
-	log.Logln(log.DEBUG, "- Perform Update END")
+	log.Logln(log.INFO, "**** END Update process ****")
 	return false
 }
 
@@ -208,6 +223,7 @@ func downloadUpdate(ac *updater.AppConfig) {
 
 func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 	if ac != nil {
+		log.Logln(log.DEBUG, "")
 		log.Logln(log.DEBUG, "- Pull Change Log and Display")
 		log.Logf(log.DEBUG, "-- change log: %v", ac.Changelog)
 		log.Logf(log.DEBUG, "-- url used: %v", ac.BaseURL)
@@ -343,10 +359,10 @@ func testHosts(hosts []updater.Connection) {
 			var avail bool
 			var err error
 			if d.OnAvailableViaHTTP {
-				log.Logf(log.DEBUG, "-- onAvailable check %v", d.OnAvailable)
 				if d.OnAvailableTimeout == 0 {
 					d.OnAvailableTimeout = 10
 				}
+				log.Logf(log.DEBUG, "-- onAvailable check '%v' at (%v), timeout (%v seconds)", d.Name, d.OnAvailable, d.OnAvailableTimeout)
 				avail, err = hc.Reachable(d.OnAvailable, d.Name, d.OnAvailableTimeout, d.DisableValidateCert)
 			} else {
 				log.Logf(log.DEBUG, "-- ping host check %v", d.OnAvailable)
@@ -356,7 +372,11 @@ func testHosts(hosts []updater.Connection) {
 				log.Logf(log.DEBUG, "--- %v", err.Error())
 			}
 
-			log.Logf(log.DEBUG, "--- host available? %v: %s", avail, d.OnAvailable)
+			if avail {
+				log.Logf(log.DEBUG, "--- host available? '%v' at (%v): %s", d.Name, log.Green("%v", avail), d.OnAvailable)
+			} else {
+				log.Logf(log.DEBUG, "--- host available? '%v' at (%v): %s", d.Name, log.Red("%v", avail), d.OnAvailable)
+			}
 			hosts[i].SetAvailable(avail)
 			//if avail {
 			//	break
