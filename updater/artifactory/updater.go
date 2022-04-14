@@ -116,12 +116,14 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
+			continue
 		}
 		if len(autoDat) > 0 {
 			var errAU error
 			autoUpdate, errAU = strconv.ParseBool(autoDat)
 			if errAU != nil {
 				log.Logf(log.ERROR, "--- issue parsing auto update file %v", errAU)
+				continue
 			}
 		}
 
