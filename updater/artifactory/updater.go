@@ -108,7 +108,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			return ac, updateAvailable, autoUpdate
 		}
 
-		// Check for Auto file and value
+		// Check for Auto file and value, THIS IS OPTIONAL, ignore if not found
 		autoUrl.WriteString(base.String())
 		autoUrl.WriteString(appName + ".auto")
 		log.Logf(log.DEBUG, "-- Auto File URL: %v", autoUrl.String())
@@ -116,7 +116,6 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
-			continue
 		}
 		if len(autoDat) > 0 {
 			var errAU error
