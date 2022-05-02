@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
+	"runtime/debug"
 
-	"github.com/colt3k/nglog/ers/bserr"
 	"github.com/colt3k/utils/encode"
 	"github.com/colt3k/utils/encode/encodeenum"
 	"github.com/colt3k/utils/file/filenative"
@@ -18,9 +19,9 @@ import (
 )
 
 var (
-	ScryptParams = scrypt.Params{N:65536, R:1, P:2, SaltLen:16, DKLen:32}
-	encSalt string
-	salt []byte
+	ScryptParams = scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
+	encSalt      string
+	salt         []byte
 )
 
 func GenSalt() []byte {
@@ -37,11 +38,14 @@ func GenSalt() []byte {
 
 /*
 EncToTemp encrypt file to a temp file
- */
+*/
 func EncToTemp(filepath string, pass []byte) string {
 
 	fo, err := os.Open(filepath)
-	bserr.StopErr(err, "err opening file, "+filepath)
+	if err != nil {
+		stackInfo := debug.Stack()
+		log.Fatalf("err opening file, %v\n %v\n%v", filepath, err, string(stackInfo))
+	}
 	defer fo.Close()
 
 	GenSalt()
@@ -59,7 +63,10 @@ func EncToTemp(filepath string, pass []byte) string {
 	stream := cipher.NewOFB(block, aesIv2)
 
 	tf, err := ioutil.TempFile(os.TempDir(), "ctcloud")
-	bserr.StopErr(err, "err opening temp file")
+	if err != nil {
+		stackInfo := debug.Stack()
+		log.Fatalf("err opening temp file, %v\n %v\n%v", filepath, err, string(stackInfo))
+	}
 
 	//var out bytes.Buffer
 	writer := &cipher.StreamWriter{S: stream, W: tf}
@@ -78,7 +85,10 @@ func DecFromTemp(tmpFile string, pass []byte, saveto string, salt string) {
 	f := filenative.NewFile(tmpFile)
 
 	fo, err := os.Open(f.Path())
-	bserr.StopErr(err, "err opening file, "+tmpFile)
+	if err != nil {
+		stackInfo := debug.Stack()
+		log.Fatalf("err opening file, %v\n %v\n%v", tmpFile, err, string(stackInfo))
+	}
 	defer fo.Close()
 
 	encSalt = salt
@@ -99,7 +109,10 @@ func DecFromTemp(tmpFile string, pass []byte, saveto string, salt string) {
 	stream := cipher.NewOFB(block, aesIv2)
 
 	tf, err := os.Create(saveto)
-	bserr.StopErr(err, "err opening saveto file")
+	if err != nil {
+		stackInfo := debug.Stack()
+		log.Fatalf("err opening saveto file, %v\n%v", err, string(stackInfo))
+	}
 	defer tf.Close()
 
 	reader := &cipher.StreamReader{S: stream, R: fo}
