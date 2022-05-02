@@ -686,7 +686,9 @@ func Build() error {
 	}
 
 	for _, d := range prjkts.Projects {
-
+		if exists(d.Name) {
+			log.Fatalf("\n!!! ERROR: file or directory already exists with application name '%s', exiting !!!\n\n", d.Name)
+		}
 		if !d.Enable {
 			continue
 		}
@@ -1143,7 +1145,7 @@ func cross(app Project) error {
 
 		projectMainDir := "./cmd/" + app.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
 			projectMainDir = projectMainDir + "."
@@ -1634,7 +1636,7 @@ func Install() error {
 		var err error
 		projectMainDir := "./cmd/" + d.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir)
+			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
 			projectMainDir = projectMainDir + "."
