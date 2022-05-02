@@ -671,7 +671,12 @@ func Targets() {
 // A build step that requires additional params, or platform specific steps for example
 func Build() error {
 	mg.SerialDeps(parseToml)
-
+	skipUPX := false
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	if goos == "darwin" && goarch == "arm64" {
+		skipUPX = true
+	}
 	gocmd := mg.GoCmd()
 	fmt.Println("Building...")
 	//$(GO) build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o $(NAME) .
@@ -732,7 +737,7 @@ func Build() error {
 			if err != nil {
 				return err
 			}
-			if exists(apps.UPXExe) {
+			if exists(apps.UPXExe) && !skipUPX {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", name)
 				fi, _ := os.Stat(name)
 				fmt.Printf("\n")
@@ -745,6 +750,8 @@ func Build() error {
 				fi, _ = os.Stat(name)
 				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
 				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", name)
+			} else if skipUPX {
+				fmt.Println("- upx not applicable for darwin/arm64 - ")
 			} else {
 				fmt.Println("- no upx available for binary compression - ")
 			}
@@ -1114,6 +1121,11 @@ func cross(app Project) error {
 			}
 		}
 
+		skipUPX := false
+		if goos == "darwin" && arch == "arm64" {
+			skipUPX = true
+		}
+
 		if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
 			err = os.Setenv("CGO_ENABLED", "0")
 			if err != nil {
@@ -1159,7 +1171,7 @@ func cross(app Project) error {
 			if err != nil {
 				return err
 			}
-			if exists(apps.UPXExe) {
+			if exists(apps.UPXExe) && !skipUPX {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", executableName)
 				fi, _ := os.Stat(executableName)
 				fmt.Printf("\n")
@@ -1172,6 +1184,8 @@ func cross(app Project) error {
 				fi, _ = os.Stat(executableName)
 				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
 				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", executableName)
+			} else if skipUPX {
+				fmt.Println("- upx not applicable for darwin/arm64 - ")
 			} else {
 				fmt.Println("- no upx available for binary compression - ")
 			}
@@ -1629,6 +1643,12 @@ func Install() error {
 	fmt.Println("Installing...")
 	gocmd := mg.GoCmd()
 
+	skipUPX := false
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	if goos == "darwin" && goarch == "arm64" {
+		skipUPX = true
+	}
 	for _, d := range prjkts.Projects {
 		if !d.Enable {
 			continue
@@ -1652,7 +1672,7 @@ func Install() error {
 		goPath := os.Getenv("GOPATH")
 		binPath := filepath.Join(goPath, "/bin/", d.Name)
 		if exists(binPath) {
-			if exists(apps.UPXExe) {
+			if exists(apps.UPXExe) && !skipUPX {
 				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", binPath)
 				fi, _ := os.Stat(binPath)
 				fmt.Printf("\n")
@@ -1665,6 +1685,8 @@ func Install() error {
 				fi, _ = os.Stat(binPath)
 				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
 				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", binPath)
+			} else if skipUPX {
+				fmt.Println("- upx not applicable for darwin/arm64 - ")
 			} else {
 				fmt.Println("- no upx available for binary compression - ")
 			}
