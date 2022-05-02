@@ -1,6 +1,7 @@
 package logstash
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -68,16 +69,20 @@ func (s *Writer) Write(p []byte) (n int, err error) {
 		msg := fmt.Sprintf("%s\n", string(p))
 		i, err = s.Connection.Write([]byte(msg))
 		if err != nil {
-			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
-				err = s.Connection.Close()
-				if err != nil {
-					log.Printf("ERROR: issue closing connection %+v\n", err)
+			var netErr net.Error
+			switch {
+			case errors.As(err, netErr):
+				if netErr.Timeout() {
+					err = s.Connection.Close()
+					if err != nil {
+						log.Printf("ERROR: issue closing connection %+v\n", err)
+					}
+					s.Connection = nil
+					if err != nil {
+						return i, err
+					}
 				}
-				s.Connection = nil
-				if err != nil {
-					return i, err
-				}
-			} else {
+			default:
 				err = s.Connection.Close()
 				if err != nil {
 					log.Printf("ERROR: issue closing connection %+v\n", err)
