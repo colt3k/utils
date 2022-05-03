@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/colt3k/utils/stringut"
+	"github.com/pelletier/go-toml"
 	"io"
 	"io/ioutil"
 	"log"
@@ -18,12 +19,10 @@ import (
 
 	"github.com/colt3k/utils/ques"
 
+	"github.com/colt3k/utils/crypt/genppk"
 	iout "github.com/colt3k/utils/io"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
-	"github.com/pelletier/go-toml"
-
-	"github.com/colt3k/utils/crypt/genppk"
 )
 
 // Default target to run when none is specified
@@ -37,20 +36,22 @@ import (
 // bump= mage -v install or release
 
 var (
-	dryRun    bool
-	config    Config
-	build     BuildData
-	postclean PostClean
-	apps      Apps
-	prjkts    Projects
-	arts      Artifactories
-	scpS      SCPs
-	sftpS     SFTPs
-	scpCustom SCPCustoms
-	timestamp = time.Now().Unix()
-	baseDir   = ""
-	buildDir  = ""
-	prepDir   = ""
+	dryRun         bool
+	displayOnly    bool
+	configMessages bytes.Buffer
+	config         Config
+	build          BuildData
+	postclean      PostClean
+	apps           Apps
+	prjkts         Projects
+	arts           Artifactories
+	scpS           SCPs
+	sftpS          SFTPs
+	scpCustom      SCPCustoms
+	timestamp      = time.Now().Unix()
+	baseDir        = ""
+	buildDir       = ""
+	prepDir        = ""
 
 	versionPkg            = "github.com/colt3k/utils"
 	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
@@ -77,6 +78,8 @@ func setupBuild(props map[string]interface{}) error {
 	if mapProps != nil {
 		mp := mapProps.(map[string]interface{})
 		build.Tags = propRtv(mp, "tags")
+	} else {
+		configMessages.WriteString("WARN: [build] section not declared\n")
 	}
 
 	log.Println("Build Obj:", build)
@@ -94,6 +97,8 @@ func setupPostClean(props map[string]interface{}) error {
 			}
 		}
 		postclean.Dirs = dirs
+	} else {
+		configMessages.WriteString("WARN: [postclean] section not declared\n")
 	}
 	log.Println("PostClean Obj:", postclean)
 	config.PostClean = postclean
@@ -145,6 +150,8 @@ func setupApps(props map[string]interface{}) error {
 		apps.SftpExe = propRtv(mp, "sftpExe")
 		apps.UPXExe = propRtv(mp, "upxExe")
 		apps.WhichExe = propRtv(mp, "whichExe")
+	} else {
+		configMessages.WriteString("WARN: [apps] section not declared\n")
 	}
 	log.Println("Apps Obj:", apps)
 	config.Apps = apps
@@ -225,6 +232,9 @@ func setupArtifacts(props map[string]interface{}) error {
 }
 func setupProjects(props map[string]interface{}) error {
 	appMap := props["project"]
+	if appMap == nil {
+		configMessages.WriteString("ERROR: [project] section not declared\n")
+	}
 	appWrapper := make(map[string]interface{}, 1)
 	appWrapper["project"] = appMap
 
@@ -288,7 +298,7 @@ func setupProjects(props map[string]interface{}) error {
 			}
 		}
 
-		if len(d.OverrideVariables) > 0 {
+		if len(d.OverrideVariables) > 0 && !displayOnly {
 			// Split on semi-colon, create an array to store answers
 			overrides := strings.Split(d.OverrideVariables, ";")
 			overwriteValues = make([]string, 0)
@@ -299,7 +309,7 @@ func setupProjects(props map[string]interface{}) error {
 			fmt.Printf("Answers: %v\n", overwriteValues)
 		}
 
-		if len(d.YNPrompt) > 0 {
+		if len(d.YNPrompt) > 0 && !displayOnly {
 			prompt = ques.Confirm(d.YNPrompt)
 			if !prompt {
 				fmt.Println("Please pull first!!!, Exiting...")
@@ -627,10 +637,28 @@ func GenConf() {
 }
 
 func Display() {
+	displayOnly = true
 	mg.SerialDeps(parseToml)
 	fmt.Println()
 	s, _ := json.MarshalIndent(config, "", "  ")
 	fmt.Println("Configuration:", string(s))
+	var byt bytes.Buffer
+	for _, m := range config.Project.Projects {
+		targs := len(m.OSTargets)
+		depScripts := len(m.OSDeployScripts)
+		if targs != depScripts {
+			byt.WriteString(fmt.Sprintf("In project %v ostargets and osdeployscripts count should match one for one.\n", m.Name))
+		}
+	}
+	if byt.Len() > 0 || configMessages.Len() > 0 {
+		fmt.Println("Warning/Errors Found")
+		if configMessages.Len() > 0 {
+			fmt.Println(configMessages.String())
+		}
+		if byt.Len() > 0 {
+			fmt.Println(byt.String())
+		}
+	}
 }
 
 func Comment() {
