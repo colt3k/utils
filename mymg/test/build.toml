@@ -8,6 +8,7 @@
 ###### Build
 [build]
 tags=""
+useAltApps="y"
 
 ###### Clean
 [postclean]

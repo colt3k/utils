@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/colt3k/utils/stringut"
-	"github.com/pelletier/go-toml"
+	"github.com/pelletier/go-toml/v2"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,7 +19,6 @@ import (
 
 	"github.com/colt3k/utils/ques"
 
-	"github.com/colt3k/utils/crypt/genppk"
 	iout "github.com/colt3k/utils/io"
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
@@ -78,6 +77,7 @@ func setupBuild(props map[string]interface{}) error {
 	if mapProps != nil {
 		mp := mapProps.(map[string]interface{})
 		build.Tags = propRtv(mp, "tags")
+		build.UseAltApps = propRtv(mp, "useAltApps")
 	} else {
 		configMessages.WriteString("WARN: [build] section not declared\n")
 	}
@@ -106,6 +106,26 @@ func setupPostClean(props map[string]interface{}) error {
 }
 func propRtv(p map[string]interface{}, key string) string {
 	if val, ok := p[key]; ok {
+		// verify this is found on local for apps
+		if strings.HasSuffix(key, "Exe") {
+			log.Printf("find value for key '%v'", key)
+
+			if !fileExistsAndIsNotADir(val.(string)) {
+				if strings.ToLower(build.UseAltApps) == "yes" || strings.ToLower(build.UseAltApps) == "y" ||
+					strings.ToLower(build.UseAltApps) == "1" || strings.ToLower(build.UseAltApps) == "t" ||
+					strings.ToLower(build.UseAltApps) == "true" {
+					log.Printf("- !!! '%v' not found for key '%v' !!!\n", val.(string), key)
+					path, err := findExec(filepath.Base(val.(string)))
+					if err != nil {
+						log.Fatalf("- nor on path %v\n", err)
+					}
+					log.Printf("- Using Found Alternative: %v\n", path)
+					return path
+				} else {
+					log.Fatalf("- !!! '%v' not found for key '%v', useAltApps is off !!!\n", val.(string), key)
+				}
+			}
+		}
 		return val.(string)
 	} else {
 		if runtime.GOOS == "linux" {
@@ -339,11 +359,20 @@ func parseTargets() error {
 	}
 	path, err = filepath.Abs(path)
 
-	tree, err := toml.LoadFile(path)
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	props := tree.ToMap()
+	var props map[string]interface{}
+	err = toml.Unmarshal(data, &props)
+	if err != nil {
+		panic(err)
+	}
+	//tree, err := toml.LoadFile(path)
+	//if err != nil {
+	//	return err
+	//}
+	//props := tree.ToMap()
 
 	err = setupProjects(props)
 	if err != nil {
@@ -383,11 +412,23 @@ func parseToml() error {
 	}
 	path, err = filepath.Abs(path)
 
-	tree, err := toml.LoadFile(path)
+	if !fileExistsAndIsNotADir(path) {
+		return fmt.Errorf("toml file not found at %v", path)
+	}
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	props := tree.ToMap()
+	var props map[string]interface{}
+	err = toml.Unmarshal(data, &props)
+	if err != nil {
+		panic(err)
+	}
+	//tree, err := toml.LoadFile(path)
+	//if err != nil {
+	//	return err
+	//}
+	//props := tree.ToMap()
 
 	// APPS
 	err = setupBuild(props)
@@ -552,7 +593,8 @@ type Artifactories struct {
 	Instance []ArtifactoryData `json:"artifactory"`
 }
 type BuildData struct {
-	Tags string `json:"tags"`
+	Tags       string `json:"tags"`
+	UseAltApps string `json:"useAltApps"`
 }
 type PostClean struct {
 	Dirs []string `json:"dirs"`
@@ -603,10 +645,10 @@ type Apps struct {
 }
 
 func GenConf() {
-	fmt.Println()
-	fmt.Println("building config")
+	fmt.Println("- building config")
 	c := &GenConfig{}
 	c.Build.Tags = ""
+	c.Build.UseAltApps = "yes"
 	c.PostClean.Dirs = []string{"PREP/", "cross"}
 	c.Apps.MD5Exe = "/sbin/md5sum"
 	c.Apps.SHA1Exe = "/usr/local/bin/sha1sum"
@@ -634,6 +676,7 @@ func GenConf() {
 		log.Fatalf("issue marshalling config %v", err)
 	}
 	iout.WriteOut(b, "demo.toml")
+	fmt.Println("- build complete")
 }
 
 func Display() {
@@ -1879,32 +1922,33 @@ func convertInterfaceArToStringAr(data []interface{}) []string {
 	return tmp
 }
 
-func PPK() error {
-	fmt.Println("Building PPK...")
-
-	ppk := genppk.PPK{PrivateFilename: "mypriv", PublicFilename: "mypub"}
-	ppk.GenerateKeys(0)
-	ppk.SavePrivateKeyAsPEM()
-	ppk.SavePublicKeyAsPEM()
-	fmt.Println("Finished Building PPK...")
-
-	// Generate .go file with data in it
-	/*
-		1. check for key.go
-		2. create if it doesn't exist for the project
-		3. create signature with private key and place in update file
-		4. on update verify sig with public key in project
-
-		var publicKey = []byte(`
-		-----BEGIN PUBLIC KEY-----
-		MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEtrVmBxQvheRArXjg2vG1xIprWGuCyESx
-		MMY8pjmjepSy2kuz+nl9aFLqmr+rDNdYvEBqQaZrYMc6k29gjvoQnQ==
-		-----END PUBLIC KEY-----
-		`)
-	*/
-
-	return nil
-}
+// Unused
+//func PPK() error {
+//	fmt.Println("Building PPK...")
+//
+//	ppk := genppk.PPK{PrivateFilename: "mypriv", PublicFilename: "mypub"}
+//	ppk.GenerateKeys(0)
+//	ppk.SavePrivateKeyAsPEM()
+//	ppk.SavePublicKeyAsPEM()
+//	fmt.Println("Finished Building PPK...")
+//
+//	// Generate .go file with data in it
+//	/*
+//		1. check for key.go
+//		2. create if it doesn't exist for the project
+//		3. create signature with private key and place in update file
+//		4. on update verify sig with public key in project
+//
+//		var publicKey = []byte(`
+//		-----BEGIN PUBLIC KEY-----
+//		MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEtrVmBxQvheRArXjg2vG1xIprWGuCyESx
+//		MMY8pjmjepSy2kuz+nl9aFLqmr+rDNdYvEBqQaZrYMc6k29gjvoQnQ==
+//		-----END PUBLIC KEY-----
+//		`)
+//	*/
+//
+//	return nil
+//}
 
 func exists(path string) bool {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -1918,4 +1962,11 @@ func fileExistsAndIsNotADir(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+func findExec(app string) (string, error) {
+	path, err := exec.LookPath(app)
+	if err != nil {
+		return "", fmt.Errorf("not found on path %v", app)
+	}
+	return path, nil
 }
