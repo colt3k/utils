@@ -4,6 +4,8 @@
 # mage release
 # bump= mage release // will increase version
 # names=one,two mage release | install
+# mage genconf  // will create a demo.toml configuration, update and change name to build.toml
+# mage display  // will validate and display configuration
 
 ###### Build
 [build]

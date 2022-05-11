@@ -679,6 +679,11 @@ func GenConf() {
 	}
 	iout.WriteOut(b, "demo.toml")
 	fmt.Println("- build complete")
+	fmt.Println()
+	fmt.Println("*****************************************************")
+	fmt.Println("update the demo.toml and rename to build.toml for use")
+	fmt.Println("*****************************************************")
+	fmt.Println()
 }
 
 func Display() {
