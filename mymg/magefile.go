@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/colt3k/utils/crypt/genppk"
 	"github.com/colt3k/utils/stringut"
 	"github.com/pelletier/go-toml/v2"
 	"io"
@@ -82,7 +83,6 @@ func setupBuild(props map[string]interface{}) error {
 		configMessages.WriteString("WARN: [build] section not declared\n")
 	}
 
-	log.Println("Build Obj:", build)
 	config.Build = build
 	return nil
 }
@@ -100,7 +100,7 @@ func setupPostClean(props map[string]interface{}) error {
 	} else {
 		configMessages.WriteString("WARN: [postclean] section not declared\n")
 	}
-	log.Println("PostClean Obj:", postclean)
+
 	config.PostClean = postclean
 	return nil
 }
@@ -140,7 +140,7 @@ func propRtv(p map[string]interface{}, key string) string {
 				return "/bin/curl"
 			case "catExe":
 				return "/bin/cat"
-			case "apps.GitExe":
+			case "gitExe":
 				return "/bin/git"
 			case "tarExe":
 				return "/bin/tar"
@@ -173,7 +173,7 @@ func setupApps(props map[string]interface{}) error {
 	} else {
 		configMessages.WriteString("WARN: [apps] section not declared\n")
 	}
-	log.Println("Apps Obj:", apps)
+
 	config.Apps = apps
 	return nil
 }
@@ -191,7 +191,7 @@ func setupScps(props map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Scps Obj:", scpS)
+
 	config.SCP = scpS
 	return nil
 }
@@ -210,7 +210,7 @@ func setupCustomScps(props map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Custom Scps Obj:", scpCustom)
+
 	config.SCPCustom = scpCustom
 	return nil
 }
@@ -228,7 +228,7 @@ func setupSftps(props map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Sftps Obj:", sftpS)
+
 	config.SFTP = sftpS
 	return nil
 }
@@ -246,7 +246,7 @@ func setupArtifacts(props map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Artifacts Obj:", arts)
+
 	config.Artifactory = arts
 	return nil
 }
@@ -272,7 +272,9 @@ func setupProjects(props map[string]interface{}) error {
 	if sz == 1 {
 		prompt = false
 	}
-	fmt.Printf("Projects available %d\n", sz)
+	if sz > 0 {
+		fmt.Printf("Projects available %d\n", sz)
+	}
 	// find absolute paths for files
 	for i, d := range prjkts.Projects {
 		if prompt && sz > 1 && ques.Confirm("process ("+d.Name+")? ") {
@@ -424,11 +426,6 @@ func parseToml() error {
 	if err != nil {
 		panic(err)
 	}
-	//tree, err := toml.LoadFile(path)
-	//if err != nil {
-	//	return err
-	//}
-	//props := tree.ToMap()
 
 	// APPS
 	err = setupBuild(props)
@@ -464,7 +461,12 @@ func parseToml() error {
 		return err
 	}
 	var processApp bool
-	fmt.Println("") // clear line output
+	//fmt.Println("") // clear line output
+	if len(prjkts.Projects) == 0 {
+		log.Println()
+		log.Println("!!! No projects defined !!!")
+		log.Fatalf("")
+	}
 	for _, d := range prjkts.Projects {
 		fmt.Println("Project", d.Name, "Enabled? ", d.Enable)
 		if d.Enable {
@@ -578,70 +580,70 @@ type GenConfig struct {
 	Project     []Project         `toml:"project" comment:"Array of projects to build"`
 }
 type Projects struct {
-	Projects []Project `json:"project"`
+	Projects []Project `json:"project" toml:"project"`
 }
 type SCPs struct {
-	Instance []ScpData `json:"scp"`
+	Instance []ScpData `json:"scp" toml:"scp"`
 }
 type SCPCustoms struct {
-	Instance []ScpCustom `json:"scp-custom"`
+	Instance []ScpCustom `json:"scp-custom" toml:"scp-custom"`
 }
 type SFTPs struct {
-	Instance []SftpData `json:"sftp"`
+	Instance []SftpData `json:"sftp" toml:"sftp"`
 }
 type Artifactories struct {
-	Instance []ArtifactoryData `json:"artifactory"`
+	Instance []ArtifactoryData `json:"artifactory" toml:"artifactory"`
 }
 type BuildData struct {
-	Tags       string `json:"tags"`
-	UseAltApps string `json:"useAltApps"`
+	Tags       string `json:"tags" toml:"tags"`
+	UseAltApps string `json:"useAltApps" toml:"useAltApps"`
 }
 type PostClean struct {
-	Dirs []string `json:"dirs"`
+	Dirs []string `json:"dirs" toml:"dirs"`
 }
 type ScpData struct {
-	Host     string `json:"host"`
-	Path     string `json:"path"`
-	SkipPing string `json:"skip_ping"`
+	Host     string `json:"host" toml:"host"`
+	Path     string `json:"path" toml:"path"`
+	SkipPing string `json:"skip_ping" toml:"skip_ping"`
 }
 type SftpData struct {
-	Host     string `json:"host"`
-	Path     string `json:"path"`
-	SkipPing string `json:"skip_ping"`
+	Host     string `json:"host" toml:"host"`
+	Path     string `json:"path" toml:"path"`
+	SkipPing string `json:"skip_ping" toml:"skip_ping"`
 }
 type ScpCustom struct {
-	Exec string `json:"exec"`
+	Exec string `json:"exec" toml:"exec"`
 }
 type ArtifactoryData struct {
-	Host  string `json:"host"`
-	Path  string `json:"path"`
-	Creds string `json:"creds"`
+	Host  string `json:"host" toml:"host"`
+	Path  string `json:"path" toml:"path"`
+	Creds string `json:"creds" toml:"creds"`
 }
 type Project struct {
-	Enable            bool     `json:"-"`
-	Name              string   `json:"name"`
-	OSTargets         []string `json:"ostargets"`
-	OSDeployScripts   []string `json:"osdeployscripts"`
-	Package           string   `json:"package"`
-	VersionFile       string   `json:"version"`
-	ReadmeFile        string   `json:"readme"`
-	ChangelogFile     string   `json:"changelog"`
-	Files             []string `json:"files"`
-	OverrideVariables string   `json:"override_variables"`
-	YNPrompt          string   `json:"ynprompt,comment='mycomment'"`
+	Enable            bool     `json:"-" toml:"-"`
+	Name              string   `json:"name" toml:"name"`
+	OSTargets         []string `json:"ostargets" toml:"ostargets"`
+	OSDeployScripts   []string `json:"osdeployscripts" toml:"osdeployscripts"`
+	Package           string   `json:"package" toml:"package"`
+	VersionFile       string   `json:"version" toml:"version"`
+	ReadmeFile        string   `json:"readme" toml:"readme"`
+	ChangelogFile     string   `json:"changelog" toml:"changelog"`
+	Files             []string `json:"files" toml:"files"`
+	OverrideVariables string   `json:"override_variables" toml:"override_variables"`
+	YNPrompt          string   `json:"ynprompt" toml:"ynprompt"`
 }
 type Apps struct {
-	MD5Exe    string `json:"md5Exe"`
-	SHA1Exe   string `json:"sha1Exe"`
-	SHA256Exe string `json:"sha256Exe"`
-	CurlExe   string `json:"curlExe"`
-	CatExe    string `json:"catExe"`
-	GitExe    string `json:"GitExe"`
-	TarExe    string `json:"tarExe"`
-	ScpExe    string `json:"scpExe"`
-	SftpExe   string `json:"sftpExe"`
-	UPXExe    string `json:"UPXExe"`
-	WhichExe  string `json:"whichExe"`
+	MD5Exe    string `json:"md5Exe" toml:"md5Exe"`
+	SHA1Exe   string `json:"sha1Exe" toml:"sha1Exe"`
+	SHA256Exe string `json:"sha256Exe" toml:"sha256Exe"`
+	CurlExe   string `json:"curlExe" toml:"curlExe"`
+	CatExe    string `json:"catExe" toml:"catExe"`
+	GitExe    string `json:"gitExe" toml:"gitExe"`
+	TarExe    string `json:"tarExe" toml:"tarExe"`
+	ScpExe    string `json:"scpExe" toml:"scpExe"`
+	SftpExe   string `json:"sftpExe" toml:"sftpExe"`
+	UPXExe    string `json:"upxExe" toml:"upxExe"`
+	WhichExe  string `json:"whichExe" toml:"whichExe"`
 }
 
 func GenConf() {
@@ -682,15 +684,15 @@ func GenConf() {
 func Display() {
 	displayOnly = true
 	mg.SerialDeps(parseToml)
-	fmt.Println()
+
 	s, _ := json.MarshalIndent(config, "", "  ")
-	fmt.Println("Configuration:", string(s))
+	fmt.Println("- Configuration:", string(s))
 	var byt bytes.Buffer
 	for _, m := range config.Project.Projects {
 		targs := len(m.OSTargets)
 		depScripts := len(m.OSDeployScripts)
 		if targs != depScripts {
-			byt.WriteString(fmt.Sprintf("In project %v ostargets and osdeployscripts count should match one for one.\n", m.Name))
+			byt.WriteString(fmt.Sprintf("-- In project %v ostargets and osdeployscripts count should match one for one.\n", m.Name))
 		}
 	}
 	if byt.Len() > 0 || configMessages.Len() > 0 {
@@ -1922,33 +1924,33 @@ func convertInterfaceArToStringAr(data []interface{}) []string {
 	return tmp
 }
 
-// Unused
-//func PPK() error {
-//	fmt.Println("Building PPK...")
-//
-//	ppk := genppk.PPK{PrivateFilename: "mypriv", PublicFilename: "mypub"}
-//	ppk.GenerateKeys(0)
-//	ppk.SavePrivateKeyAsPEM()
-//	ppk.SavePublicKeyAsPEM()
-//	fmt.Println("Finished Building PPK...")
-//
-//	// Generate .go file with data in it
-//	/*
-//		1. check for key.go
-//		2. create if it doesn't exist for the project
-//		3. create signature with private key and place in update file
-//		4. on update verify sig with public key in project
-//
-//		var publicKey = []byte(`
-//		-----BEGIN PUBLIC KEY-----
-//		MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEtrVmBxQvheRArXjg2vG1xIprWGuCyESx
-//		MMY8pjmjepSy2kuz+nl9aFLqmr+rDNdYvEBqQaZrYMc6k29gjvoQnQ==
-//		-----END PUBLIC KEY-----
-//		`)
-//	*/
-//
-//	return nil
-//}
+// Used with Ping on SCP, host must be available via ping check, requires ppk setup
+func PPK() error {
+	fmt.Println("Building PPK...")
+
+	ppk := genppk.PPK{PrivateFilename: "mypriv", PublicFilename: "mypub"}
+	ppk.GenerateKeys(0)
+	ppk.SavePrivateKeyAsPEM()
+	ppk.SavePublicKeyAsPEM()
+	fmt.Println("Finished Building PPK...")
+
+	// Generate .go file with data in it
+	/*
+		1. check for key.go
+		2. create if it doesn't exist for the project
+		3. create signature with private key and place in update file
+		4. on update verify sig with public key in project
+
+		var publicKey = []byte(`
+		-----BEGIN PUBLIC KEY-----
+		MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEtrVmBxQvheRArXjg2vG1xIprWGuCyESx
+		MMY8pjmjepSy2kuz+nl9aFLqmr+rDNdYvEBqQaZrYMc6k29gjvoQnQ==
+		-----END PUBLIC KEY-----
+		`)
+	*/
+
+	return nil
+}
 
 func exists(path string) bool {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
