@@ -573,11 +573,11 @@ type GenConfig struct {
 	Build       BuildData         `toml:"build" comment:"Build Options"`
 	PostClean   PostClean         `toml:"postclean" comment:"Directories to clean when complete"`
 	Apps        Apps              `toml:"apps" comment:"Application paths"`
-	SCP         []ScpData         `toml:"scp" comment:"Array of Secure Copy Configurations"`
+	SCP         []ScpData         `toml:"scp" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
 	SFTP        []SftpData        `toml:"sftp" comment:"Array of SFTP Configurations"`
 	SCPCustom   []ScpCustom       `toml:"scp-custom" comment:"Array of Custom SCP using script"`
-	Artifactory []ArtifactoryData `toml:"artifactory" comment:"Array of Artifactory instances"`
-	Project     []Project         `toml:"project" comment:"Array of projects to build"`
+	Artifactory []ArtifactoryData `toml:"artifactory" comment:"Array of Artifactory instances\n- host must be available via http check"`
+	Project     []Project         `toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
 type Projects struct {
 	Projects []Project `json:"project" toml:"project"`
@@ -646,23 +646,36 @@ type Apps struct {
 	WhichExe  string `json:"whichExe" toml:"whichExe"`
 }
 
+func findApp(app string) string {
+	if !fileExistsAndIsNotADir(app) {
+		path, err := findExec(filepath.Base(app))
+		if err != nil {
+			log.Printf("- Not Found on Path: %v\n", app)
+			return app
+		}
+		log.Printf("- Not Found: %v -> Using: %v\n", app, path)
+		return path
+	}
+	return app
+}
 func GenConf() {
 	fmt.Println("- building config")
 	c := &GenConfig{}
 	c.Build.Tags = ""
 	c.Build.UseAltApps = "yes"
 	c.PostClean.Dirs = []string{"PREP/", "cross"}
-	c.Apps.MD5Exe = "/sbin/md5sum"
-	c.Apps.SHA1Exe = "/usr/local/bin/sha1sum"
-	c.Apps.SHA256Exe = "/usr/local/bin/sha256sum"
-	c.Apps.CurlExe = "/usr/bin/curl"
-	c.Apps.CatExe = "/bin/cat"
-	c.Apps.GitExe = "/usr/local/bin/git"
-	c.Apps.TarExe = "/usr/bin/tar"
-	c.Apps.ScpExe = "/usr/bin/scp"
-	c.Apps.SftpExe = "/usr/bin/sftp"
-	c.Apps.UPXExe = "/usr/local/bin/upx"
-	c.Apps.WhichExe = "/usr/bin/which"
+	// Build c.Apps from found in environment and add fillers as needed
+	c.Apps.MD5Exe = findApp("/sbin/md5sum")
+	c.Apps.SHA1Exe = findApp("/usr/local/bin/sha1sum")
+	c.Apps.SHA256Exe = findApp("/usr/local/bin/sha256sum")
+	c.Apps.CurlExe = findApp("/usr/bin/curl")
+	c.Apps.CatExe = findApp("/bin/cat")
+	c.Apps.GitExe = findApp("/usr/local/bin/git")
+	c.Apps.TarExe = findApp("/usr/bin/tar")
+	c.Apps.ScpExe = findApp("/usr/bin/scp")
+	c.Apps.SftpExe = findApp("/usr/bin/sftp")
+	c.Apps.UPXExe = findApp("/usr/local/bin/upx")
+	c.Apps.WhichExe = findApp("/usr/bin/which")
 	c.SCP = []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}
 	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
 	c.SCPCustom = []ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}
