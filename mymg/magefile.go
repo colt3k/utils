@@ -504,6 +504,7 @@ func parseToml() error {
 //	Path     string `json:"path"`
 //	SkipPing string `json:"skip_ping"`
 //}
+
 //type scpcustoms struct {
 //	Instance []scpcust `json:"scp-custom"`
 //}
@@ -531,6 +532,24 @@ func parseToml() error {
 //	Projects []Project `json:"project"`
 //}
 
+type applications struct {
+	Apps []application `json:"application"`
+}
+
+type application struct {
+	Enable            bool     `json:"enable"`
+	Name              string   `json:"name"`
+	OSTargets         []string `json:"ostargets"`
+	OSDeployScripts   []string `json:"osdeployscripts"`
+	Package           string   `json:"package"`
+	ReadmeFile        string   `json:"readme"`
+	VersionFile       string   `json:"version"`
+	ChangelogFile     string   `json:"changelog"`
+	Files             []string `json:"files"`
+	OverrideVariables string   `json:"override_variables"`
+	YNPrompt          string   `json:"ynprompt"`
+}
+
 func Help() {
 	fmt.Println()
 	fmt.Println("Mage Usage:")
@@ -549,6 +568,7 @@ func Help() {
 	fmt.Println("  targets      show current project configured command's to build")
 	fmt.Println("  display      show information after reading configuration")
 	fmt.Println("  genconf      create an empty configuration build.toml")
+	fmt.Println("  convert      convert build.toml to new format as migrated.toml")
 	fmt.Println("  clean        clean any artifacts or build directories")
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
@@ -570,14 +590,14 @@ type Config struct {
 	Project     Projects      `json:"projects"`
 }
 type GenConfig struct {
-	Build       BuildData         `toml:"build" comment:"Build Options"`
-	PostClean   PostClean         `toml:"postclean" comment:"Directories to clean when complete"`
-	Apps        Apps              `toml:"apps" comment:"Application paths"`
-	SCP         []ScpData         `toml:"scp" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
-	SFTP        []SftpData        `toml:"sftp" comment:"Array of SFTP Configurations"`
-	SCPCustom   []ScpCustom       `toml:"scp-custom" comment:"Array of Custom SCP using script"`
-	Artifactory []ArtifactoryData `toml:"artifactory" comment:"Array of Artifactory instances\n- host must be available via http check"`
-	Project     []Project         `toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
+	Build       BuildData         `json:"build" toml:"build" comment:"Build Options"`
+	PostClean   PostClean         `json:"postclean" toml:"postclean" comment:"Directories to clean when complete"`
+	Apps        Apps              `json:"apps" toml:"apps" comment:"Application paths"`
+	SCP         []ScpData         `json:"scp" toml:"scp" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
+	SFTP        []SftpData        `json:"sftp" toml:"sftp" comment:"Array of SFTP Configurations"`
+	SCPCustom   []ScpCustom       `json:"scp-custom" toml:"scp-custom" comment:"Array of Custom SCP using script"`
+	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory" comment:"Array of Artifactory instances\n- host must be available via http check"`
+	Project     []Project         `json:"project" toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
 type Projects struct {
 	Projects []Project `json:"project" toml:"project"`
@@ -606,6 +626,20 @@ type ScpData struct {
 	Path     string `json:"path" toml:"path"`
 	SkipPing string `json:"skip_ping" toml:"skip_ping"`
 }
+
+func (s *ScpData) UnmarshalJSON(data []byte) error {
+	type scpDataAlias ScpData
+	scpData := &scpDataAlias{
+		SkipPing: "false",
+	}
+	err := json.Unmarshal(data, scpData)
+	if err != nil {
+		return err
+	}
+	*s = ScpData(*scpData)
+	return nil
+}
+
 type SftpData struct {
 	Host     string `json:"host" toml:"host"`
 	Path     string `json:"path" toml:"path"`
@@ -699,6 +733,95 @@ func GenConf() {
 	fmt.Println()
 }
 
+func Convert() {
+	// read old format and output new format
+	fmt.Println("- Converting")
+
+	// Find and load file
+	path, ok := os.LookupEnv("config")
+	if !ok {
+		// not defined set default
+		path = "./build.toml"
+	}
+	path, err := filepath.Abs(path)
+	if !fileExistsAndIsNotADir(path) {
+		log.Fatalf("toml file not found at %v", path)
+	}
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatalf("issue reading file %v", err)
+	}
+	var props map[string]interface{}
+	err = toml.Unmarshal(data, &props)
+	if err != nil {
+		panic(err)
+	}
+	c := &GenConfig{}
+	c.Build.Tags = props["build_tags"].(string)
+	c.Build.UseAltApps = "yes"
+	c.PostClean.Dirs = convertInterfaceArToStringAr(props["to_clean_dirs"].([]interface{}))
+	c.Apps.MD5Exe = props["md5Exe"].(string)
+	c.Apps.SHA1Exe = props["sha1Exe"].(string)
+	c.Apps.SHA256Exe = props["sha256Exe"].(string)
+	c.Apps.CurlExe = props["curlExe"].(string)
+	c.Apps.CatExe = props["catExe"].(string)
+	c.Apps.GitExe = props["gitExe"].(string)
+	c.Apps.TarExe = props["tarExe"].(string)
+	c.Apps.ScpExe = props["scpExe"].(string)
+	c.Apps.SftpExe = props["sftpExe"].(string)
+	c.Apps.UPXExe = props["upxExe"].(string)
+	c.Apps.WhichExe = props["whichExe"].(string)
+
+	c.SCP = convertOldToGenConf(props, "scp").SCP
+	c.SCPCustom = convertOldToGenConf(props, "scp-custom").SCPCustom
+	c.SFTP = convertOldToGenConf(props, "sftp").SFTP
+	c.Artifactory = convertOldToGenConf(props, "artifactory").Artifactory
+
+	var tmp applications
+	//log.Printf("scp : %v\n", props["scp"])
+	mapProps := props["application"]
+	wrapper := make(map[string]interface{}, 1)
+	wrapper["application"] = mapProps
+	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		log.Fatalf("issue parsing application %v", err)
+	}
+	err = json.Unmarshal(bytesWrapper, &tmp)
+	if err != nil {
+		log.Fatalf("issue marshalling application %v", err)
+	}
+	// loop through applications and convert to project type
+	projects := make([]Project, 0)
+	for _, m := range tmp.Apps {
+		p := Project{}
+		p.Enable = m.Enable
+		p.Name = m.Name
+		p.OSTargets = m.OSTargets
+		p.OSDeployScripts = m.OSDeployScripts
+		p.Package = m.Package
+		p.ReadmeFile = m.ReadmeFile
+		p.VersionFile = m.VersionFile
+		p.ChangelogFile = m.ChangelogFile
+		p.Files = m.Files
+		p.OverrideVariables = m.OverrideVariables
+		p.YNPrompt = m.YNPrompt
+		projects = append(projects, p)
+	}
+	c.Project = projects
+
+	b, err := toml.Marshal(c)
+	if err != nil {
+		log.Fatalf("issue marshalling config %v", err)
+	}
+	iout.WriteOut(b, "migrated.toml")
+
+	fmt.Println("- conversion complete")
+	fmt.Println()
+	fmt.Println("*************************************************************************")
+	fmt.Println("compare the migrated.toml to your configuration build.toml and replace it")
+	fmt.Println("*************************************************************************")
+	fmt.Println()
+}
 func Display() {
 	displayOnly = true
 	mg.SerialDeps(parseToml)
@@ -1938,6 +2061,22 @@ func convertInterfaceArToStringAr(data []interface{}) []string {
 	tmp := make([]string, 0)
 	for _, d := range data {
 		tmp = append(tmp, d.(string))
+	}
+	return tmp
+}
+
+func convertOldToGenConf(props map[string]interface{}, key string) GenConfig {
+	var tmp GenConfig
+	mapProps := props[key]
+	wrapper := make(map[string]interface{}, 1)
+	wrapper[key] = mapProps
+	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		log.Fatalf("issue parsing %v %v", key, err)
+	}
+	err = json.Unmarshal(bytesWrapper, &tmp)
+	if err != nil {
+		log.Fatalf("issue marshalling %v %v", key, err)
 	}
 	return tmp
 }
