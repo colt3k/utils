@@ -2,7 +2,7 @@ module github.com/colt3k/utils/io
 
 require (
 	github.com/colt3k/utils/debug v0.0.1
-	github.com/colt3k/utils/file v0.0.5
+	github.com/colt3k/utils/file v0.0.8
 	github.com/colt3k/utils/mathut v0.0.2
 	github.com/gorilla/http v0.0.0-20180526232503-732371cf4733
 	github.com/iancoleman/orderedmap v0.0.0-20190103220030-893c443ae36e
