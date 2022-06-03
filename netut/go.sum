@@ -1,11 +1,13 @@
 github.com/colt3k/nglog v0.0.1/go.mod h1:1uzjsWq3W1tGYxZ3/kGrXpmeaVPvt9chX7n5cn/Qp8c=
-github.com/colt3k/nglog v0.0.17 h1:ZpAkEXEl8WQd+oO5tGA4RbfWPJh6jZ/J2xqCl+JqflI=
-github.com/colt3k/nglog v0.0.17/go.mod h1:sjAPAnpP/TjB3AM6tzlEO7P8MI7v6DcsQCYlkv5N4T8=
+github.com/colt3k/nglog v0.0.22 h1:bnAVg6OtVlNPghZphL+bTvxw0CANA5C63rReFpshnHU=
+github.com/colt3k/nglog v0.0.22/go.mod h1:sjAPAnpP/TjB3AM6tzlEO7P8MI7v6DcsQCYlkv5N4T8=
 github.com/colt3k/utils/archive v0.0.5 h1:aeS6Uvi+Ml3OITLTDiiqyiYA2InG4Y5abZ3YW4ryxJo=
 github.com/colt3k/utils/archive v0.0.5/go.mod h1:ZCw58mw01d/Qa7WlIyPiwDjLUFuQCX8/9oiczTjC+90=
 github.com/colt3k/utils/encode v0.0.2/go.mod h1:CImsKPEjGaUlImx34pOZoDrAFmpZlRuzXyz4+Cd3fa4=
-github.com/colt3k/utils/mathut v0.0.1 h1:o/aIDspFY3PPdP1L1Xn/TSBp0V2m0o7X7MPxmCzeYtI=
-github.com/colt3k/utils/mathut v0.0.1/go.mod h1:YK4vx6fJOhaIJ3idYVcILYl99CNpLol7mlG+K+PnJNw=
+github.com/colt3k/utils/mathut v0.0.2 h1:nQz6DnAxBwlG4To9BYMG+pfnEXMU0FcSV6OLsEJoN9Q=
+github.com/colt3k/utils/mathut v0.0.2/go.mod h1:yvkrho04UtKYwbEcvUlHwiNUdGVSwh6Jk4tXGyHfo5g=
+github.com/colt3k/utils/stats v0.0.1 h1:rKlyHfXNXbftjIBdabM4TP4A4mDarR168E95B6mp4YQ=
+github.com/colt3k/utils/stats v0.0.1/go.mod h1:cisus6IGJ7SeXR/AfG5wctFr0C4yV+gFrnn4ME7G2Gs=
 github.com/go-mail/mail v2.3.1+incompatible h1:UzNOn0k5lpfVtO31cK3hn6I4VEVGhe3lX8AJBAxXExM=
 github.com/go-mail/mail v2.3.1+incompatible/go.mod h1:VPWjmmNyRsWXQZHVHT3g0YbIINUkSmuKOiLIDkWbL6M=
 github.com/gorilla/context v1.1.1 h1:AWwleXJkX/nhcU9bZSnZoi3h/qGYqQAGhq6zZe/aQW8=
