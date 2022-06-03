@@ -1,9 +1,8 @@
 module github.com/colt3k/utils/hash
 
 require (
-	github.com/colt3k/nglog v0.0.22
-	github.com/colt3k/utils/encode v0.0.2
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/colt3k/nglog v0.0.23
+	github.com/colt3k/utils/encode v0.0.3
 	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
 )
 
