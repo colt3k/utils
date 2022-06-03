@@ -1,5 +1,5 @@
 module github.com/colt3k/utils/imnu
 
-require github.com/colt3k/nglog v0.0.1 // indirect
+require github.com/colt3k/nglog v0.0.23
 
 go 1.13
