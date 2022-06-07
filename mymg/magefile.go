@@ -593,10 +593,10 @@ type GenConfig struct {
 	Build       BuildData         `json:"build" toml:"build" comment:"Build Options"`
 	PostClean   PostClean         `json:"postclean" toml:"postclean" comment:"Directories to clean when complete"`
 	Apps        Apps              `json:"apps" toml:"apps" comment:"Application paths"`
-	SCP         []ScpData         `json:"scp" toml:"scp" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
-	SFTP        []SftpData        `json:"sftp" toml:"sftp" comment:"Array of SFTP Configurations"`
-	SCPCustom   []ScpCustom       `json:"scp-custom" toml:"scp-custom" comment:"Array of Custom SCP using script"`
-	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory" comment:"Array of Artifactory instances\n- host must be available via http check"`
+	SCP         []ScpData         `json:"scp" toml:"scp,omitempty" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
+	SFTP        []SftpData        `json:"sftp" toml:"sftp,omitempty" comment:"Array of SFTP Configurations"`
+	SCPCustom   []ScpCustom       `json:"scp-custom" toml:"scp-custom,omitempty" comment:"Array of Custom SCP using script"`
+	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory,omitempty" comment:"Array of Artifactory instances\n- host must be available via http check"`
 	Project     []Project         `json:"project" toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
 type Projects struct {
@@ -663,8 +663,8 @@ type Project struct {
 	ReadmeFile        string   `json:"readme" toml:"readme"`
 	ChangelogFile     string   `json:"changelog" toml:"changelog"`
 	Files             []string `json:"files" toml:"files"`
-	OverrideVariables string   `json:"override_variables" toml:"override_variables"`
-	YNPrompt          string   `json:"ynprompt" toml:"ynprompt"`
+	OverrideVariables string   `json:"override_variables" toml:"override_variables,omitempty"`
+	YNPrompt          string   `json:"ynprompt" toml:"ynprompt,omitempty"`
 }
 type Apps struct {
 	MD5Exe    string `json:"md5Exe" toml:"md5Exe"`
@@ -772,11 +772,22 @@ func Convert() {
 	c.Apps.UPXExe = props["upxExe"].(string)
 	c.Apps.WhichExe = props["whichExe"].(string)
 
-	c.SCP = convertOldToGenConf(props, "scp").SCP
-	c.SCPCustom = convertOldToGenConf(props, "scp-custom").SCPCustom
-	c.SFTP = convertOldToGenConf(props, "sftp").SFTP
-	c.Artifactory = convertOldToGenConf(props, "artifactory").Artifactory
-
+	scps := convertOldToGenConf(props, "scp").SCP
+	if len(scps) > 0 {
+		c.SCP = scps
+	}
+	scpsCust := convertOldToGenConf(props, "scp-custom").SCPCustom
+	if len(scpsCust) > 0 {
+		c.SCPCustom = scpsCust
+	}
+	sftps := convertOldToGenConf(props, "sftp").SFTP
+	if len(sftps) > 0 {
+		c.SFTP = convertOldToGenConf(props, "sftp").SFTP
+	}
+	afs := convertOldToGenConf(props, "artifactory").Artifactory
+	if len(afs) > 0 {
+		c.Artifactory = convertOldToGenConf(props, "artifactory").Artifactory
+	}
 	var tmp applications
 	//log.Printf("scp : %v\n", props["scp"])
 	mapProps := props["application"]
@@ -803,8 +814,12 @@ func Convert() {
 		p.VersionFile = m.VersionFile
 		p.ChangelogFile = m.ChangelogFile
 		p.Files = m.Files
-		p.OverrideVariables = m.OverrideVariables
-		p.YNPrompt = m.YNPrompt
+		if len(m.OverrideVariables) > 0 {
+			p.OverrideVariables = m.OverrideVariables
+		}
+		if len(m.YNPrompt) > 0 {
+			p.YNPrompt = m.YNPrompt
+		}
 		projects = append(projects, p)
 	}
 	c.Project = projects
