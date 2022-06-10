@@ -1396,7 +1396,7 @@ func cross(app Project) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
+			err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				return err
 			}
