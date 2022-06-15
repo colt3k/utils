@@ -1951,7 +1951,7 @@ func Clean() {
 
 // Clean up after yourself
 func cleaner(projectName string, dirsOnly bool) {
-	fmt.Println("Cleaning...")
+	fmt.Println("Cleaning Post Clean Dirs...")
 	for _, d := range postclean.Dirs {
 		if exists(d) {
 			fmt.Println("  Cleaning...", d)
@@ -1963,16 +1963,15 @@ func cleaner(projectName string, dirsOnly bool) {
 	}
 
 	for _, d := range toCleanFiles {
-		fmt.Println("  Cleaning...", d)
+		fmt.Println("  Cleaning created files/folders...", d)
 		matches := findFiles(projectName)
 		if !dirsOnly {
+			fmt.Println("finding files starting with project name prefix")
 			for _, k := range matches {
 				fmt.Println("  Cleaning...", k)
-				if exists(d) {
-					err := os.Remove(k)
-					if err != nil {
-						log.Printf("while removing files (matches): %v\n", err)
-					}
+				err := os.Remove(k)
+				if err != nil {
+					log.Printf("while removing files (matches): %v\n", err)
 				}
 			}
 		}
