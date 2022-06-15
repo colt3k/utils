@@ -1956,7 +1956,7 @@ func cleaner(projectName string, dirsOnly bool) {
 		fmt.Println("  Cleaning...", d)
 		err := os.RemoveAll(d)
 		if err != nil {
-			log.Println(err)
+			log.Printf("while remove directories: %v\n", err)
 		}
 	}
 
@@ -1968,13 +1968,15 @@ func cleaner(projectName string, dirsOnly bool) {
 				fmt.Println("  Cleaning...", k)
 				err := os.Remove(k)
 				if err != nil {
-					log.Println(err)
+					log.Printf("while removing files (matches): %v\n", err)
 				}
 			}
 		}
-		err := os.Remove(d)
-		if err != nil {
-			log.Println(err)
+		if exists(d) {
+			err := os.Remove(d)
+			if err != nil {
+				log.Printf("while removing files: %v\n", err)
+			}
 		}
 	}
 }
