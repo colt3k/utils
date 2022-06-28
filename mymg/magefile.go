@@ -572,6 +572,7 @@ func Help() {
 	fmt.Println("  clean        clean any artifacts or build directories")
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
+	fmt.Println("  autostatus   show status of the auto file if it exists")
 	fmt.Println("Flags")
 	fmt.Println("  -v		show verbose mage output")
 	fmt.Println("  -d		show custom debug output")
@@ -1270,7 +1271,25 @@ func Auto() error {
 
 	return nil
 }
+func AutoStatus() error {
+	mg.SerialDeps(parseToml, BumpVersion)
 
+	for _, d := range prjkts.Projects {
+		if !d.Enable {
+			continue
+		}
+		fmt.Println("\nSetup")
+		err := setup(d)
+		if err != nil {
+			fmt.Println("issue setup :", err)
+		}
+		err = artifactoryPullAutoStatus(d.Name)
+		if err != nil {
+			fmt.Println("issue artifactory push :", err)
+		}
+	}
+	return nil
+}
 func NoAuto() error {
 
 	mg.SerialDeps(parseToml, BumpVersion)
@@ -1707,6 +1726,33 @@ func sftpCopy(projectName string) error {
 	return nil
 }
 
+func artifactoryPullAutoStatus(projectName string) error {
+	fmt.Println("Artifactory Pull... ")
+	for _, k := range arts.Instance {
+		fmt.Println("  processing ", k.Host)
+		if len(k.Host) > 0 {
+			foundHost := ping(k.Host)
+			fmt.Println("found? ", foundHost)
+			if foundHost && len(k.Creds) > 0 {
+				creds := loadArtifactoryCreds(k.Creds)
+				//fmt.Printf("to pull: %v\n", k.Path+projectName+".auto")
+				out(apps.CurlExe, "-u"+string(creds), "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
+				readAndOutput(projectName + ".auto")
+				err := os.Remove(projectName + ".auto")
+				if err != nil {
+					return err
+				}
+			} else if foundHost && len(k.Creds) == 0 {
+				fmt.Println("  no artifactory credentials found")
+			} else if !foundHost {
+				fmt.Println("  artifactory not configured")
+			}
+		} else {
+			fmt.Println("  artifactory not configured")
+		}
+	}
+	return nil
+}
 func artifactoryPush(projectName string) error {
 	fmt.Println("Artifactory... ")
 	for _, k := range arts.Instance {
@@ -1730,7 +1776,6 @@ func artifactoryPush(projectName string) error {
 						fmt.Println("    to ", k.Path)
 						// hash each before uploading
 						if !dryRun {
-
 							md5sum, err := sh.Output(apps.MD5Exe, d)
 							if err != nil {
 								return err
@@ -2036,6 +2081,16 @@ func version(versionFile string) string {
 	}
 	log.Println("reading ", versionFile, "found", ver)
 	return ver
+}
+
+func readAndOutput(targetFile string) string {
+
+	content, err := sh.Output("cat", targetFile)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("content: ", content)
+	return content
 }
 
 func gitCommitHash() string {
