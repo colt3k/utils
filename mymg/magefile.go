@@ -1283,6 +1283,20 @@ func AutoStatus() error {
 		if err != nil {
 			fmt.Println("issue setup :", err)
 		}
+
+		err = scpCopyAutoStatus(d.Name)
+		if err != nil {
+			fmt.Println("issue scp copy :", err)
+		}
+		err = scpCustomCopy(d.Name)
+		if err != nil {
+			fmt.Println("issue scp custom copy :", err)
+		}
+		err = sftpCopyAutoStatus(d.Name)
+		if err != nil {
+			fmt.Println("issue sftp copy :", err)
+		}
+
 		err = artifactoryPullAutoStatus(d.Name)
 		if err != nil {
 			fmt.Println("issue artifactory push :", err)
@@ -1602,7 +1616,37 @@ func cross(app Project) error {
 
 	return nil
 }
+func scpCopyAutoStatus(projectName string) error {
+	for _, k := range scpS.Instance {
+		fmt.Println("\nSCP Pull... ")
+		if len(k.Host) > 0 {
+			foundHost := false
+			if strings.ToLower(k.SkipPing) != "true" && strings.ToLower(k.SkipPing) != "y" {
+				foundHost = ping(k.Host)
+			} else {
+				foundHost = true
+			}
 
+			if foundHost {
+				// copy remote to local
+				// k.Path+projectName+".auto", "-o", projectName+".auto"
+				fmt.Println("  scp'ing ", k.Path+projectName+".auto")
+				fmt.Println("    to ", projectName+".auto")
+				out(apps.ScpExe, k.Path+projectName+".auto", projectName+".auto")
+				readAndOutput(projectName + ".auto")
+				err := os.Remove(projectName + ".auto")
+				if err != nil {
+					return err
+				}
+			} else if !foundHost {
+				fmt.Println("  scp not configured")
+			}
+		} else {
+			fmt.Println("  scp not configured")
+		}
+	}
+	return nil
+}
 func scpCopy(projectName string) error {
 
 	for _, k := range scpS.Instance {
@@ -1642,7 +1686,7 @@ func scpCopy(projectName string) error {
 func scpCustomCopy(projectName string) error {
 
 	for _, k := range scpCustom.Instance {
-		fmt.Println("SCP Custom... ")
+		fmt.Println("\nSCP Custom... ")
 
 		matches := findFiles(projectName)
 		if len(matches) == 0 {
@@ -1652,6 +1696,75 @@ func scpCustomCopy(projectName string) error {
 			f := filepath.Base(d)
 			fmt.Printf("\tpassing \n\tparameter 1 %v,\n\tparameter 2 %v\n\tto %v\n", d, f, k.Exec)
 			out(k.Exec, d, f)
+		}
+	}
+	return nil
+}
+
+func sftpCopyAutoStatus(projectName string) error {
+
+	for _, k := range sftpS.Instance {
+		fmt.Println("\nSFTP Pull... ")
+		if len(k.Host) > 0 {
+			foundHost := false
+			if strings.ToLower(k.SkipPing) != "true" && strings.ToLower(k.SkipPing) != "y" {
+				foundHost = ping(k.Host)
+			} else {
+				foundHost = true
+			}
+
+			if foundHost {
+
+				exe := "echo get " + k.Path + projectName + ".auto" + " " + projectName + ".auto" + " | " + apps.SftpExe + " " + k.Host
+				fmt.Printf("Exe: |%v|\n", exe)
+
+				var errorBuffer bytes.Buffer
+				var errorBuffer2 bytes.Buffer
+				c1 := exec.Command("echo", "get", k.Path+projectName+".auto", projectName+".auto")
+				c2 := exec.Command(apps.SftpExe, k.Host)
+				c1.Stderr = &errorBuffer
+				c2.Stderr = &errorBuffer2
+				pr, pw := io.Pipe()
+				c1.Stdout = pw
+				c2.Stdin = pr
+
+				var b2 bytes.Buffer
+				c2.Stdout = &b2
+
+				err := c1.Start()
+				if err != nil {
+					log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+				}
+				err = c2.Start()
+				if err != nil {
+					log.Printf("err: %v\n%v", err, string(errorBuffer2.Bytes()))
+				}
+				err = c1.Wait()
+				if err != nil {
+					log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+				}
+				err = pw.Close()
+				if err != nil {
+					log.Printf("err :%v\n", err)
+				}
+				err = c2.Wait()
+				if err != nil {
+					log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+				}
+				_, err = io.Copy(os.Stdout, &b2)
+				if err != nil {
+					log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+				}
+				readAndOutput(projectName + ".auto")
+				err = os.Remove(projectName + ".auto")
+				if err != nil {
+					return err
+				}
+			} else if !foundHost {
+				fmt.Println("  sftp not configured")
+			}
+		} else {
+			fmt.Println("  sftp not configured")
 		}
 	}
 	return nil
@@ -1727,7 +1840,7 @@ func sftpCopy(projectName string) error {
 }
 
 func artifactoryPullAutoStatus(projectName string) error {
-	fmt.Println("Artifactory Pull... ")
+	fmt.Println("\nArtifactory Pull... ")
 	for _, k := range arts.Instance {
 		fmt.Println("  processing ", k.Host)
 		if len(k.Host) > 0 {
