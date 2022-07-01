@@ -758,37 +758,88 @@ func Convert() {
 		panic(err)
 	}
 	c := &GenConfig{}
+	fmt.Println("- Converting - build_tags")
 	c.Build.Tags = props["build_tags"].(string)
 	c.Build.UseAltApps = "yes"
+	fmt.Println("- Converting - to_clean_dirs")
 	c.PostClean.Dirs = convertInterfaceArToStringAr(props["to_clean_dirs"].([]interface{}))
-	c.Apps.MD5Exe = props["md5Exe"].(string)
-	c.Apps.SHA1Exe = props["sha1Exe"].(string)
-	c.Apps.SHA256Exe = props["sha256Exe"].(string)
-	c.Apps.CurlExe = props["curlExe"].(string)
-	c.Apps.CatExe = props["catExe"].(string)
-	c.Apps.GitExe = props["gitExe"].(string)
-	c.Apps.TarExe = props["tarExe"].(string)
-	c.Apps.ScpExe = props["scpExe"].(string)
-	c.Apps.SftpExe = props["sftpExe"].(string)
-	c.Apps.UPXExe = props["upxExe"].(string)
-	c.Apps.WhichExe = props["whichExe"].(string)
-
+	fmt.Println("- Converting - app paths")
+	if props["md5Exe"] != nil {
+		c.Apps.MD5Exe = props["md5Exe"].(string)
+	} else {
+		c.Apps.MD5Exe = findApp("/sbin/md5sum")
+	}
+	if props["sha1Exe"] != nil {
+		c.Apps.SHA1Exe = props["sha1Exe"].(string)
+	} else {
+		c.Apps.SHA1Exe = findApp("/usr/local/bin/sha1sum")
+	}
+	if props["sha256Exe"] != nil {
+		c.Apps.SHA256Exe = props["sha256Exe"].(string)
+	} else {
+		c.Apps.SHA256Exe = findApp("/usr/local/bin/sha256sum")
+	}
+	if props["curlExe"] != nil {
+		c.Apps.CurlExe = props["curlExe"].(string)
+	} else {
+		c.Apps.CurlExe = findApp("/usr/bin/curl")
+	}
+	if props["catExe"] != nil {
+		c.Apps.CatExe = props["catExe"].(string)
+	} else {
+		c.Apps.CatExe = findApp("/bin/cat")
+	}
+	if props["gitExe"] != nil {
+		c.Apps.GitExe = props["gitExe"].(string)
+	} else {
+		c.Apps.GitExe = findApp("/usr/local/bin/git")
+	}
+	if props["tarExe"] != nil {
+		c.Apps.TarExe = props["tarExe"].(string)
+	} else {
+		c.Apps.TarExe = findApp("/usr/bin/tar")
+	}
+	if props["scpExe"] != nil {
+		c.Apps.ScpExe = props["scpExe"].(string)
+	} else {
+		c.Apps.ScpExe = findApp("/usr/bin/scp")
+	}
+	if props["sftpExe"] != nil {
+		c.Apps.SftpExe = props["sftpExe"].(string)
+	} else {
+		c.Apps.SftpExe = findApp("/usr/bin/sftp")
+	}
+	if props["upxExe"] != nil {
+		c.Apps.UPXExe = props["upxExe"].(string)
+	} else {
+		c.Apps.UPXExe = findApp("/usr/local/bin/upx")
+	}
+	if props["whichExe"] != nil {
+		c.Apps.WhichExe = props["whichExe"].(string)
+	} else {
+		c.Apps.WhichExe = findApp("/usr/bin/which")
+	}
+	fmt.Println("- Converting - SCP")
 	scps := convertOldToGenConf(props, "scp").SCP
 	if len(scps) > 0 {
 		c.SCP = scps
 	}
+	fmt.Println("- Converting - SCP Custom")
 	scpsCust := convertOldToGenConf(props, "scp-custom").SCPCustom
 	if len(scpsCust) > 0 {
 		c.SCPCustom = scpsCust
 	}
+	fmt.Println("- Converting - SFTP")
 	sftps := convertOldToGenConf(props, "sftp").SFTP
 	if len(sftps) > 0 {
 		c.SFTP = convertOldToGenConf(props, "sftp").SFTP
 	}
+	fmt.Println("- Converting - Artifactory")
 	afs := convertOldToGenConf(props, "artifactory").Artifactory
 	if len(afs) > 0 {
 		c.Artifactory = convertOldToGenConf(props, "artifactory").Artifactory
 	}
+	fmt.Println("- Converting - Projects/Applications")
 	var tmp applications
 	//log.Printf("scp : %v\n", props["scp"])
 	mapProps := props["application"]
@@ -829,7 +880,8 @@ func Convert() {
 	if err != nil {
 		log.Fatalf("issue marshalling config %v", err)
 	}
-	iout.WriteOut(b, "migrated.toml")
+	tmpOut := strings.TrimSpace(string(b))
+	iout.WriteOut([]byte(tmpOut), "migrated.toml")
 
 	fmt.Println("- conversion complete")
 	fmt.Println()
