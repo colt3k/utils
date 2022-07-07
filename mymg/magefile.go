@@ -305,6 +305,10 @@ func setupProjects(props map[string]interface{}) error {
 		if err != nil {
 			return err
 		}
+		prjkts.Projects[i].ChangelogFullFile, err = filepath.Abs(d.ChangelogFullFile)
+		if err != nil {
+			return err
+		}
 
 		for j, k := range d.Files {
 			prjkts.Projects[i].Files[j], err = filepath.Abs(k)
@@ -663,6 +667,7 @@ type Project struct {
 	VersionFile       string   `json:"version" toml:"version"`
 	ReadmeFile        string   `json:"readme" toml:"readme"`
 	ChangelogFile     string   `json:"changelog" toml:"changelog"`
+	ChangelogFullFile string   `json:"changelogfull" toml:"changelogfull"`
 	Files             []string `json:"files" toml:"files"`
 	OverrideVariables string   `json:"override_variables" toml:"override_variables,omitempty"`
 	YNPrompt          string   `json:"ynprompt" toml:"ynprompt,omitempty"`
@@ -1148,6 +1153,26 @@ func BumpVersion() error {
 				fmt.Println("DRY_RUN: " + apps.GitExe + "push origin " + nVersion)
 			}
 
+			if len(d.ChangelogFullFile) > 0 {
+				fmt.Println()
+				fmt.Println("Rebuilding CHANGELOG.md")
+				// Rebuild CHANGELOG.md d.ChangelogFullFile
+				output, err := sh.Output("chglog", "init", "-file", d.ChangelogFullFile)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%v", output)
+			}
+			if len(d.ChangelogFile) > 0 {
+				fmt.Println()
+				fmt.Println("Updating CHANGES.txt")
+				// Update CHANGES.txt d.ChangelogFile
+				output, err := sh.Output("chglog", "changes", "-file", d.ChangelogFile)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%v", output)
+			}
 		}
 	}
 	return nil
