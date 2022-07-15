@@ -96,7 +96,14 @@ func setupPostClean(props map[string]interface{}) error {
 				dirs = append(dirs, v.(string))
 			}
 		}
+		files := make([]string, 0)
+		if val, ok := mp["files"]; ok {
+			for _, v := range val.([]interface{}) {
+				files = append(files, v.(string))
+			}
+		}
 		postclean.Dirs = dirs
+		postclean.Files = files
 	} else {
 		configMessages.WriteString("WARN: [postclean] section not declared\n")
 	}
@@ -484,7 +491,8 @@ func parseToml() error {
 	setupCleanFiles()
 
 	log.Println("toCleanFiles: ", toCleanFiles)
-	log.Println("toCleanDirs: ", postclean.Dirs)
+	log.Println("toCleanPostDirs: ", postclean.Dirs)
+	log.Println("toCleanPostFiles: ", postclean.Files)
 
 	return nil
 }
@@ -624,7 +632,8 @@ type BuildData struct {
 	UseAltApps string `json:"useAltApps" toml:"useAltApps"`
 }
 type PostClean struct {
-	Dirs []string `json:"dirs" toml:"dirs"`
+	Dirs  []string `json:"dirs" toml:"dirs"`
+	Files []string `json:"files" toml:"files"`
 }
 type ScpData struct {
 	Host     string `json:"host" toml:"host"`
@@ -704,6 +713,7 @@ func GenConf() {
 	c.Build.Tags = ""
 	c.Build.UseAltApps = "yes"
 	c.PostClean.Dirs = []string{"PREP/", "cross"}
+	c.PostClean.Files = []string{}
 	// Build c.Apps from found in environment and add fillers as needed
 	c.Apps.MD5Exe = findApp("/sbin/md5sum")
 	c.Apps.SHA1Exe = findApp("/usr/local/bin/sha1sum")
