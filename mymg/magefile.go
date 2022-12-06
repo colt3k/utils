@@ -971,6 +971,7 @@ func Build() error {
 	skipUPX := false
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
+	fmt.Println("goos: " + goos + " goarch: " + goarch)
 	if goos == "darwin" && goarch == "arm64" {
 		skipUPX = true
 	}
@@ -2120,6 +2121,7 @@ func Install() error {
 	skipUPX := false
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
+	fmt.Println("goos: " + goos + " goarch: " + goarch)
 	if goos == "darwin" && goarch == "arm64" {
 		skipUPX = true
 	}
