@@ -1,5 +1,6 @@
-github.com/colt3k/nglog v0.0.23 h1:VndZCagj3JURz4k99esRv68G6Ow7wxsJXjYiBTnuEpQ=
 github.com/colt3k/nglog v0.0.23/go.mod h1:AhWcmvtFMWEmX+OYGilVs4RsbaM8p0XRPsBKuxRh+Vo=
+github.com/colt3k/nglog v0.0.24 h1:PejLqYpGOt//2czS/wxLH72xpM5Lx8PzH+CmWFr9Has=
+github.com/colt3k/nglog v0.0.24/go.mod h1:AhWcmvtFMWEmX+OYGilVs4RsbaM8p0XRPsBKuxRh+Vo=
 github.com/colt3k/utils/archive v0.0.8 h1:fFeYkYU1HjyZpGHigtIGaizDvusZRS4/aaG3POMcUSo=
 github.com/colt3k/utils/archive v0.0.8/go.mod h1:jShS7XaVO4wEcdgxbrwj1BfPOgLxYKsqe31f6yQzJkY=
 github.com/colt3k/utils/debug v0.0.1/go.mod h1:k7QoueEqNaVpjwQ+XLVFTXhzhYdvCEMSZaa4MvMV9mw=
@@ -9,8 +10,8 @@ github.com/colt3k/utils/file v0.0.8 h1:XgGMiMtTtzx4mEafVZd0FjkAJdfhUtRZwrl1q0Pe2
 github.com/colt3k/utils/file v0.0.8/go.mod h1:ZX7aapBWmZBOe4xEgBN4mY0HzJuVDNhi0Jlqs1BZ05g=
 github.com/colt3k/utils/hash v0.0.5 h1:rh0d5bRq/JdHtOwMJf6/90qTRF8XYsxpJB4+It44BTk=
 github.com/colt3k/utils/hash v0.0.5/go.mod h1:vPTwpX5efj6VL7E3sQta7/Bwv4rpVCKSwzgr3uKWl0o=
-github.com/colt3k/utils/io v0.0.15 h1:IW7s3ijX2xUmD0QLLAzvrgMYzJosM+jSYxH5+eMdeSA=
-github.com/colt3k/utils/io v0.0.15/go.mod h1:W5XGQb+840L1DcW5j3yR0I+Y22O3kABPHMk0xBhA57c=
+github.com/colt3k/utils/io v0.0.16 h1:skXmVea+5kxalQpKPmviNPpXuyi1Sx+3hzJfkBnTznY=
+github.com/colt3k/utils/io v0.0.16/go.mod h1:W5XGQb+840L1DcW5j3yR0I+Y22O3kABPHMk0xBhA57c=
 github.com/colt3k/utils/mathut v0.0.2 h1:nQz6DnAxBwlG4To9BYMG+pfnEXMU0FcSV6OLsEJoN9Q=
 github.com/colt3k/utils/mathut v0.0.2/go.mod h1:yvkrho04UtKYwbEcvUlHwiNUdGVSwh6Jk4tXGyHfo5g=
 github.com/colt3k/utils/stats v0.0.1 h1:rKlyHfXNXbftjIBdabM4TP4A4mDarR168E95B6mp4YQ=
