@@ -14,7 +14,7 @@ import (
 	"github.com/colt3k/utils/io/data"
 )
 
-//ReadOrderedKV reads in as an ordered Map
+// ReadOrderedKV reads in as an ordered Map
 func ReadOrderedKV(filePathStr string) (*orderedmap.OrderedMap, error) {
 
 	kvMap := orderedmap.New()
@@ -44,7 +44,7 @@ func ReadOrderedKV(filePathStr string) (*orderedmap.OrderedMap, error) {
 	return nil, err
 }
 
-//ReadKV read in the file as a key/value pair and return a map of string/string
+// ReadKV read in the file as a key/value pair and return a map of string/string
 func ReadKV(filePathStr string) *map[string]string {
 
 	var kvMap map[string]string
@@ -75,7 +75,8 @@ func ReadKV(filePathStr string) *map[string]string {
 }
 
 /*
-ReadCSV read a file as a CSV and return a Table
+ReadCSVFromFile
+	read a file as a CSV and return a Table
 	skipHeader (true) will skip the first line for data but use it for column names
 	skipHeader (false) will include all lines for data and use headAr for column names
 */
@@ -97,6 +98,8 @@ func ReadCSVFromFile(filePath string, skipHeader bool, headAr []string) (*data.T
 
 	return ReadCSV(string(byt), skipHeader, headAr)
 }
+
+// ReadCSV read line of CSV data
 func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, error) {
 
 	sr := strings.NewReader(fileData)

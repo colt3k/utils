@@ -3,7 +3,7 @@ package passthrough
 /**
 Apache 2.0 license
 https://github.com/machinebox/progress/blob/master/writer.go
- */
+*/
 import (
 	"io"
 	"sync"
@@ -18,8 +18,7 @@ type Writer struct {
 	err  error
 }
 
-// NewWriter gets a Writer that counts the number
-// of bytes written.
+// NewWriter gets a Writer that counts the number of bytes written.
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		w: w,
@@ -35,8 +34,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// N gets the number of bytes that have been written
-// so far.
+// N gets the number of bytes that have been written so far.
 func (w *Writer) N() int64 {
 	var n int64
 	w.lock.RLock()

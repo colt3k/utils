@@ -7,7 +7,6 @@ import (
 
 	"github.com/colt3k/utils/debug"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -24,6 +23,7 @@ type FileReader struct {
 	cio.Reader
 }
 
+// NewFileReader create an instance of our FileReader
 func NewFileReader(path string) *FileReader {
 	return &FileReader{file: path}
 }
@@ -69,21 +69,23 @@ func (r *FileReader) LineScanner(maxBuf, maxScanTokenSize int) (string, error) {
 
 // AsString read file as a string
 func (r *FileReader) AsString() (string, error) {
-	f, err := openFile(r.file)
-	if err != nil {
-		log.Fatalf("issue opening file\n%+v", err)
+	f, errOpenFile := openFile(r.file)
+	if errOpenFile != nil {
+		log.Fatalf("issue opening file\n%+v", errOpenFile)
 	}
 	defer f.Close()
 
 	rdr := bufio.NewReader(f)
-	str, err := cio.ReadLine(rdr)
-	if err != nil {
-		log.Printf("ERROR: filereader: read line error %v\n", err)
+	str, errReadLine := cio.ReadLine(rdr)
+	if errReadLine != nil {
+		log.Printf("ERROR: filereader: read line error %v\n", errReadLine)
 		debug.PrintStack()
 		return "", errors.New("unable to open file")
 	}
 	return str, nil
 }
+
+// ReadCSVFromFile read csv from file on FileReader
 func (r *FileReader) ReadCSVFromFile(filePath string, skipHeader bool, headAr []string) (*data.Table, error) {
 	return iocsv.ReadCSVFromFile(r.file, skipHeader, headAr)
 }
@@ -98,9 +100,9 @@ func (r *FileReader) AsCSVIntoOrderedMap() (*orderedmap.OrderedMap, error) {
 	return iocsv.ReadOrderedKV(r.file)
 }
 
-//AsBytes read file into []byte
+// AsBytes read file into []byte
 func (r *FileReader) AsBytes() ([]byte, error) {
-	dat, err := ioutil.ReadFile(r.file)
+	dat, err := os.ReadFile(r.file)
 	if err != nil {
 		log.Printf("filereader: read file error %v\n", err)
 		debug.PrintStack()
@@ -110,7 +112,7 @@ func (r *FileReader) AsBytes() ([]byte, error) {
 	return dat, nil
 }
 
-//Bytes read file into passed byte array
+// Bytes read file into passed byte array
 func (r *FileReader) Bytes(buf []byte) {
 	if f, err := os.Open(r.file); err != nil {
 		defer f.Close()

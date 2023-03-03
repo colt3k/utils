@@ -9,14 +9,15 @@ import (
 	"github.com/colt3k/utils/io/data"
 )
 
+// ReadTabDelim read tab delimited file from path
 func ReadTabDelim(path string) (*data.Table, error) {
 	if !filepath.IsAbs(path) {
 		tmpdir, _ := filepath.Abs(path)
 		path = tmpdir
 	}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
+	f, errFileOpen := os.Open(path)
+	if errFileOpen != nil {
+		return nil, errFileOpen
 	}
 	defer f.Close()
 	lines := make([]string, 0)
