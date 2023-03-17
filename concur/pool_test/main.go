@@ -10,21 +10,40 @@ import (
 )
 
 var (
-	MaxConcurrentPerSession = 3
-	jitMaxRange             = 3
+	// MaxConcurrentPerSession run without time constraints with 10 workers
+	MaxConcurrentPerSession = 10
+
+	// MaxConcurrentPerSession2 run with time constraint using 10 works
+	MaxConcurrentPerSession2 = 10
+	PerSecond                = 5
+
+	jitMaxRange = 3
 )
 
 func main() {
-
-	parts := make([]*WorkObjectPart, 10)
+	//ca := log.NewConsoleAppender("*")
+	//log.Modify(log.LogLevel(log.DEBUG), log.Appenders(ca))
+	parts := make([]*WorkObjectPart, 100)
 
 	for i := range parts {
 		parts[i] = &WorkObjectPart{Name: "someval", UniqueName: "someval" + strconv.Itoa(i)}
 	}
 	// Create an object that has Work to be done
 	w := WorkObject{ValX: "Hello File X", Parts: parts}
+	start := time.Now()
 	process(&w)
-	fmt.Printf("Final status: %v\n", w.OverallStatus)
+	// duration
+	duration := time.Since(start)
+	fmt.Printf("Final Non Time Limited status: %v Seconds: %v\n", w.OverallStatus, duration.Seconds())
+
+	fmt.Println("******************************************************************************************")
+	// Create an object that has Work to be done which is Time Limited
+	w2 := WorkObject{ValX: "Hello File X", Parts: parts}
+	start = time.Now()
+	processTimeLimited(&w2)
+	// duration
+	duration2 := time.Since(start)
+	fmt.Printf("Final Time Limited status: %v Seconds: %v\n", w2.OverallStatus, duration2.Seconds())
 }
 
 func process(w *WorkObject) {
@@ -52,6 +71,31 @@ func process(w *WorkObject) {
 	w.Close()
 }
 
+func processTimeLimited(w *WorkObject) {
+
+	//Create Worker Pool ***************************************
+
+	var tasks []*concur.Task
+	for _, p := range w.Parts {
+
+		p := p
+		// If TaskResponseReturn is null that part will be skipped
+		task := concur.NewTask(
+			func() (interface{}, error) {
+				return worker(p)
+			},
+			NewReturner(w))
+
+		tasks = append(tasks, task)
+	}
+	p := concur.NewPoolWithPause(tasks, MaxConcurrentPerSession2, PerSecond)
+	p.Run()
+	// END WORKER POOL ****************************************************
+
+	// do any finalizing
+	w.Close()
+}
+
 // Response setup our Response Object/Interface
 type Response interface {
 	id() string
@@ -72,7 +116,7 @@ func (w *WorkerResponse) val() string {
 }
 
 func worker(p *WorkObjectPart) (Response, error) {
-	fmt.Printf("start work on %v\n", p.UniqueName)
+	//fmt.Printf("start work on %v\n", p.UniqueName)
 	// get random val
 	jitter := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(int64(jitMaxRange))
 	time.Sleep(time.Duration(jitter) * time.Second)
@@ -103,7 +147,7 @@ func (w *WorkObject) Close() {
 	fmt.Println("Closing out our work...")
 	failed := false
 	for _, j := range w.Parts {
-		fmt.Printf("workpart %v status: %v\n", j.UniqueName, j.Status)
+		//fmt.Printf("workpart %v status: %v\n", j.UniqueName, j.Status)
 		if strings.Index(j.Status, "fail") > -1 || j.Error != nil {
 			w.OverallStatus = "fail"
 			failed = true
