@@ -2171,14 +2171,19 @@ func Install() error {
 		if err != nil {
 			fmt.Println("issue setting PROG :", binPath, err)
 		}
-
-		if !dryRun {
-			err = sh.Copy("/usr/local/etc/bash_completion.d/"+d.Name, "./pkgr/bash_autocomplete")
+		bashCompletionPath := "/usr/local/etc/bash_completion.d/"
+		if goos == "linux" {
+			bashCompletionPath = "/etc/bash_completion.d/"
+		}
+		if !dryRun && goos != "windows" {
+			err = sh.Copy(bashCompletionPath+d.Name, "./pkgr/bash_autocomplete")
 			if err != nil {
 				fmt.Println("!!!error: ", err)
 			}
+		} else if goos == "windows" {
+			fmt.Println("No bash completion on windows skipping setup.")
 		} else {
-			fmt.Println("DRY_RUN copying ./pkgr/bash_autocomplete to /usr/local/etc/bash_completion.d/" + d.Name)
+			fmt.Println("DRY_RUN copying ./pkgr/bash_autocomplete to " + bashCompletionPath + d.Name)
 		}
 		cleaner(d.Name, false)
 	}
