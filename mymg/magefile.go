@@ -2172,7 +2172,9 @@ func Install() error {
 			fmt.Println("issue setting PROG :", binPath, err)
 		}
 		bashCompletionPath := "/usr/local/etc/bash_completion.d/"
-		if goos == "linux" {
+		if goos == "darwin" && goarch == "arm64" {
+			bashCompletionPath = "/opt/homebrew/etc/bash_completion.d/"
+		} else if goos == "linux" {
 			bashCompletionPath = "/etc/bash_completion.d/"
 		}
 		if !dryRun && goos != "windows" {
