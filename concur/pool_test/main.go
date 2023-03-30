@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/concur"
 	"math/rand"
 	"strconv"
@@ -11,19 +13,20 @@ import (
 
 var (
 	// MaxConcurrentPerSession run without time constraints with 10 workers
-	MaxConcurrentPerSession = 10
+	MaxConcurrentPerSession = 20
 
 	// MaxConcurrentPerSession2 run with time constraint using 10 works
-	MaxConcurrentPerSession2 = 10
-	PerSecond                = 5
+	MaxConcurrentPerSession2 = 20
+	PerSecond                = 10
 
 	jitMaxRange = 3
 )
 
 func main() {
+	ctx := context.Background()
 	//ca := log.NewConsoleAppender("*")
 	//log.Modify(log.LogLevel(log.DEBUG), log.Appenders(ca))
-	parts := make([]*WorkObjectPart, 100)
+	parts := make([]*WorkObjectPart, 1000)
 
 	for i := range parts {
 		parts[i] = &WorkObjectPart{Name: "someval", UniqueName: "someval" + strconv.Itoa(i)}
@@ -31,7 +34,7 @@ func main() {
 	// Create an object that has Work to be done
 	w := WorkObject{ValX: "Hello File X", Parts: parts}
 	start := time.Now()
-	process(&w)
+	process(ctx, &w)
 	// duration
 	duration := time.Since(start)
 	fmt.Printf("Final Non Time Limited status: %v Seconds: %v\n", w.OverallStatus, duration.Seconds())
@@ -40,13 +43,13 @@ func main() {
 	// Create an object that has Work to be done which is Time Limited
 	w2 := WorkObject{ValX: "Hello File X", Parts: parts}
 	start = time.Now()
-	processTimeLimited(&w2)
+	processTimeLimited(ctx, &w2)
 	// duration
 	duration2 := time.Since(start)
 	fmt.Printf("Final Time Limited status: %v Seconds: %v\n", w2.OverallStatus, duration2.Seconds())
 }
 
-func process(w *WorkObject) {
+func process(ctx context.Context, w *WorkObject) {
 
 	//Create Worker Pool ***************************************
 
@@ -63,15 +66,18 @@ func process(w *WorkObject) {
 
 		tasks = append(tasks, task)
 	}
-	p := concur.NewPool(tasks, MaxConcurrentPerSession)
-	p.Run()
+	p := concur.NewPool(ctx, tasks, MaxConcurrentPerSession)
+	err := p.Run()
+	if err != nil {
+		log.Logf(log.ERROR, "run error %v", err)
+	}
 	// END WORKER POOL ****************************************************
 
 	// do any finalizing
 	w.Close()
 }
 
-func processTimeLimited(w *WorkObject) {
+func processTimeLimited(ctx context.Context, w *WorkObject) {
 
 	//Create Worker Pool ***************************************
 
@@ -88,8 +94,11 @@ func processTimeLimited(w *WorkObject) {
 
 		tasks = append(tasks, task)
 	}
-	p := concur.NewPoolWithPause(tasks, MaxConcurrentPerSession2, PerSecond)
-	p.Run()
+	p := concur.NewPoolWithPause(ctx, tasks, MaxConcurrentPerSession2, PerSecond)
+	err := p.Run()
+	if err != nil {
+		log.Logf(log.ERROR, "run error %v", err)
+	}
 	// END WORKER POOL ****************************************************
 
 	// do any finalizing
