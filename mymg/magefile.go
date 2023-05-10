@@ -308,10 +308,12 @@ func setupProjects(props map[string]interface{}) error {
 			return err
 		}
 
+		fmt.Printf("d.ChangelogFile: %v\n", d.ChangelogFile)
 		prjkts.Projects[i].ChangelogFile, err = filepath.Abs(d.ChangelogFile)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("d.ChangelogFullFile: %v\n", d.ChangelogFullFile)
 		prjkts.Projects[i].ChangelogFullFile, err = filepath.Abs(d.ChangelogFullFile)
 		if err != nil {
 			return err
@@ -428,7 +430,7 @@ func parseToml() error {
 	if !fileExistsAndIsNotADir(path) {
 		return fmt.Errorf("toml file not found at %v", path)
 	}
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -1164,7 +1166,8 @@ func BumpVersion() error {
 				fmt.Println("DRY_RUN: " + apps.GitExe + "push origin " + nVersion)
 			}
 
-			if len(d.ChangelogFullFile) > 0 {
+			if len(strings.TrimSpace(d.ChangelogFullFile)) > 0 && fileExistsAndIsNotADir(d.ChangelogFullFile) {
+				fmt.Printf("ChangelogFullFile %v\n", d.ChangelogFullFile)
 				fmt.Println()
 				fmt.Println("Rebuilding CHANGELOG.md")
 				// Rebuild CHANGELOG.md d.ChangelogFullFile
@@ -1173,8 +1176,11 @@ func BumpVersion() error {
 					return err
 				}
 				fmt.Printf("%v", output)
+			} else {
+				fmt.Println("ChangelogFullFile Not Set")
 			}
-			if len(d.ChangelogFile) > 0 {
+			if len(strings.TrimSpace(d.ChangelogFile)) > 0 && fileExistsAndIsNotADir(d.ChangelogFile) {
+				fmt.Printf("ChangelogFile %v\n", d.ChangelogFile)
 				fmt.Println()
 				fmt.Println("Updating CHANGES.txt")
 				// Update CHANGES.txt d.ChangelogFile
@@ -1183,6 +1189,8 @@ func BumpVersion() error {
 					return err
 				}
 				fmt.Printf("%v", output)
+			} else {
+				fmt.Println("ChangelogFile Not Set")
 			}
 		}
 	}
