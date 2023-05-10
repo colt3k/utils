@@ -974,7 +974,7 @@ func Build() error {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	fmt.Println("goos: " + goos + " goarch: " + goarch)
-	if goos == "darwin" && goarch == "arm64" {
+	if goos == "darwin" && (goarch == "arm64" || goarch == "amd64") {
 		skipUPX = true
 	}
 	gocmd := mg.GoCmd()
@@ -1480,7 +1480,7 @@ func cross(app Project) error {
 		}
 
 		skipUPX := false
-		if goos == "darwin" && arch == "arm64" {
+		if goos == "darwin" && (arch == "arm64" || arch == "amd64") {
 			skipUPX = true
 		}
 
@@ -2130,7 +2130,7 @@ func Install() error {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	fmt.Println("goos: " + goos + " goarch: " + goarch)
-	if goos == "darwin" && goarch == "arm64" {
+	if goos == "darwin" && (goarch == "arm64" || goarch == "amd64") {
 		skipUPX = true
 	}
 	for _, d := range prjkts.Projects {
