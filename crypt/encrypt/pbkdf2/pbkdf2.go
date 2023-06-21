@@ -26,7 +26,7 @@ Considered OLD, use Scrypt or Argon2id
 */
 
 const (
-	iterationsDFLT = 65536
+	iterationsDFLT = 600001
 	keyLengthDFLT  = 32
 )
 

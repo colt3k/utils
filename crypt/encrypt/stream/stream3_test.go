@@ -16,7 +16,8 @@ import (
 
 func TestEncrypt(t *testing.T) {
 
-	testfile := "/Users/gcollins/Desktop/b2test/hello1.txt"
+	t.SkipNow()
+	testfile := "../../test/hello1.txt"
 	fo, err := os.Open(testfile)
 	if err != nil {
 		panic(err)
@@ -88,7 +89,8 @@ func TestEncrypt(t *testing.T) {
 
 func TestDecrypt(t *testing.T) {
 
-	testfile := "/Users/gcollins/Desktop/b2test/hello1.txt"
+	t.SkipNow()
+	testfile := "../../test/hello1.txt"
 	fo, err := os.Open(testfile)
 	if err != nil {
 		panic(err)

@@ -40,18 +40,20 @@ func loadTestData() {
 	cfg.testPassword = "thisismysuperlongandcomplexpass"
 	cfg.plaintext = "My Original plain text used for testing."
 
-	cfg.cipherTxtScrypt = "h0vyG0BQvDQMBaAGFuHiB3UGTwX9+ssj+Coh2eMce/JONEYvkjqZzSU91+DraddATwcbQ+C+hdrF7uAICIJ7Qw=="
+	cfg.cipherTxtScrypt = "l3XZaAg3JLkq/X/IFv0loI1IGAVetlmRlb1MjscWZBm9Wj9J8YEIZ2clNUALpyKrkGMD3dz51TClNaJj1E76CQ=="
 	cfg.cipherTxtScryptBA = []byte(cfg.cipherTxtScrypt)
 }
 
 func TestScryptEncrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
+	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 	//p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
 	p := scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
 	log.Println("Params: ", p)
 
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
-	log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(salt, encodeenum.B64STD))
+
 	p.Salt = salt
 	derivedKey, err := scrypt.Key(cfg.testPassword, p)
 	if err != nil {

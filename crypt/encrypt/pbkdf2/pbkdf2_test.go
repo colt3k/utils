@@ -15,12 +15,12 @@ func init() {
 func TestPBKDF2_Generate(t *testing.T) {
 	encodedSalt := "qhebZTd7PVqGBCH0rTyl0w=="
 	salt := encode.Decode([]byte(encodedSalt), encodeenum.B64STD)
-	p := New([]byte("mysupersecretpassword&^%$123"), salt, 0,0)
+	p := New([]byte("mysupersecretpassword&^%$123"), salt, 0, 0)
 	key := p.Generate()
 	encodedKey := encode.Encode(key, encodeenum.B64STD)
 	log.Println(encodedKey)
 
-	if encodedKey != "U9luRG7mGPxQcH3BGOhWfT/amf1glnSKcWitjxPUHvE=" {
+	if encodedKey != "32lSsNBubY6mYgG/TKrvpBb9m5ryqn6Y3aKUc88UAPM=" {
 		t.FailNow()
 	}
 }

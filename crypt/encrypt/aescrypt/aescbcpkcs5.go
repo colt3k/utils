@@ -7,10 +7,12 @@ ENC_TRANSFORMATION	: AES/CBC/PKCS5Padding	(Cipher Instance)
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"github.com/colt3k/utils/encode"
+	"github.com/colt3k/utils/encode/encodeenum"
 	"time"
 
 	log "github.com/colt3k/nglog/ng"
-	
+
 	"github.com/colt3k/utils/crypt/encrypt/padding"
 )
 
@@ -22,7 +24,7 @@ var (
 	iterationCount = 65536
 )
 
-//AES store variables for encryption
+// AES store variables for encryption
 type AES struct {
 	aesKeyLength   int
 	saltLength     int
@@ -33,7 +35,7 @@ type AES struct {
 	key            []byte
 }
 
-//New create a new instance of the AES struct
+// New create a new instance of the AES struct
 func New(keylength, saltLength, ivSize, iterations int, plaintext *string, cipherText *[]byte, key *[]byte) *AES {
 	a := &AES{}
 
@@ -66,12 +68,12 @@ func (a *AES) Validate() bool {
 	return false
 }
 
-//Encrypt interface method for encryption
+// Encrypt interface method for encryption
 func (a *AES) Encrypt() []byte {
 	return aesCrypt(a, a.key)
 }
 
-//Decrypt interface method for decryption
+// Decrypt interface method for decryption
 func (a *AES) Decrypt() []byte {
 	return aesDecrypt(a, a.key)
 }
@@ -82,7 +84,8 @@ func aesCrypt(a *AES, derivedKey []byte) []byte {
 	// Now we need to extract AES key and IV from newly derived key
 	aesKey2 := derivedKey[0:16]
 	aesIv2 := derivedKey[16:32]
-
+	log.Logf(log.DEBUG, "Key: %s", encode.Encode(aesKey2, encodeenum.B64STD))
+	log.Logf(log.DEBUG, "IV: %s", encode.Encode(aesIv2, encodeenum.B64STD))
 	block, err := aes.NewCipher(aesKey2)
 	if err != nil {
 		panic(err)
@@ -111,7 +114,8 @@ func aesDecrypt(a *AES, derivedKey []byte) []byte {
 	// Now we need to extract AES key and IV from newly derived key
 	aesKey2 := derivedKey[0:16]
 	aesIv2 := derivedKey[16:32]
-
+	log.Logf(log.DEBUG, "Key: %s", encode.Encode(aesKey2, encodeenum.B64STD))
+	log.Logf(log.DEBUG, "IV: %s", encode.Encode(aesIv2, encodeenum.B64STD))
 	block, err := aes.NewCipher(aesKey2)
 	if err != nil {
 		panic(err)

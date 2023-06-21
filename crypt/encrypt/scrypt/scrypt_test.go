@@ -160,8 +160,8 @@ func TestCalibrate(t *testing.T) {
 	}
 }
 
-func ExampleCalibrate() {
-
+func TestExampleCalibrate(t *testing.T) {
+	t.SkipNow()
 	p, err := Calibrate(1*time.Second, 128, Params{})
 	log.Println("Calibration: ", p)
 	if err != nil {

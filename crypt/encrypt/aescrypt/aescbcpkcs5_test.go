@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,17 +53,17 @@ func loadTestData() {
 	cfg.salt = "qhebZTd7PVqGBCH0rTyl0w=="
 	cfg.saltBA = []byte(cfg.salt)
 
-	cfg.saltScrypt = "wYr2y5H5T2/LCqWURBfVQQ=="
+	cfg.saltScrypt = "26ltuiXsw8M6jQ/XoIAe6TFJvmvqKZaotjVu5Q3qXpc="
 	cfg.saltScryptBA = []byte(cfg.saltScrypt)
 
 	cfg.testPassword = "thisismysuperlongandcomplexpass"
 
 	cfg.plaintext = "My Original plain text used for testing."
 
-	cfg.cipherTxt = "e42ax9c+EW8uIZB+uNQdIXysO5w6YWkl6TcG67L6XM7dyvtzwo3FhKiJ30C/Qxub"
+	cfg.cipherTxt = "XDHQ1RCWzsggYEc/uEyX2z9+nkWidPB8qTqogeGiLCsLlhE8EqondqcErqBxTHpf"
 	cfg.cipherTxtBA = []byte(cfg.cipherTxt)
 
-	cfg.cipherTxtScrypt = "E7CqSdOc1pWZwPEw60eM4OiNMc7vxxr5l6wGwQzNdqiIXIWU84VQyBj0ZvhDaG5r"
+	cfg.cipherTxtScrypt = "VU59JAYsPCeCb2TwzBg2pCEKbxrGm5cuPySL+QYYs1okhGi6VlQkWq99zT0mAPYx"
 	cfg.cipherTxtScryptBA = []byte(cfg.cipherTxtScrypt)
 }
 
@@ -72,10 +72,10 @@ func buildOutput(t *testing.T, name string, actual []byte) {
 	golden := filepath.Join("testdata", name+".golden")
 	//If our update flag is on then write it
 	if *update {
-		ioutil.WriteFile(golden, actual, 0644)
+		_ = os.WriteFile(golden, actual, 0644)
 	}
 	//Read our golden data
-	expected, _ := ioutil.ReadFile(golden)
+	expected, _ := os.ReadFile(golden)
 
 	// FAIL!
 	if !bytes.Equal(actual, expected) {
@@ -94,17 +94,19 @@ func TestEncrypt(t *testing.T) {
 	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 
 	saltAR := crypt.GenSalt(saltDecoded, ivSize)
-	log.Logln(log.DEBUG, "Salt: ", saltAR)
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(saltAR, encodeenum.B64STD))
 
-	encSalt := encode.Encode(saltAR, encodeenum.B64STD)
-	buff.WriteString(fmt.Sprintf("Salt: %s\n", encSalt))
+	buff.WriteString(fmt.Sprintf("Salt: %s\n", encode.Encode(saltAR, encodeenum.B64STD)))
 
 	derivedKey := pbkdf2.New([]byte(cfg.testPassword), saltAR, aesKeyLength, iterationCount).Generate()
 	buff.WriteString(fmt.Sprintf("Derived Key Length: %d\n", len(derivedKey)))
-
+	log.Logf(log.DEBUG, "Derived Key Length: %d", len(derivedKey))
+	log.Logf(log.DEBUG, "Derived Key: %s", encode.Encode(derivedKey, encodeenum.B64STD))
+	// the first values are -1 so they're not used and the derived key supplies those
 	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &derivedKey)
 	crypted := a.Encrypt()
 	buff.WriteString(fmt.Sprintf("CipherText: %s", encode.Encode(crypted, encodeenum.B64STD)))
+	log.Logf(log.DEBUG, "CipherText: %s", encode.Encode(crypted, encodeenum.B64STD))
 
 	buildOutput(t, "encrypt", buff.Bytes())
 
@@ -114,13 +116,16 @@ func TestDecrypt(t *testing.T) {
 	var buff bytes.Buffer
 
 	saltDecoded := encode.Decode(cfg.saltBA, encodeenum.B64STD)
+	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 
 	salt := crypt.GenSalt(saltDecoded, saltLength)
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(salt, encodeenum.B64STD))
 	buff.WriteString(fmt.Sprintf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD)))
 
 	derivedKey := pbkdf2.New([]byte(cfg.testPassword), salt, aesKeyLength, iterationCount).Generate()
 	buff.WriteString(fmt.Sprintf("Derived Key Length: %d\n", len(derivedKey)))
-
+	log.Logf(log.DEBUG, "Derived Key Length: %d", len(derivedKey))
+	log.Logf(log.DEBUG, "Derived Key: %s", encode.Encode(derivedKey, encodeenum.B64STD))
 	crypted := encode.Decode(cfg.cipherTxtBA, encodeenum.B64STD)
 
 	a := New(-1, -1, -1, -1, nil, &crypted, &derivedKey)
@@ -136,7 +141,7 @@ func TestScryptEncrypt(t *testing.T) {
 	var buf bytes.Buffer
 
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-
+	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 	//Calibrate to current system
 	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
 
@@ -146,6 +151,7 @@ func TestScryptEncrypt(t *testing.T) {
 
 	//Generate salt if required
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(salt, encodeenum.B64STD))
 	buf.WriteString(fmt.Sprintf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD)))
 
 	//Store salt in SCryptParams
@@ -158,7 +164,7 @@ func TestScryptEncrypt(t *testing.T) {
 	parts := strings.Split(string(derivedKey), "$")
 	lastPart := parts[len(parts)-1]
 	dk := []byte(lastPart)
-	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(dk)))
+	buf.WriteString(fmt.Sprintf("Derived Key Length (includes SCryptParam data): %d\n", len(dk)))
 
 	//Encrypt plaintext using derived Key
 	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &dk)
@@ -194,6 +200,8 @@ func TestScryptEncrypt(t *testing.T) {
 	}
 	// **************************** MAC CREATION AND VALIDATION -- END ******************
 	buf.WriteString(fmt.Sprintf("CipherText: %s", encode.Encode(crypted, encodeenum.B64STD)))
+	log.Logf(log.DEBUG, "CipherText: %s", encode.Encode(crypted, encodeenum.B64STD))
+	//log.Logf(log.DEBUG, "%s", buf.Bytes())
 
 	buildOutput(t, "scryptencrypt", buf.Bytes())
 }
@@ -202,7 +210,7 @@ func TestScryptDecrypt(t *testing.T) {
 	var buf bytes.Buffer
 
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-
+	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 	//Calibrate to current system
 	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
 	if d, err := json.MarshalIndent(p, "", "    "); err == nil {
@@ -211,6 +219,7 @@ func TestScryptDecrypt(t *testing.T) {
 
 	//Generate salt if required
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(salt, encodeenum.B64STD))
 	buf.WriteString(fmt.Sprintf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD)))
 
 	//Store salt in SCryptParams
@@ -223,7 +232,7 @@ func TestScryptDecrypt(t *testing.T) {
 	parts := strings.Split(string(derivedKey), "$")
 	lastPart := parts[len(parts)-1]
 	dk := []byte(lastPart)
-	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(dk)))
+	buf.WriteString(fmt.Sprintf("Derived Key Length (includes SCryptParam data): %d\n", len(dk)))
 
 	//Decode Cipher Text
 	crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
@@ -233,7 +242,7 @@ func TestScryptDecrypt(t *testing.T) {
 	plaintext2 := a.Decrypt()
 
 	buf.WriteString(fmt.Sprintf("PlainText2: %s", strings.TrimSpace(string(plaintext2))))
-
+	//log.Logf(log.DEBUG, "%s", buf.Bytes())
 	buildOutput(t, "scryptdecrypt", buf.Bytes())
 }
 
