@@ -5,10 +5,10 @@ import (
 	"crypto/cipher"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/colt3k/utils/encode"
 	"github.com/colt3k/utils/encode/encodeenum"
@@ -53,8 +53,11 @@ func EncToTemp(filepath string, pass []byte) string {
 	if err != nil {
 		panic(err)
 	}
-	aesKey2 := derivedKey[0:16]
-	aesIv2 := derivedKey[16:32]
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	aesKey2 := dk[0:16]
+	aesIv2 := dk[16:32]
 	block, err := aes.NewCipher(aesKey2)
 	if err != nil {
 		panic(err)
@@ -62,7 +65,7 @@ func EncToTemp(filepath string, pass []byte) string {
 
 	stream := cipher.NewOFB(block, aesIv2)
 
-	tf, err := ioutil.TempFile(os.TempDir(), "ctcloud")
+	tf, err := os.CreateTemp(os.TempDir(), "ctcloud")
 	if err != nil {
 		stackInfo := debug.Stack()
 		log.Fatalf("err opening temp file, %v\n %v\n%v", filepath, err, string(stackInfo))
@@ -99,8 +102,11 @@ func DecFromTemp(tmpFile string, pass []byte, saveto string, salt string) {
 	if err != nil {
 		panic(err)
 	}
-	aesKey2 := derivedKey[0:16]
-	aesIv2 := derivedKey[16:32]
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	aesKey2 := dk[0:16]
+	aesIv2 := dk[16:32]
 	block, err := aes.NewCipher(aesKey2)
 	if err != nil {
 		panic(err)

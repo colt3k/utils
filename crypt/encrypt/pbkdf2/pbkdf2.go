@@ -1,7 +1,7 @@
 package pbkdf2
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 
 	"golang.org/x/crypto/pbkdf2"
 
@@ -17,9 +17,12 @@ i.e. PBKDF2 SHA1 vs SHA256 Hash algorithm strength is important, but it is not s
 It is unlikely that even if SHA-1 is broken that it would influence the security of PBKDF2. You are better off using
 SHA-1, and increase the iteration count up to a level that is tweaked for your specific configuration.
 If you want to protect against hardware acceleration use SCrypt Instead of PBKDF2
+https://cryptobook.nakov.com/mac-and-key-derivation/pbkdf2
 
 Password is passed by user
 Salt is a unique salt for the system this will be running on and doesn't change
+
+Considered OLD, use Scrypt or Argon2id
 */
 
 const (
@@ -34,6 +37,12 @@ type PBKDF2 struct {
 	iterations int
 }
 
+/*
+	New
+
+keyLength recommended 16 or 32(default)
+iterations recommended per OWASP 600,000+
+*/
 func New(pass, salt []byte, keyLength, iterations int) *PBKDF2 {
 	t := new(PBKDF2)
 	t.pass = pass
@@ -52,5 +61,5 @@ func New(pass, salt []byte, keyLength, iterations int) *PBKDF2 {
 
 func (p *PBKDF2) Generate() []byte {
 	p.salt = crypt.GenSalt(p.salt, p.keyLength/2)
-	return pbkdf2.Key(p.pass, p.salt, p.iterations, p.keyLength, sha1.New)
+	return pbkdf2.Key(p.pass, p.salt, p.iterations, p.keyLength, sha256.New)
 }

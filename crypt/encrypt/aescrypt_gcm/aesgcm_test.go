@@ -1,6 +1,7 @@
 package aescrypt_gcm
 
 import (
+	"strings"
 	"testing"
 
 	log "github.com/colt3k/nglog/ng"
@@ -32,7 +33,6 @@ func init() {
 	loadTestData()
 }
 
-
 func loadTestData() {
 	cfg.saltScrypt = "wYr2y5H5T2/LCqWURBfVQQ=="
 	cfg.saltScryptBA = []byte(cfg.saltScrypt)
@@ -47,7 +47,7 @@ func loadTestData() {
 func TestScryptEncrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
 	//p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
-	p := scrypt.Params{N:65536, R:1, P:2, SaltLen:16, DKLen:32}
+	p := scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
 	log.Println("Params: ", p)
 
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
@@ -57,10 +57,12 @@ func TestScryptEncrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	log.Println("Derived Key Length : ", len(dk))
 
-	log.Println("Derived Key Length : ", len(derivedKey))
-
-	a := New(&cfg.plaintext, nil, &derivedKey)
+	a := New(&cfg.plaintext, nil, &dk)
 	crypted := a.Encrypt()
 
 	log.Println("CipherText: ", encode.Encode(crypted, encodeenum.B64STD))
@@ -73,7 +75,7 @@ func TestScryptEncrypt(t *testing.T) {
 func TestScryptDecrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
 	//p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
-	p := scrypt.Params{N:65536, R:1, P:2, SaltLen:16, DKLen:32}
+	p := scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
 	log.Println("Params: ", p)
 
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
@@ -84,12 +86,14 @@ func TestScryptDecrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	log.Println("Derived Key Length : ", len(derivedKey))
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	log.Println("Derived Key Length : ", len(dk))
 
 	crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
 
-	a := New(nil, &crypted, &derivedKey)
+	a := New(nil, &crypted, &dk)
 	plaintext2 := a.Decrypt()
 
 	log.Println("PlainText2: ", string(plaintext2))

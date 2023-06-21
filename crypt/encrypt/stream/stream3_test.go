@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/colt3k/utils/file/filenative"
@@ -21,19 +22,24 @@ func TestEncrypt(t *testing.T) {
 		panic(err)
 	}
 
-	tf, err := ioutil.TempFile(os.TempDir(), "ctcloud")
+	tf, err := os.CreateTemp(os.TempDir(), "ctcloud")
 	if err != nil {
 		panic(err)
 	}
 
 	saltAR := crypt.GenSalt(nil, ScryptParams.SaltLen)
 	ScryptParams.Salt = saltAR
+	// Generate Derived Key from pass and params
 	derivedKey, err := scrypt.Key(string("mypass"), ScryptParams)
 	if err != nil {
 		panic(err)
 	}
 
-	aesKey2 := derivedKey[0:16]
+	// retrieve derived key, this will be the last section after the last split of $
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	aesKey2 := []byte(lastPart)
+	//aesKey2 := derivedKey[0:16]
 	//aesIv2 := derivedKey[16:32]
 
 	hmacKey := []byte("this is my hmackey")
@@ -103,8 +109,10 @@ func TestDecrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	aesKey2 := derivedKey[0:16]
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	aesKey2 := dk[0:16]
 	//aesIv2 := derivedKey[16:32]
 
 	err = Encrypt(fo, tf, aesKey2, aesKey2)

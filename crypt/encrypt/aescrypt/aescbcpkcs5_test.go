@@ -155,18 +155,20 @@ func TestScryptEncrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(derivedKey)))
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(dk)))
 
 	//Encrypt plaintext using derived Key
-	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &derivedKey)
+	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &dk)
 	crypted := a.Encrypt()
 
 	// **************************** MAC CREATION AND VALIDATION -- START **************
 	var out [16]byte
 	var k [32]byte
 	//Copy created key into k slice of 32
-	copy(k[:16], derivedKey[:])
+	copy(k[:16], dk[:])
 	//Pass in empty slice of 16 for mac key storage, encrypted text and derived Key
 	poly1305.Sum(&out, crypted, &k)
 
@@ -218,13 +220,16 @@ func TestScryptDecrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(derivedKey)))
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	buf.WriteString(fmt.Sprintf("Derived Key Length (inludes SCryptParam data): %d\n", len(dk)))
 
 	//Decode Cipher Text
 	crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
 
 	//Decrypt ciphertext using derived Key
-	a := New(-1, -1, -1, -1, nil, &crypted, &derivedKey)
+	a := New(-1, -1, -1, -1, nil, &crypted, &dk)
 	plaintext2 := a.Decrypt()
 
 	buf.WriteString(fmt.Sprintf("PlainText2: %s", strings.TrimSpace(string(plaintext2))))
@@ -283,9 +288,12 @@ func BenchmarkAESScryptCrypt(b *testing.B) {
 		if err != nil {
 			panic(err)
 		}
+		parts := strings.Split(string(derivedKey), "$")
+		lastPart := parts[len(parts)-1]
+		dk := []byte(lastPart)
 
-		log.Println("Derived Key Length : ", len(derivedKey))
-		a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &derivedKey)
+		log.Println("Derived Key Length : ", len(dk))
+		a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &dk)
 		crypted := a.Encrypt()
 
 		log.Println("CipherText: ", encode.Encode(crypted, encodeenum.B64STD))
@@ -304,12 +312,15 @@ func BenchmarkAESScryptDecrypt(b *testing.B) {
 		if err != nil {
 			panic(err)
 		}
+		parts := strings.Split(string(derivedKey), "$")
+		lastPart := parts[len(parts)-1]
+		dk := []byte(lastPart)
 
-		log.Println("Derived Key Length : ", len(derivedKey))
+		log.Println("Derived Key Length : ", len(dk))
 
 		crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
 
-		a := New(-1, -1, -1, -1, nil, &crypted, &derivedKey)
+		a := New(-1, -1, -1, -1, nil, &crypted, &dk)
 		plaintext2 := a.Decrypt()
 
 		log.Println("PlainText2: ", strings.TrimSpace(string(plaintext2)))
@@ -328,10 +339,13 @@ func TestAESCrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
 
-	log.Println("Derived Key Length : ", len(derivedKey))
+	log.Println("Derived Key Length : ", len(dk))
 
-	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &derivedKey)
+	a := New(-1, -1, -1, -1, &cfg.plaintext, nil, &dk)
 	crypted := a.Encrypt()
 
 	log.Println("CipherText: ", encode.Encode(crypted, encodeenum.B64STD))
@@ -351,12 +365,15 @@ func TestAESDecrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
 
-	log.Println("Derived Key Length : ", len(derivedKey))
+	log.Println("Derived Key Length : ", len(dk))
 
 	crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
 
-	a := New(-1, -1, -1, -1, nil, &crypted, &derivedKey)
+	a := New(-1, -1, -1, -1, nil, &crypted, &dk)
 	plaintext2 := a.Decrypt()
 
 	log.Println("PlainText2: ", string(plaintext2))
