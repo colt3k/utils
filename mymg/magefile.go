@@ -309,14 +309,18 @@ func setupProjects(props map[string]interface{}) error {
 		}
 
 		fmt.Printf("d.ChangelogFile: %v\n", d.ChangelogFile)
-		prjkts.Projects[i].ChangelogFile, err = filepath.Abs(d.ChangelogFile)
-		if err != nil {
-			return err
+		if len(strings.TrimSpace(d.ChangelogFile)) > 0 {
+			prjkts.Projects[i].ChangelogFile, err = filepath.Abs(d.ChangelogFile)
+			if err != nil {
+				return err
+			}
 		}
 		fmt.Printf("d.ChangelogFullFile: %v\n", d.ChangelogFullFile)
-		prjkts.Projects[i].ChangelogFullFile, err = filepath.Abs(d.ChangelogFullFile)
-		if err != nil {
-			return err
+		if len(strings.TrimSpace(d.ChangelogFullFile)) > 0 {
+			prjkts.Projects[i].ChangelogFullFile, err = filepath.Abs(d.ChangelogFullFile)
+			if err != nil {
+				return err
+			}
 		}
 
 		for j, k := range d.Files {
