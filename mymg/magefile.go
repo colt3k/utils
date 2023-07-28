@@ -8,7 +8,6 @@ import (
 	"github.com/colt3k/utils/stringut"
 	"github.com/pelletier/go-toml/v2"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -128,36 +127,33 @@ func propRtv(p map[string]interface{}, key string) string {
 					}
 					log.Printf("- Using Found Alternative: %v\n", path)
 					return path
-				} else {
-					log.Fatalf("- !!! '%v' not found for key '%v', useAltApps is off !!!\n", val.(string), key)
 				}
+				log.Fatalf("- !!! '%v' not found for key '%v', useAltApps is off !!!\n", val.(string), key)
 			}
 		}
 		return val.(string)
-	} else {
-		if runtime.GOOS == "linux" {
-			switch key {
-			case "md5Exe":
-				return "/bin/md5sum"
-			case "sha1Exe":
-				return "/bin/sha1sum"
-			case "sha256Exe":
-				return "/bin/sha256sum"
-			case "curlExe":
-				return "/bin/curl"
-			case "catExe":
-				return "/bin/cat"
-			case "gitExe":
-				return "/bin/git"
-			case "tarExe":
-				return "/bin/tar"
-			case "scpExe":
-				return "/bin/scp"
-			case "sftpExe":
-				return "/bin/sftp"
-			case "whichExe":
-				return "/usr/bin/which"
-			}
+	} else if runtime.GOOS == "linux" {
+		switch key {
+		case "md5Exe":
+			return "/bin/md5sum"
+		case "sha1Exe":
+			return "/bin/sha1sum"
+		case "sha256Exe":
+			return "/bin/sha256sum"
+		case "curlExe":
+			return "/bin/curl"
+		case "catExe":
+			return "/bin/cat"
+		case "gitExe":
+			return "/bin/git"
+		case "tarExe":
+			return "/bin/tar"
+		case "scpExe":
+			return "/bin/scp"
+		case "sftpExe":
+			return "/bin/sftp"
+		case "whichExe":
+			return "/usr/bin/which"
 		}
 	}
 	return ""
@@ -239,7 +235,7 @@ func setupSftps(props map[string]interface{}) error {
 	config.SFTP = sftpS
 	return nil
 }
-func setupArtifacts(props map[string]interface{}) error {
+func setupArtifactory(props map[string]interface{}) error {
 	artMap := props["artifactory"]
 	artWrapper := make(map[string]interface{}, 1)
 	artWrapper["artifactory"] = artMap
@@ -376,9 +372,9 @@ func parseTargets() error {
 		// not defined set default
 		path = "./build.toml"
 	}
-	path, err = filepath.Abs(path)
+	path, _ = filepath.Abs(path)
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -401,7 +397,6 @@ func parseTargets() error {
 	return nil
 }
 func parseToml() error {
-
 	var err error
 
 	_, ok := os.LookupEnv("nostatic")
@@ -429,7 +424,7 @@ func parseToml() error {
 		// not defined set default
 		path = "./build.toml"
 	}
-	path, err = filepath.Abs(path)
+	path, _ = filepath.Abs(path)
 
 	if !fileExistsAndIsNotADir(path) {
 		return fmt.Errorf("toml file not found at %v", path)
@@ -453,6 +448,16 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
+	for _, b := range postclean.Dirs {
+		if !exists(b) && b != "PREP/" && b != "cross" {
+			return fmt.Errorf("postclean dir not found %v", b)
+		}
+	}
+	for _, b := range postclean.Files {
+		if !fileExistsAndIsNotADir(b) {
+			return fmt.Errorf("postclean file not found %v", b)
+		}
+	}
 	err = setupApps(props)
 	if err != nil {
 		return err
@@ -461,22 +466,62 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
+	for _, b := range scpS.Instance {
+		if !fileExistsAndIsNotADir(b.Path) {
+			return fmt.Errorf("scp path not found %v", b.Path)
+		}
+	}
 	err = setupCustomScps(props)
 	if err != nil {
 		return err
 	}
+	for _, b := range scpCustom.Instance {
+		if !fileExistsAndIsNotADir(b.Exec) {
+			return fmt.Errorf("scp-custom exec path not found %v", b.Exec)
+		}
+	}
+
 	err = setupSftps(props)
 	if err != nil {
 		return err
 	}
-	err = setupArtifacts(props)
+	err = setupArtifactory(props)
 	if err != nil {
 		return err
+	}
+	// validate credential paths
+	for _, b := range arts.Instance {
+		if !fileExistsAndIsNotADir(b.Creds) {
+			return fmt.Errorf("af credential not found %v", b.Creds)
+		}
 	}
 	err = setupProjects(props)
 	if err != nil {
 		return err
 	}
+	// validate paths
+	for _, b := range prjkts.Projects {
+		for _, q := range b.OSDeployScripts {
+			if !fileExistsAndIsNotADir(q) {
+				return fmt.Errorf("os deploy script not found %v for %v", q, b.Name)
+			}
+		}
+		//if !exists(b.Package) {
+		//	return fmt.Errorf("package path not found %v", b.Package)
+		//}
+		if !fileExistsAndIsNotADir(b.VersionFile) {
+			return fmt.Errorf("version file not found %v", b.VersionFile)
+		}
+		if !fileExistsAndIsNotADir(b.ReadmeFile) {
+			return fmt.Errorf("readme file not found %v", b.ReadmeFile)
+		}
+		for _, q := range b.Files {
+			if !fileExistsAndIsNotADir(q) {
+				return fmt.Errorf("file not found %v for %v", q, b.Name)
+			}
+		}
+	}
+
 	var processApp bool
 	//fmt.Println("") // clear line output
 	if len(prjkts.Projects) == 0 {
@@ -746,7 +791,10 @@ func GenConf() {
 	if err != nil {
 		log.Fatalf("issue marshalling config %v", err)
 	}
-	iout.WriteOut(b, "demo.toml")
+	_, err = iout.WriteOut(b, "demo.toml")
+	if err != nil {
+		log.Fatalf("issue writing demo.toml %v", err)
+	}
 	fmt.Println("- build complete")
 	fmt.Println()
 	fmt.Println("*****************************************************")
@@ -765,11 +813,11 @@ func Convert() {
 		// not defined set default
 		path = "./build.toml"
 	}
-	path, err := filepath.Abs(path)
+	path, _ = filepath.Abs(path)
 	if !fileExistsAndIsNotADir(path) {
 		log.Fatalf("toml file not found at %v", path)
 	}
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatalf("issue reading file %v", err)
 	}
@@ -902,7 +950,10 @@ func Convert() {
 		log.Fatalf("issue marshalling config %v", err)
 	}
 	tmpOut := strings.TrimSpace(string(b))
-	iout.WriteOut([]byte(tmpOut), "migrated.toml")
+	_, err = iout.WriteOut([]byte(tmpOut), "migrated.toml")
+	if err != nil {
+		log.Fatalf("issue writing migrated.toml %v", err)
+	}
 
 	fmt.Println("- conversion complete")
 	fmt.Println()
@@ -1068,7 +1119,6 @@ func Build() error {
 			}
 			fmt.Println("DRY_RUN: Building build", byt.String())
 		}
-
 	}
 
 	return nil
@@ -1081,7 +1131,7 @@ func BumpVersion() error {
 	if !dryRun {
 		_, err := sh.Output(apps.WhichExe, "sembump")
 		if err != nil {
-			//update if not found
+			// update if not found
 			fmt.Println("Updating sembump")
 			err = sh.RunV(gocmd, "get", "-u", "github.com/colt3k/utils/sembump@latest")
 			if err != nil {
@@ -1089,7 +1139,6 @@ func BumpVersion() error {
 				return err
 			}
 		}
-
 	} else {
 		fmt.Println("DRY_RUN: " + gocmd + " get -u github.com/colt3k/utils/sembump@latest")
 	}
@@ -1148,7 +1197,7 @@ func BumpVersion() error {
 			}
 
 			// if there is more than one command for this project create a unique tag for it
-			if strings.Index(d.VersionFile, "/cmd/") > -1 {
+			if strings.Contains(d.VersionFile, "/cmd/") {
 				nVersion = d.Name + "/" + nVersion
 			}
 			if !dryRun {
@@ -1249,7 +1298,6 @@ func BuildCross() error {
 		}
 
 		cleaner(d.Name, true)
-
 	}
 	return nil
 }
@@ -1320,13 +1368,11 @@ func Release() error {
 		}
 
 		cleaner(d.Name, false)
-
 	}
 	return nil
 }
 
 func Auto() error {
-
 	mg.SerialDeps(parseToml, BumpVersion)
 
 	for _, d := range prjkts.Projects {
@@ -1405,7 +1451,6 @@ func AutoStatus() error {
 	return nil
 }
 func NoAuto() error {
-
 	mg.SerialDeps(parseToml, BumpVersion)
 
 	for _, d := range prjkts.Projects {
@@ -1637,6 +1682,9 @@ func cross(app Project) error {
 			// Copy change log
 			nm := filepath.Base(app.ChangelogFile)
 			err = sh.Copy(filepath.Join(osarchDir, nm), app.ChangelogFile)
+			if err != nil {
+				log.Printf("ERROR issue copying changelog %v", err)
+			}
 		} else {
 			fmt.Println("DRY_RUN: copying Changelog file: ", app.ChangelogFile)
 		}
@@ -1644,9 +1692,16 @@ func cross(app Project) error {
 		// Copy all prep files into osarchDir
 		var files []os.FileInfo
 
-		files, err = ioutil.ReadDir(prepDir)
+		entries, err := os.ReadDir(prepDir)
 		if err != nil {
 			log.Fatal(err)
+		}
+		for _, entry := range entries {
+			info, err := entry.Info()
+			if err != nil {
+				log.Fatal(err)
+			}
+			files = append(files, info)
 		}
 
 		if dryRun && len(files) == 0 {
@@ -1698,6 +1753,9 @@ func cross(app Project) error {
 		// Copy changelog to release dir
 		if !dryRun {
 			err = sh.Copy(filepath.Join(baseDir, app.Name+"-changes.txt"), app.ChangelogFile)
+			if err != nil {
+				log.Printf("ERROR issue copying changelogfile %v", err)
+			}
 		} else {
 			nm := filepath.Base(app.ChangelogFile)
 			fmt.Println("DRY_RUN: copying Changes file " + filepath.Join(baseDir, nm))
@@ -1716,6 +1774,7 @@ func cross(app Project) error {
 
 	return nil
 }
+
 func scpCopyAutoStatus(projectName string) error {
 	for _, k := range scpS.Instance {
 		fmt.Println("\nSCP Pull... ")
@@ -1748,7 +1807,6 @@ func scpCopyAutoStatus(projectName string) error {
 	return nil
 }
 func scpCopy(projectName string) error {
-
 	for _, k := range scpS.Instance {
 		fmt.Println("SCP... ")
 		if len(k.Host) > 0 {
@@ -1784,7 +1842,6 @@ func scpCopy(projectName string) error {
 }
 
 func scpCustomCopy(projectName string) error {
-
 	for _, k := range scpCustom.Instance {
 		fmt.Println("\nSCP Custom... ")
 
@@ -1802,7 +1859,6 @@ func scpCustomCopy(projectName string) error {
 }
 
 func sftpCopyAutoStatus(projectName string) error {
-
 	for _, k := range sftpS.Instance {
 		fmt.Println("\nSFTP Pull... ")
 		if len(k.Host) > 0 {
@@ -1814,7 +1870,6 @@ func sftpCopyAutoStatus(projectName string) error {
 			}
 
 			if foundHost {
-
 				exe := "echo get " + k.Path + projectName + ".auto" + " " + projectName + ".auto" + " | " + apps.SftpExe + " " + k.Host
 				fmt.Printf("Exe: |%v|\n", exe)
 
@@ -1833,15 +1888,15 @@ func sftpCopyAutoStatus(projectName string) error {
 
 				err := c1.Start()
 				if err != nil {
-					log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+					log.Printf("err: %v\n%v", err, errorBuffer.String())
 				}
 				err = c2.Start()
 				if err != nil {
-					log.Printf("err: %v\n%v", err, string(errorBuffer2.Bytes()))
+					log.Printf("err: %v\n%v", err, errorBuffer2.String())
 				}
 				err = c1.Wait()
 				if err != nil {
-					log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+					log.Printf("err: %v\n%v", err, errorBuffer.String())
 				}
 				err = pw.Close()
 				if err != nil {
@@ -1849,11 +1904,11 @@ func sftpCopyAutoStatus(projectName string) error {
 				}
 				err = c2.Wait()
 				if err != nil {
-					log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+					log.Printf("err :%v\n%v", err, errorBuffer2.String())
 				}
 				_, err = io.Copy(os.Stdout, &b2)
 				if err != nil {
-					log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+					log.Printf("err :%v\n%v", err, errorBuffer2.String())
 				}
 				readAndOutput(projectName + ".auto")
 				err = os.Remove(projectName + ".auto")
@@ -1869,8 +1924,8 @@ func sftpCopyAutoStatus(projectName string) error {
 	}
 	return nil
 }
-func sftpCopy(projectName string) error {
 
+func sftpCopy(projectName string) error {
 	for _, k := range sftpS.Instance {
 		fmt.Println("SFTP... ")
 		if len(k.Host) > 0 {
@@ -1906,15 +1961,15 @@ func sftpCopy(projectName string) error {
 
 					err := c1.Start()
 					if err != nil {
-						log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+						log.Printf("err: %v\n%v", err, errorBuffer.String())
 					}
 					err = c2.Start()
 					if err != nil {
-						log.Printf("err: %v\n%v", err, string(errorBuffer2.Bytes()))
+						log.Printf("err: %v\n%v", err, errorBuffer2.String())
 					}
 					err = c1.Wait()
 					if err != nil {
-						log.Printf("err: %v\n%v", err, string(errorBuffer.Bytes()))
+						log.Printf("err: %v\n%v", err, errorBuffer.String())
 					}
 					err = pw.Close()
 					if err != nil {
@@ -1922,11 +1977,11 @@ func sftpCopy(projectName string) error {
 					}
 					err = c2.Wait()
 					if err != nil {
-						log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+						log.Printf("err :%v\n%v", err, errorBuffer2.String())
 					}
 					_, err = io.Copy(os.Stdout, &b2)
 					if err != nil {
-						log.Printf("err :%v\n%v", err, string(errorBuffer2.Bytes()))
+						log.Printf("err :%v\n%v", err, errorBuffer2.String())
 					}
 				}
 			} else if !foundHost {
@@ -2013,7 +2068,6 @@ func artifactoryPush(projectName string) error {
 					// Upload all at once without hashes
 					//out(curlExe, "-u"+string(artifactoryCreds), "-T", byt.String(), artifactoryPath)
 				}
-
 			} else if foundHost && len(k.Creds) == 0 {
 				fmt.Println("  no artifactory credentials found")
 			} else if !foundHost {
@@ -2064,7 +2118,6 @@ type update struct {
 }
 
 func buildUpdateDir(u update) ([]byte, error) {
-
 	b, err := json.Marshal(u)
 	if err != nil {
 		return nil, err
@@ -2072,19 +2125,17 @@ func buildUpdateDir(u update) ([]byte, error) {
 	return b, nil
 }
 func buildDeployScript(scriptPath, name string) []byte {
-
 	f, err := os.Open(scriptPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		log.Fatal(err)
 	}
 	// replace $name with name of project
 	s := strings.Replace(string(b), "$name", name, -1)
 	return []byte(s)
-
 }
 
 // Format your go code
@@ -2254,7 +2305,6 @@ func cleaner(projectName string, dirsOnly bool) {
 
 // Setup preTask
 func setup(app Project) error {
-
 	mg.SerialDeps(parseToml)
 	fmt.Println("  retrieve version")
 	ver := version(app.VersionFile)
@@ -2295,7 +2345,6 @@ func currentPath() string {
 	return cur
 }
 func version(versionFile string) string {
-
 	ver, err := sh.Output("cat", versionFile)
 	if err != nil {
 		log.Println(err)
@@ -2305,7 +2354,6 @@ func version(versionFile string) string {
 }
 
 func readAndOutput(targetFile string) string {
-
 	content, err := sh.Output("cat", targetFile)
 	if err != nil {
 		log.Println(err)
@@ -2315,7 +2363,6 @@ func readAndOutput(targetFile string) string {
 }
 
 func gitCommitHash() string {
-
 	gitCommit := hash()
 
 	gitCommit += gitStatus()
@@ -2353,7 +2400,6 @@ func loadArtifactoryCreds(path string) []byte {
 }
 
 func convertInterfaceArToStringAr(data []interface{}) []string {
-
 	tmp := make([]string, 0)
 	for _, d := range data {
 		tmp = append(tmp, d.(string))
