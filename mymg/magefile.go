@@ -253,6 +253,7 @@ func setupArtifactory(props map[string]interface{}) error {
 	config.Artifactory = arts
 	return nil
 }
+
 func setupProjects(props map[string]interface{}) error {
 	appMap := props["project"]
 	if appMap == nil {
@@ -396,6 +397,7 @@ func parseTargets() error {
 
 	return nil
 }
+
 func parseToml() error {
 	var err error
 
