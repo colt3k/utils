@@ -45,8 +45,9 @@ type Client struct {
 	TlsHandshakeTimeout   time.Duration
 	ResponseHeaderTimeout time.Duration
 	//ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
-	HttpClientRequestTimeout time.Duration
-	disableVerifyCert        bool
+	HttpClientRequestTimeout  time.Duration
+	CheckRedirectUserLastResp bool
+	disableVerifyCert         bool
 }
 
 type Auth struct {
@@ -99,9 +100,17 @@ func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth 
 		TLSClientConfig:       tlsConfig,
 	}
 	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert {
+		var checkRedirect func(*http.Request, []*http.Request) error
+		checkRedirect = nil
+		if c.CheckRedirectUserLastResp {
+			checkRedirect = func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
-			Transport: netTransport,
+			Timeout:       c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
+			Transport:     netTransport,
+			CheckRedirect: checkRedirect,
 		}
 	}
 	// Can be used instead of all timers to perform cancel based on time set for the client
