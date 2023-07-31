@@ -55,3 +55,8 @@ func HttpClientResponseHeaderTimeout(i int) ClientOption {
 		c.ResponseHeaderTimeout = time.Duration(i) * time.Second
 	}
 }
+func CheckRedirectUserLastResp(b bool) ClientOption {
+	return func(c *Client) {
+		c.CheckRedirectUserLastResp = b
+	}
+}
