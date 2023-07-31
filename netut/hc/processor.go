@@ -18,6 +18,9 @@ type HTTPClient struct {
 	Header                  map[string]string
 	ReturnHead              bool
 	ReturnKeys              []string
+	ReturnCert              bool
+	ReUseClient             bool
+	RedirectUseLastResponse bool
 	Auth                    *Auth
 	RequestTimeout          int
 	ResponseHeaderTimeout   int
@@ -26,7 +29,6 @@ type HTTPClient struct {
 
 // NewHTTPClient initialize HTTPClient
 func NewHTTPClient(method, url string, header map[string]string, auth *Auth, settings *HTTPClientSettings) *HTTPClient {
-
 	t := new(HTTPClient)
 	t.Method = method
 	t.URL = url
@@ -37,11 +39,17 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 		t.RequestTimeout = settings.RequestTimeout
 		t.ResponseHeaderTimeout = settings.ResponseHeaderTimeout
 		t.DisableVerifyClientCert = settings.DisableVerifyClientCert
+		t.ReturnCert = settings.ReturnCert
+		t.ReUseClient = settings.ReUseClient
+		t.RedirectUseLastResponse = settings.RedirectUseLastResponse
 	} else {
 		t.ReturnHead = true
 		t.DisableVerifyClientCert = true
 		t.RequestTimeout = 120
 		t.ResponseHeaderTimeout = 120
+		t.ReturnCert = true
+		t.ReUseClient = true
+		t.RedirectUseLastResponse = false
 	}
 	return t
 }
@@ -51,9 +59,11 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 	log.Logf(log.DBGL2, "-- called httpCallData for Method %s URL: %s", h.Method, h.URL)
 	tmp := make(map[string]interface{}, 0)
 
-	if client == nil {
+	if client == nil || !h.ReUseClient {
+		//log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
 		// set to timeout after a day per request, accommodates file uploads
-		client = NewClient(HttpClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert), HttpClientResponseHeaderTimeout(h.ResponseHeaderTimeout))
+		client = NewClient(HttpClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
+			HttpClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse))
 	}
 	var resp, err = client.Fetch(h.Method, h.URL, h.Auth, h.Header, data)
 
@@ -73,6 +83,14 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 				}
 			}
 			tmp["body"] = string(body)
+			if h.ReturnCert && resp.TLS != nil {
+				certificates := resp.TLS.PeerCertificates
+				if len(certificates) > 0 {
+					// you probably want certificates[0]
+					cert := certificates[0]
+					tmp["cert"] = cert
+				}
+			}
 			return tmp, resp.StatusCode, err
 		} else if resp != nil {
 			return nil, resp.StatusCode, err
@@ -83,6 +101,14 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 	if h.ReturnHead {
 		for name, value := range resp.Header {
 			tmp[name] = value
+		}
+	}
+	if h.ReturnCert && resp.TLS != nil {
+		certificates := resp.TLS.PeerCertificates
+		if len(certificates) > 0 {
+			// you probably want certificates[0]
+			cert := certificates[0]
+			tmp["cert"] = cert
 		}
 	}
 
@@ -104,6 +130,9 @@ type HTTPClientSettings struct {
 	DisableVerifyClientCert bool
 	RequestTimeout          int
 	ResponseHeaderTimeout   int
+	ReturnCert              bool
+	ReUseClient             bool
+	RedirectUseLastResponse bool
 }
 
 func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeout, responseHeaderTimeout int) *HTTPClientSettings {
@@ -112,6 +141,9 @@ func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeo
 		DisableVerifyClientCert: disableVerifyClientCert,
 		RequestTimeout:          requestTimeout,
 		ResponseHeaderTimeout:   responseHeaderTimeout,
+		ReUseClient:             true,
+		ReturnCert:              true,
+		RedirectUseLastResponse: false,
 	}
 }
 
