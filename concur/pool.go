@@ -56,7 +56,6 @@ func NewPoolWithPause(ctx context.Context, tasks []*Task, concurrency, maxRunsPe
 
 // Run runs all work within the pool and blocks until it's finished, error returned can be used for context notice.
 func (p *Pool) Run() error {
-
 	// create concurrent processes
 	for i := 0; i < p.concurrency; i++ {
 		go p.work()

@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,8 +25,7 @@ var (
 
 func main() {
 	ctx := context.Background()
-	//ca := log.NewConsoleAppender("*")
-	//log.Modify(log.LogLevel(log.DEBUG), log.Appenders(ca))
+
 	parts := make([]*WorkObjectPart, 1000)
 
 	for i := range parts {
@@ -40,7 +40,13 @@ func main() {
 	fmt.Printf("Final Non Time Limited status: %v Seconds: %v\n", w.OverallStatus, duration.Seconds())
 
 	fmt.Println("******************************************************************************************")
-	// Create an object that has Work to be done which is Time Limited
+	// reinit array
+	parts = make([]*WorkObjectPart, 1000)
+
+	for i := range parts {
+		parts[i] = &WorkObjectPart{Name: "someval", UniqueName: "someval" + strconv.Itoa(i)}
+	}
+	// Create an object that has Work to be done which is Time-Limited
 	w2 := WorkObject{ValX: "Hello File X", Parts: parts}
 	start = time.Now()
 	processTimeLimited(ctx, &w2)
@@ -50,12 +56,9 @@ func main() {
 }
 
 func process(ctx context.Context, w *WorkObject) {
-
 	//Create Worker Pool ***************************************
-
-	var tasks []*concur.Task
-	for _, p := range w.Parts {
-
+	tasks := make([]*concur.Task, len(w.Parts))
+	for i, p := range w.Parts {
 		p := p
 		// If TaskResponseReturn is null that part will be skipped
 		task := concur.NewTask(
@@ -64,7 +67,7 @@ func process(ctx context.Context, w *WorkObject) {
 			},
 			NewReturner(w))
 
-		tasks = append(tasks, task)
+		tasks[i] = task
 	}
 	p := concur.NewPool(ctx, tasks, MaxConcurrentPerSession)
 	err := p.Run()
@@ -78,12 +81,9 @@ func process(ctx context.Context, w *WorkObject) {
 }
 
 func processTimeLimited(ctx context.Context, w *WorkObject) {
-
 	//Create Worker Pool ***************************************
-
-	var tasks []*concur.Task
-	for _, p := range w.Parts {
-
+	tasks := make([]*concur.Task, len(w.Parts))
+	for i, p := range w.Parts {
 		p := p
 		// If TaskResponseReturn is null that part will be skipped
 		task := concur.NewTask(
@@ -92,7 +92,7 @@ func processTimeLimited(ctx context.Context, w *WorkObject) {
 			},
 			NewReturner(w))
 
-		tasks = append(tasks, task)
+		tasks[i] = task
 	}
 	p := concur.NewPoolWithPause(ctx, tasks, MaxConcurrentPerSession2, PerSecond)
 	err := p.Run()
@@ -113,12 +113,12 @@ type Response interface {
 
 // WorkerResponse our concreate implementation of Response interface
 type WorkerResponse struct {
-	WorkUniqueId  string
+	WorkUniqueID  string
 	WorkStatusVal string // success, fail, skip, etc...
 }
 
 func (w *WorkerResponse) id() string {
-	return w.WorkUniqueId
+	return w.WorkUniqueID
 }
 func (w *WorkerResponse) val() string {
 	return w.WorkStatusVal
@@ -127,19 +127,20 @@ func (w *WorkerResponse) val() string {
 func worker(p *WorkObjectPart) (Response, error) {
 	//fmt.Printf("start work on %v\n", p.UniqueName)
 	// get random val
-	jitter := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(int64(jitMaxRange))
+	jitter := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(int64(jitMaxRange)) //nolint:gosec
 	time.Sleep(time.Duration(jitter) * time.Second)
 	if jitter%2 == 0 {
-		return &WorkerResponse{WorkUniqueId: p.UniqueName, WorkStatusVal: "pass"}, nil
+		return &WorkerResponse{WorkUniqueID: p.UniqueName, WorkStatusVal: "pass"}, nil
 	}
 
-	return &WorkerResponse{WorkUniqueId: p.UniqueName, WorkStatusVal: "fail"}, fmt.Errorf("some error ABC")
+	return &WorkerResponse{WorkUniqueID: p.UniqueName, WorkStatusVal: "fail"}, fmt.Errorf("some error ABC")
 }
 
 // WorkObject store our data to be processed, array of URLs to process, a file to process for some function, etc...
 type WorkObject struct {
 	ValX          string // bucket
 	Parts         []*WorkObjectPart
+	PartsMutex    sync.RWMutex
 	OverallStatus string
 	Error         error
 }
@@ -157,7 +158,7 @@ func (w *WorkObject) Close() {
 	failed := false
 	for _, j := range w.Parts {
 		//fmt.Printf("workpart %v status: %v\n", j.UniqueName, j.Status)
-		if strings.Index(j.Status, "fail") > -1 || j.Error != nil {
+		if strings.Contains(j.Status, "fail") || j.Error != nil {
 			w.OverallStatus = "fail"
 			failed = true
 		}
@@ -180,17 +181,31 @@ type Returner struct {
 
 // ProcessResponse set worker response on our original work object
 func (r *Returner) ProcessResponse(i interface{}, e error) {
+	completeCount := 0
+	failCount := 0
+	successCount := 0
 	if i != nil {
 		response := i.(*WorkerResponse)
-		id := response.WorkUniqueId
+		id := response.WorkUniqueID
 		val := response.WorkStatusVal
-		for i, j := range r.ToWorkObject.Parts {
+		r.ToWorkObject.PartsMutex.Lock()
+		for x, j := range r.ToWorkObject.Parts {
 			if j.UniqueName == id {
-				r.ToWorkObject.Parts[i].Status = val
+				r.ToWorkObject.Parts[x].Status = val
 				if e != nil {
-					r.ToWorkObject.Parts[i].Error = e
+					r.ToWorkObject.Parts[x].Error = e
+				}
+			}
+			if len(strings.TrimSpace(j.Status)) > 0 {
+				completeCount++
+				if j.Status == "pass" {
+					successCount++
+				} else {
+					failCount++
 				}
 			}
 		}
+		r.ToWorkObject.PartsMutex.Unlock()
+		log.Logf(log.INFO, "%v of %v complete (success %v, fail %v)", completeCount, len(r.ToWorkObject.Parts), successCount, failCount)
 	}
 }
