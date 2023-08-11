@@ -25,14 +25,14 @@ import (
 )
 
 var (
-	aesKeyLength = 32               // double of the SALT
+	aesKeyLength = 32 // double of the SALT
 )
 
-//AES store variables for encryption
+// AES store variables for encryption
 type AES struct {
-	plaintext      string
-	cipherText     []byte
-	key            []byte
+	plaintext  string
+	cipherText []byte
+	key        []byte
 }
 
 func New(plaintext *string, cipherText *[]byte, key *[]byte) *AES {
@@ -55,18 +55,17 @@ func (a *AES) Validate() bool {
 	return false
 }
 
-//Encrypt interface method for encryption
+// Encrypt interface method for encryption
 func (a *AES) Encrypt() []byte {
 	return aesCrypt(a, a.key)
 }
 
-//Decrypt interface method for decryption
+// Decrypt interface method for decryption
 func (a *AES) Decrypt() []byte {
 	return aesDecrypt(a, a.key)
 }
 
 func aesCrypt(a *AES, derivedKey []byte) []byte {
-
 	// Now we need to extract AES key and IV from newly derived key
 	aesKey2 := derivedKey[0:16]
 	aesIv2 := derivedKey[16:32]
@@ -99,7 +98,6 @@ func aesCrypt(a *AES, derivedKey []byte) []byte {
 }
 
 func aesDecrypt(a *AES, derivedKey []byte) []byte {
-
 	// Now we need to extract AES key and IV from newly derived key
 	aesKey2 := derivedKey[0:16]
 	aesIv2 := derivedKey[16:32]
@@ -134,11 +132,11 @@ func addPadding(msg []byte) []byte {
 	}
 	cpadding := make([]rune, padSize)
 	for i := range cpadding {
-		cpadding[i]=rune(padSize)
+		cpadding[i] = rune(padSize)
 	}
 	padding := []byte(string(cpadding))
 	fmt.Printf("- Padding Size: %v\n", padSize)
-	fmt.Printf("- Padding in hex: %v\n",encode.Encode(padding, encodeenum.Hex))
+	fmt.Printf("- Padding in hex: %v\n", encode.Encode(padding, encodeenum.Hex))
 	b := bytes.NewBuffer(msg)
 	b.Write(padding)
 
@@ -150,7 +148,7 @@ func removePadding(pmsg []byte) []byte {
 	var msg []byte
 
 	valid := true
-	if len(pmsg) % AES_BLOCK_SIZE_BYTES != 0 {
+	if len(pmsg)%AES_BLOCK_SIZE_BYTES != 0 {
 		valid = false
 	}
 	padsize := int(pmsg[len(pmsg)-1])
@@ -159,19 +157,19 @@ func removePadding(pmsg []byte) []byte {
 	}
 	fmt.Printf("- Padding Size: %v\n", padsize)
 
-	for i := len(pmsg) - 1 ; i > len(pmsg) - padsize; i = i - 1 {
+	for i := len(pmsg) - 1; i > len(pmsg)-padsize; i = i - 1 {
 		if int(pmsg[i]) != padsize {
 			valid = false
 		}
 	}
 
 	if valid {
-		msg = pmsg[:len(pmsg) - padsize]
+		msg = pmsg[:len(pmsg)-padsize]
 		fmt.Printf("-text without padding in hex: %v\n", encode.Encode(msg, encodeenum.Hex))
 	}
 	return msg
 }
 
-func floorMod(a, b int)	 int {
-	return (a % b + b) %b
+func floorMod(a, b int) int {
+	return (a%b + b) % b
 }

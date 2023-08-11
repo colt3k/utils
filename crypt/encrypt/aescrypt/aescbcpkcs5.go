@@ -79,7 +79,6 @@ func (a *AES) Decrypt() []byte {
 }
 
 func aesCrypt(a *AES, derivedKey []byte) []byte {
-
 	start := time.Now()
 	// Now we need to extract AES key and IV from newly derived key
 	aesKey2 := derivedKey[0:16]
@@ -104,9 +103,7 @@ func aesCrypt(a *AES, derivedKey []byte) []byte {
 	encMode.CryptBlocks(crypted, content)
 	elapsed := time.Since(start)
 	log.Logf(log.DEBUG, "Execution took %s", elapsed)
-
 	return crypted
-
 }
 
 func aesDecrypt(a *AES, derivedKey []byte) []byte {
