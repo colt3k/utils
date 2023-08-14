@@ -2,10 +2,10 @@ module github.com/colt3k/utils/concur
 
 go 1.17
 
-require github.com/colt3k/nglog v0.0.26
+require github.com/colt3k/nglog v0.0.27
 
 require (
-	github.com/colt3k/utils/archive v0.0.8 // indirect
+	github.com/colt3k/utils/archive v0.0.9 // indirect
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
