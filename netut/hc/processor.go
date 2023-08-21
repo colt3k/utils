@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var client *Client
@@ -24,6 +25,11 @@ type HTTPClient struct {
 	Auth                    *Auth
 	RequestTimeout          int
 	ResponseHeaderTimeout   int
+	DialTimeout             int
+	DialKeepAliveTimeout    int
+	MaxIdleConnections      int
+	IdleConnectionTimeout   int
+	TLSHandshakeTimeout     int
 	DisableVerifyClientCert bool
 }
 
@@ -42,14 +48,44 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 		t.ReturnCert = settings.ReturnCert
 		t.ReUseClient = settings.ReUseClient
 		t.RedirectUseLastResponse = settings.RedirectUseLastResponse
+		if settings.DialTimeout == 0 {
+			t.DialTimeout = 30
+		} else {
+			t.DialTimeout = settings.DialTimeout
+		}
+		if settings.DialKeepAliveTimeout == 0 {
+			t.DialKeepAliveTimeout = 30
+		} else {
+			t.DialKeepAliveTimeout = settings.DialKeepAliveTimeout
+		}
+		if settings.MaxIdleConnections == 0 {
+			t.MaxIdleConnections = 100
+		} else {
+			t.MaxIdleConnections = settings.MaxIdleConnections
+		}
+		if settings.IdleConnectionTimeout == 0 {
+			t.IdleConnectionTimeout = 90
+		} else {
+			t.IdleConnectionTimeout = settings.IdleConnectionTimeout
+		}
+		if settings.TLSHandshakeTimeout == 0 {
+			t.TLSHandshakeTimeout = 10
+		} else {
+			t.TLSHandshakeTimeout = settings.TLSHandshakeTimeout
+		}
 	} else {
 		t.ReturnHead = true
 		t.DisableVerifyClientCert = true
-		t.RequestTimeout = 120
-		t.ResponseHeaderTimeout = 120
+		t.RequestTimeout = 3600
+		t.ResponseHeaderTimeout = 3600
 		t.ReturnCert = true
 		t.ReUseClient = true
 		t.RedirectUseLastResponse = false
+		t.DialTimeout = 30
+		t.DialKeepAliveTimeout = 30
+		t.MaxIdleConnections = 100
+		t.IdleConnectionTimeout = 90
+		t.TLSHandshakeTimeout = 10
 	}
 	return t
 }
@@ -63,9 +99,14 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 		//log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
 		// set to timeout after a day per request, accommodates file uploads
 		client = NewClient(HttpClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
-			HttpClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse))
+			HttpClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
+			DialTimeout(h.DialTimeout), DialKeepAliveTimeout(h.DialKeepAliveTimeout), MaxIdleConnections(h.MaxIdleConnections),
+			IdleConnectionTimeout(h.IdleConnectionTimeout), TLSHandshakeTimeout(h.TLSHandshakeTimeout))
 	}
+	t := time.Now()
+	log.Logf(log.DBGL3, "Start Fetch %v", t.Format(time.RFC1123))
 	var resp, err = client.Fetch(h.Method, h.URL, h.Auth, h.Header, data)
+	log.Logf(log.DBGL3, "Post Fetch %v", time.Since(t))
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -133,6 +174,11 @@ type HTTPClientSettings struct {
 	ReturnCert              bool
 	ReUseClient             bool
 	RedirectUseLastResponse bool
+	DialTimeout             int
+	DialKeepAliveTimeout    int
+	MaxIdleConnections      int
+	IdleConnectionTimeout   int
+	TLSHandshakeTimeout     int
 }
 
 func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeout, responseHeaderTimeout int) *HTTPClientSettings {
