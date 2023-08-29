@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -42,10 +41,10 @@ type Client struct {
 	DialKeepAliveTimeout  time.Duration
 	MaxIdleConnections    int
 	IdleConnTimeout       time.Duration
-	TlsHandshakeTimeout   time.Duration
+	TLSHandshakeTimeout   time.Duration
 	ResponseHeaderTimeout time.Duration
 	//ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
-	HttpClientRequestTimeout  time.Duration
+	HTTPClientRequestTimeout  time.Duration
 	CheckRedirectUserLastResp bool
 	disableVerifyCert         bool
 }
@@ -66,10 +65,10 @@ func NewClient(opts ...ClientOption) *Client {
 	t.DialKeepAliveTimeout = 30 * time.Second
 	t.MaxIdleConnections = 100
 	t.IdleConnTimeout = 90 * time.Second
-	t.TlsHandshakeTimeout = 10 * time.Second
+	t.TLSHandshakeTimeout = 10 * time.Second
 	t.ResponseHeaderTimeout = 10 * time.Second
 	//t.ExpectContinueTimeout = 1 * time.Second
-	t.HttpClientRequestTimeout = 30 * time.Second
+	t.HTTPClientRequestTimeout = 30 * time.Second
 
 	for _, opt := range opts {
 		opt(t)
@@ -94,7 +93,7 @@ func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth 
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
-		TLSHandshakeTimeout: c.TlsHandshakeTimeout, // time spent performing the TLS handshake
+		TLSHandshakeTimeout: c.TLSHandshakeTimeout, // time spent performing the TLS handshake
 		//ExpectContinueTimeout: c.ExpectContinueTimeout, //time client will wait between sending request headers and receiving the go-ahead to send the body
 		ResponseHeaderTimeout: c.ResponseHeaderTimeout, //time spent reading the headers of the response
 		TLSClientConfig:       tlsConfig,
@@ -108,7 +107,7 @@ func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth 
 			}
 		}
 		c.httpClient = &http.Client{
-			Timeout:       c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
+			Timeout:       c.HTTPClientRequestTimeout, //entire exchange, from Dial to reading the body
 			Transport:     netTransport,
 			CheckRedirect: checkRedirect,
 		}
@@ -161,9 +160,8 @@ func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]strin
 	return c.FetchTLSWithContext(context.Background(), method, url, auth, header, body, serverCAPath, cert)
 }
 func (c *Client) FetchTLSWithContext(ctx context.Context, method, url string, auth Auth, header map[string]string, body io.Reader, serverCAPath string, cert ClientCert) (*http.Response, error) {
-
 	cp, _ := x509.SystemCertPool()
-	data, _ := ioutil.ReadFile(serverCAPath)
+	data, _ := os.ReadFile(serverCAPath)
 	cp.AppendCertsFromPEM(data)
 
 	config := &tls.Config{
@@ -183,13 +181,13 @@ func (c *Client) FetchTLSWithContext(ctx context.Context, method, url string, au
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
-		TLSHandshakeTimeout: c.TlsHandshakeTimeout,
+		TLSHandshakeTimeout: c.TLSHandshakeTimeout,
 		//ExpectContinueTimeout: c.ExpectContinueTimeout,
 		TLSClientConfig: config,
 	}
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout,
+			Timeout:   c.HTTPClientRequestTimeout,
 			Transport: netTransport,
 		}
 	}
@@ -228,7 +226,7 @@ func (c *Client) ProxiedClient() *http.Client {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
-	netTransport := &http.Transport{}
+	var netTransport *http.Transport
 	if len(proxy) > 0 {
 		proxyURL, _ := url.Parse(proxy)
 		netTransport = &http.Transport{
@@ -239,7 +237,7 @@ func (c *Client) ProxiedClient() *http.Client {
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
-			TLSHandshakeTimeout: c.TlsHandshakeTimeout,
+			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
 			//ExpectContinueTimeout: c.ExpectContinueTimeout,
 			Proxy:           http.ProxyURL(proxyURL),
 			TLSClientConfig: tlsConfig,
@@ -253,14 +251,14 @@ func (c *Client) ProxiedClient() *http.Client {
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
-			TLSHandshakeTimeout: c.TlsHandshakeTimeout,
+			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
 			//ExpectContinueTimeout: c.ExpectContinueTimeout,
 			TLSClientConfig: tlsConfig,
 		}
 	}
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout,
+			Timeout:   c.HTTPClientRequestTimeout,
 			Transport: netTransport,
 		}
 	}
@@ -275,7 +273,7 @@ var responseTimeout int
 func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, error) {
 	if httpClient == nil || responseTimeout != timeout {
 		responseTimeout = timeout
-		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
+		httpClient = NewClient(HTTPClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	httpClient.disableVerifyCert = disableVerifyCert
 	//log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
@@ -285,19 +283,19 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 	}
 	// 202 occurs when a http.DELETE is ran
 	if err != nil {
-		if strings.Index(err.Error(), "Client.Timeout ") > -1 {
+		if strings.Contains(err.Error(), "Client.Timeout ") {
 			return false, errors.New("site unreachable (timeout): " + name)
-		} else if strings.Index(err.Error(), "no such host") > -1 {
+		} else if strings.Contains(err.Error(), "no such host") {
 			return false, errors.New("site unreachable (no such host): " + name)
-		} else if strings.Index(err.Error(), "connection refused") > -1 {
+		} else if strings.Contains(err.Error(), "connection refused") {
 			return false, errors.New("site unreachable (connection refused): " + name)
-		} else if strings.Index(err.Error(), "connect: network is unreachable") > -1 {
+		} else if strings.Contains(err.Error(), "connect: network is unreachable") {
 			return false, errors.New("site unreachable (connect: network is unreachable): " + name)
 		}
 		return false, fmt.Errorf("site unreachable\n%+v", err.Error())
 	}
 	// Read body to buffer
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Logf(log.ERROR, "Error reading body %v", err)
 		//debug.PrintStack()

@@ -1,7 +1,7 @@
 package hc
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,13 +15,11 @@ import (
 type TestClient struct {
 }
 
-//Client create an HTTP Client
+// Client create an HTTP Client
 func (c *TestClient) Client(contype string, hostAr []string, proxy string) *[]netut.Host {
-
 	hosts := make([]netut.Host, len(hostAr))
 
 	for i, d := range hostAr {
-
 		hosts[i] = netut.Host{URL: d}
 
 		hosts[i].IP = *getHost(d)
@@ -30,7 +28,7 @@ func (c *TestClient) Client(contype string, hostAr []string, proxy string) *[]ne
 		log.Logln(log.DEBUG, "")
 		log.Logln(log.DEBUG, "*********************** TEST  ***********************")
 
-		tr := &http.Transport{}
+		var tr *http.Transport
 		if len(strings.TrimSpace(proxy)) > 0 {
 			proxyURL, _ := url.Parse(proxy)
 
@@ -40,33 +38,40 @@ func (c *TestClient) Client(contype string, hostAr []string, proxy string) *[]ne
 				DisableCompression: true,
 				Proxy:              http.ProxyURL(proxyURL),
 			}
-
 		} else {
-
 			tr = &http.Transport{
 				MaxIdleConns:       10,
 				IdleConnTimeout:    15 * time.Second,
 				DisableCompression: true,
 			}
-
 		}
 
-		client := &http.Client{Transport: tr}
+		tClient := &http.Client{Transport: tr}
 
-		resp, err := client.Get(hosts[i].URL)
-		if resp != nil {
-			defer resp.Body.Close()
-		}
+		resp, err := tClient.Get(hosts[i].URL)
 		if err != nil {
 			log.Logln(log.DEBUG, "Failed to resolve address: ", d, " on ", contype)
 			hosts[i].Pass = false
+			if resp != nil {
+				err2 := resp.Body.Close()
+				if err2 != nil {
+					log.Logf(log.ERROR, "issue closing body %v", err2)
+				}
+			}
 			continue
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		var body []byte
+		body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Logf(log.ERROR, "issue reading body %v", err)
+		}
 
 		log.Logln(log.DEBUG, "Reply from Server: ", d, " Response: ", string(body))
 		hosts[i].Pass = true
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 	return &hosts
 }

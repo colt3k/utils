@@ -31,6 +31,7 @@ type HTTPClient struct {
 	IdleConnectionTimeout   int
 	TLSHandshakeTimeout     int
 	DisableVerifyClientCert bool
+	CatchAllErrStatus       int
 }
 
 // NewHTTPClient initialize HTTPClient
@@ -73,6 +74,9 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 		} else {
 			t.TLSHandshakeTimeout = settings.TLSHandshakeTimeout
 		}
+		if settings.CatchAllErrStatus == 0 {
+			t.CatchAllErrStatus = 1000
+		}
 	} else {
 		t.ReturnHead = true
 		t.DisableVerifyClientCert = true
@@ -86,6 +90,7 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 		t.MaxIdleConnections = 100
 		t.IdleConnectionTimeout = 90
 		t.TLSHandshakeTimeout = 10
+		t.CatchAllErrStatus = 1000
 	}
 	return t
 }
@@ -93,13 +98,13 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 // Process method on HTTPCall object, pass in reader
 func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error) {
 	log.Logf(log.DBGL2, "-- called httpCallData for Method %s URL: %s", h.Method, h.URL)
-	tmp := make(map[string]interface{}, 0)
+	tmp := make(map[string]interface{})
 
 	if client == nil || !h.ReUseClient {
 		//log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
 		// set to timeout after a day per request, accommodates file uploads
-		client = NewClient(HttpClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
-			HttpClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
+		client = NewClient(HTTPClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
+			HTTPClientRequestTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
 			DialTimeout(h.DialTimeout), DialKeepAliveTimeout(h.DialKeepAliveTimeout), MaxIdleConnections(h.MaxIdleConnections),
 			IdleConnectionTimeout(h.IdleConnectionTimeout), TLSHandshakeTimeout(h.TLSHandshakeTimeout))
 	}
@@ -136,7 +141,7 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 		} else if resp != nil {
 			return nil, resp.StatusCode, err
 		}
-		return nil, 1000, err
+		return nil, h.CatchAllErrStatus, err
 	}
 
 	if h.ReturnHead {
@@ -159,7 +164,7 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 		if resp != nil {
 			return nil, resp.StatusCode, err
 		}
-		return nil, 1000, err
+		return nil, h.CatchAllErrStatus, err
 	}
 
 	tmp["body"] = string(body)
@@ -179,6 +184,7 @@ type HTTPClientSettings struct {
 	MaxIdleConnections      int
 	IdleConnectionTimeout   int
 	TLSHandshakeTimeout     int
+	CatchAllErrStatus       int
 }
 
 func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeout, responseHeaderTimeout int) *HTTPClientSettings {
