@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/colt3k/utils/debug"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -37,7 +37,6 @@ const (
 var ac *updater.AppConfig
 
 func CheckUpdate(appName string) bool {
-
 	var updateAvailable bool
 
 	log.Logln(log.DEBUG, "checking for update..")
@@ -59,7 +58,7 @@ func CheckUpdate(appName string) bool {
 	}
 
 	// Read body to buffer
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Logf(log.ERROR, "Error reading body %v", err)
 		debug.PrintStack()
@@ -68,20 +67,27 @@ func CheckUpdate(appName string) bool {
 
 	// Because in go lang if you read the body then any subsequent calls
 	// are unable to read the body again....
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	//log.Logln(log.INFO, "response body: ", resp.Body)
 	ac = new(updater.AppConfig)
 
-	dec := json.NewDecoder(ioutil.NopCloser(bytes.NewBuffer(body)))
-	if err := dec.Decode(&ac); err != nil {
+	dec := json.NewDecoder(io.NopCloser(bytes.NewBuffer(body)))
+	if err = dec.Decode(&ac); err != nil {
 		log.Logf(log.ERROR, "error decoding %v", err)
 		debug.PrintStack()
 		return updateAvailable
 	}
 
 	curVer, err := semver.Make(strings.TrimPrefix(version.VERSION, "v"))
+	if err != nil {
+		log.Logf(log.ERROR, "issue parsing version")
+	}
+
 	xVer, err := semver.Make(strings.TrimPrefix(ac.Version, "v"))
+	if err != nil {
+		log.Logf(log.ERROR, "issue parsing ac version")
+	}
 
 	log.Logf(log.DEBUG, "Current Version: %s, Remote Version: %s", curVer.String(), xVer.String())
 	remoteTime := time.Unix(ac.Timestamp, 0)
@@ -94,7 +100,6 @@ func CheckUpdate(appName string) bool {
 		ac.URL = defaultServerURI + appName + compressdSuffix
 		updateAvailable = true
 		return updateAvailable
-
 	} else if localTime.Before(remoteTime) { // if current app is older than remote pull, could be a roll back
 		//Check build time instead
 		ac.URL = defaultServerURI + appName + compressdSuffix

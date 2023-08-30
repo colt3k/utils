@@ -2,14 +2,13 @@ package artifactory
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/colt3k/utils/debug"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -29,9 +28,8 @@ import (
 	"github.com/colt3k/utils/updater"
 )
 
-var ac *updater.AppConfig
-
 func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool, bool) {
+	var ac *updater.AppConfig
 	test := false
 	testHosts(hosts)
 	if len(hosts) == 0 {
@@ -60,8 +58,8 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 		log.Logf(log.DEBUG, "-- attempt host %v", d.OnAvailable)
 		var base bytes.Buffer
-		var upUrl bytes.Buffer
-		var autoUrl bytes.Buffer
+		var upURL bytes.Buffer
+		var autoURL bytes.Buffer
 
 		user := []byte(d.User)
 		pass := []byte(d.PassOrToken)
@@ -70,17 +68,17 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		base.WriteString(d.Repository)
 		base.WriteString(d.Path)
 
-		upUrl.WriteString(base.String())
+		upURL.WriteString(base.String())
 		if !test {
-			upUrl.WriteString(appName + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".update")
+			upURL.WriteString(appName + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".update")
 		} else {
-			upUrl.WriteString(appName + "-linux-" + runtime.GOARCH + ".update")
+			upURL.WriteString(appName + "-linux-" + runtime.GOARCH + ".update")
 		}
-		log.Logf(log.DEBUG, "-- Update File URL: %v", upUrl.String())
+		log.Logf(log.DEBUG, "-- Update File URL: %v", upURL.String())
 
 		var updateAvailable bool
 		var compressdSuffix string
-		url := upUrl.String()
+		url := upURL.String()
 		if !test {
 			compressdSuffix = "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tgz"
 		} else {
@@ -101,7 +99,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		ac.Pass = pass
 		ac.DisableVerifyCert = d.DisableValidateCert
 
-		dec := json.NewDecoder(ioutil.NopCloser(strings.NewReader(data)))
+		dec := json.NewDecoder(io.NopCloser(strings.NewReader(data)))
 		if err = dec.Decode(&ac); err != nil {
 			log.Printf("error decoding %v\n", err)
 			debug.PrintStack()
@@ -109,10 +107,10 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 
 		// Check for Auto file and value, THIS IS OPTIONAL, ignore if not found
-		autoUrl.WriteString(base.String())
-		autoUrl.WriteString(appName + ".auto")
-		log.Logf(log.DEBUG, "-- Auto File URL: %v", autoUrl.String())
-		autoURI := autoUrl.String()
+		autoURL.WriteString(base.String())
+		autoURL.WriteString(appName + ".auto")
+		log.Logf(log.DEBUG, "-- Auto File URL: %v", autoURL.String())
+		autoURI := autoURL.String()
 		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
@@ -127,7 +125,15 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 
 		curVer, err := semver.Make(strings.TrimPrefix(version.Version, "v"))
+		if err != nil {
+			log.Logf(log.ERROR, "issue parsing version %v", err)
+			continue
+		}
 		xVer, err := semver.Make(strings.TrimPrefix(ac.Version, "v"))
+		if err != nil {
+			log.Logf(log.ERROR, "issue parsing ac version %v", err)
+			continue
+		}
 
 		log.Logf(log.DEBUG, "-- Current Version: %s, Remote Version: %s", curVer.String(), xVer.String())
 		remoteTime := time.Unix(ac.Timestamp, 0)
@@ -143,7 +149,6 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			ac.ArchiveName = appName + compressdSuffix
 			updateAvailable = true
 			return ac, updateAvailable, autoUpdate
-
 		} else if localTime.Before(remoteTime) { // if current app is older than remote pull, could be a roll back
 			//Check build time instead
 			log.Logf(log.DEBUG, "-- remote time is newer than local %v > %v", remoteTime, localTime)
@@ -164,7 +169,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 	return nil, false, false
 }
 
-func UpdateAvailableMsg() string {
+func UpdateAvailableMsg(ac *updater.AppConfig) string {
 	var buf bytes.Buffer
 	tm := time.Unix(ac.Timestamp, 0)
 	buf.WriteString("  ******************************************************************************************************\n\n")
@@ -172,7 +177,7 @@ func UpdateAvailableMsg() string {
 	buf.WriteString(fmt.Sprintf("\tDownload Here: %s\n", ac.URL))
 	chgs := pullChangeLogAndDisplay(ac)
 	if len(chgs) > 0 {
-		buf.WriteString(fmt.Sprintf("\tChanges:\n"))
+		buf.WriteString("\tChanges:\n")
 		buf.WriteString(fmt.Sprintf("%s\n", chgs))
 	}
 
@@ -182,7 +187,6 @@ func UpdateAvailableMsg() string {
 }
 
 func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question bool) bool {
-
 	/*
 		1. Pull file from archive
 			myappname-darwin-amd64/myappname
@@ -191,13 +195,13 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 	*/
 	log.Logln(log.DEBUG, "")
 	log.Logln(log.DEBUG, "**** START Update process ****")
-	if ac, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
-		s := UpdateAvailableMsg()
+	if appConfig, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
+		s := UpdateAvailableMsg(appConfig)
 		fmt.Println(s)
 		if autoUpdate {
-			downloadUpdate(ac)
+			downloadUpdate(appConfig)
 		} else if !autoUpdate && question && ques.Confirm("\nPerform Update ? ") {
-			downloadUpdate(ac)
+			downloadUpdate(appConfig)
 		} else {
 			return found
 		}
@@ -215,12 +219,12 @@ func downloadUpdate(ac *updater.AppConfig) {
 		log.Println("\n** successful download, exiting so you can restart the application **")
 		log.EnableTimestamp()
 		os.Exit(0)
-	} else {
-		// failed
-		log.DisableTimestamp()
-		log.Printf("\nupdate failed %v", ac.Issue)
-		log.EnableTimestamp()
 	}
+	// failed
+	log.DisableTimestamp()
+	log.Printf("\nupdate failed %v", ac.Issue)
+	log.EnableTimestamp()
+
 	log.Logln(log.DEBUG, "- Download Update END")
 }
 
@@ -231,7 +235,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 		log.Logf(log.DEBUG, "-- change log: %v", ac.Changelog)
 		log.Logf(log.DEBUG, "-- url used: %v", ac.BaseURL)
 		if len(ac.Changelog) > 0 {
-			httpClient := hc.NewClient(hc.HttpClientRequestTimeout(30), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
+			httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(30), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 			var err error
 			url := ac.BaseURL + "/" + ac.Changelog
 			auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
@@ -244,7 +248,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 			}
 
 			// Read body to buffer
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				debug.PrintStack()
 				log.Logf(log.ERROR, "Error reading body %v", err)
@@ -267,7 +271,7 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 func download(ac *updater.AppConfig) bool {
 	log.Logln(log.DEBUG, "- Download")
 	var success bool
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(120), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
+	httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(120), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 
 	auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
 	resp, err := httpClient.Fetch("GET", ac.URL, auth, nil, nil)
@@ -281,7 +285,7 @@ func download(ac *updater.AppConfig) bool {
 	}
 
 	// Read body to buffer
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		debug.PrintStack()
 		log.Logf(log.ERROR, "--- error reading body %v", err)
@@ -311,7 +315,7 @@ func download(ac *updater.AppConfig) bool {
 	// Validate HASH, pull file(s)
 	archivePathDir := strings.TrimSuffix(ac.ArchiveName, ".tgz")
 	sha256HashFileName := ac.Name + ".sha256"
-	validHash := validateHash(sha256HashFileName, archivePathDir, ac.Name)
+	validHash := validateHash(sha256HashFileName, archivePathDir, ac)
 	if !validHash {
 		log.Logln(log.INFO, "--- sha256 hash invalid")
 		ac.Issue = "invalid sha256 hash"
@@ -405,11 +409,11 @@ func testHosts(hosts []updater.Connection) {
 	log.Logln(log.DEBUG, "- END testHosts process")
 }
 
-func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
+func pullURLToString(url string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
 	log.Logln(log.DEBUG, "--- Pull URL Content To String")
-	httpClient := hc.NewClient(hc.HttpClientRequestTimeout(30), hc.DisableVerifyClientCert(disableVerifyCert))
+	httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(30), hc.DisableVerifyClientCert(disableVerifyCert))
 
-	resp, err := httpClient.Fetch("GET", url_, auth, nil, nil)
+	resp, err := httpClient.Fetch("GET", url, auth, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -417,32 +421,31 @@ func pullURLToString(url_ string, auth *hc.Auth, disableVerifyCert bool) (string
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%s: %v", url_, resp.Status)
+		return "", fmt.Errorf("%s: %v", url, resp.Status)
 	}
-	slurp, err := ioutil.ReadAll(resp.Body)
+	slurp, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("reading %s: %v", url_, err)
+		return "", fmt.Errorf("reading %s: %v", url, err)
 	}
 	return string(slurp), nil
 }
 
-func hash_file_md5(filePath string) (string, error) {
+func hashFileMD5(filePath string) (string, error) {
 	var returnMD5String string
 	file, err := os.Open(filePath)
 	if err != nil {
 		return returnMD5String, err
 	}
 	defer file.Close()
-	hash := md5.New()
-	if _, err := io.Copy(hash, file); err != nil {
+	hash := md5.New() //nolint:gosec
+	if _, err = io.Copy(hash, file); err != nil {
 		return returnMD5String, err
 	}
 	hashInBytes := hash.Sum(nil)[:16]
 	returnMD5String = hex.EncodeToString(hashInBytes)
 	return returnMD5String, nil
-
 }
-func validateHash(hashFileName, archivePathDir, appName string) bool {
+func validateHash(hashFileName, archivePathDir string, ac *updater.AppConfig) bool {
 	log.Logln(log.DEBUG, "- Validate Hash")
 	log.Logf(log.DEBUG, "-- extracting hash file %v", hashFileName)
 	cmd := "tar xvf " + ac.ArchiveName + " " + archivePathDir + "/" + hashFileName
@@ -453,7 +456,7 @@ func validateHash(hashFileName, archivePathDir, appName string) bool {
 	}
 
 	// Read file contents
-	hashContent, err := ioutil.ReadFile(archivePathDir + "/" + hashFileName)
+	hashContent, err := os.ReadFile(archivePathDir + "/" + hashFileName)
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to read hash: %s", err.Error()))
 		return false
@@ -461,9 +464,9 @@ func validateHash(hashFileName, archivePathDir, appName string) bool {
 	// create hash from downloaded application
 	var hash string
 	if strings.HasSuffix(hashFileName, ".md5") {
-		hash, err = hash_file_md5(archivePathDir + "/" + appName)
+		hash, err = hashFileMD5(archivePathDir + "/" + ac.Name)
 	} else if strings.HasSuffix(hashFileName, ".sha256") {
-		hash, err = hash_file_sha256(archivePathDir + "/" + appName)
+		hash, err = hashFileSHA256(archivePathDir + "/" + ac.Name)
 	}
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to create hash from application: %s", err.Error()))
@@ -473,13 +476,12 @@ func validateHash(hashFileName, archivePathDir, appName string) bool {
 	if string(hashContent) == hash {
 		log.Logln(log.INFO, "-- VALID hash")
 		return true
-	} else {
-		log.Logf(log.INFO, "-- INVALID hash %s", hash)
 	}
+	log.Logf(log.INFO, "-- INVALID hash %s", hash)
 	log.Logln(log.DEBUG, "- Validate Hash END")
 	return false
 }
-func hash_file_sha256(filePath string) (string, error) {
+func hashFileSHA256(filePath string) (string, error) {
 	var returnSHA256String string
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -487,11 +489,10 @@ func hash_file_sha256(filePath string) (string, error) {
 	}
 	defer file.Close()
 	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
+	if _, err = io.Copy(hash, file); err != nil {
 		return returnSHA256String, err
 	}
 	hashInBytes := hash.Sum(nil)[:32]
 	returnSHA256String = hex.EncodeToString(hashInBytes)
 	return returnSHA256String, nil
-
 }
