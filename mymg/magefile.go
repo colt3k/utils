@@ -468,20 +468,20 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
-	for _, b := range scpS.Instance {
-		if !fileExistsAndIsNotADir(b.Path) {
-			return fmt.Errorf("scp path not found %v", b.Path)
-		}
-	}
+	//for _, b := range scpS.Instance {
+	//	if !fileExistsAndIsNotADir(b.Path) {
+	//		return fmt.Errorf("scp path not found %v", b.Path)
+	//	}
+	//}
 	err = setupCustomScps(props)
 	if err != nil {
 		return err
 	}
-	for _, b := range scpCustom.Instance {
-		if !fileExistsAndIsNotADir(b.Exec) {
-			return fmt.Errorf("scp-custom exec path not found %v", b.Exec)
-		}
-	}
+	//for _, b := range scpCustom.Instance {
+	//	if !fileExistsAndIsNotADir(b.Exec) {
+	//		return fmt.Errorf("scp-custom exec path not found %v", b.Exec)
+	//	}
+	//}
 
 	err = setupSftps(props)
 	if err != nil {
