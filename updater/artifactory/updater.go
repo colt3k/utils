@@ -305,7 +305,12 @@ func download(ac *updater.AppConfig) bool {
 	// Pull executable from archive 'tgz'
 	log.Logf(log.DEBUG, "-- extracting executable %v", ac.Name)
 	cmd := "tar xvf " + ac.ArchiveName + " " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name
-	_, err = exec.Command("sh", "-c", cmd).Output()
+	switch runtime.GOOS {
+	case "windows":
+		_, err = exec.Command("cmd", "/C", cmd).Output()
+	default: //Mac & Linux
+		_, err = exec.Command("sh", "-c", cmd).Output()
+	}
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s", cmd, err.Error()))
 		ac.Issue = "failed to extract"
@@ -334,7 +339,13 @@ func download(ac *updater.AppConfig) bool {
 		return success
 	}
 	cmd = "mv " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
-	_, err = exec.Command("sh", "-c", cmd).Output()
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "move " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
+		_, err = exec.Command("cmd", "/C", cmd).Output()
+	default: //Mac & Linux
+		_, err = exec.Command("sh", "-c", cmd).Output()
+	}
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s", cmd, err.Error()))
 		ac.Issue = "failed to move/replace application"
@@ -343,7 +354,13 @@ func download(ac *updater.AppConfig) bool {
 
 	// Clean up
 	cmd = "rm -rf " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "*"
-	_, err = exec.Command("sh", "-c", cmd).Output()
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "rmdir /s /q " + strings.TrimSuffix(ac.ArchiveName, ".tgz")
+		_, err = exec.Command("cmd", "/C", cmd).Output()
+	default: //Mac & Linux
+		_, err = exec.Command("sh", "-c", cmd).Output()
+	}
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s", cmd, err.Error()))
 		ac.Issue = "failed to clean archive"
@@ -449,7 +466,13 @@ func validateHash(hashFileName, archivePathDir string, ac *updater.AppConfig) bo
 	log.Logln(log.DEBUG, "- Validate Hash")
 	log.Logf(log.DEBUG, "-- extracting hash file %v", hashFileName)
 	cmd := "tar xvf " + ac.ArchiveName + " " + archivePathDir + "/" + hashFileName
-	_, err := exec.Command("sh", "-c", cmd).Output()
+	var err error
+	switch runtime.GOOS {
+	case "windows":
+		_, err = exec.Command("cmd", "/C", cmd).Output()
+	default: //Mac & Linux
+		_, err = exec.Command("sh", "-c", cmd).Output()
+	}
 	if err != nil {
 		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s", cmd, err.Error()))
 		return false
