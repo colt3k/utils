@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/colt3k/utils/debug"
+	"github.com/colt3k/utils/file"
 	"io"
 	"net/http"
 	"os"
@@ -341,7 +342,7 @@ func download(ac *updater.AppConfig) bool {
 	cmd = "mv " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
 	switch runtime.GOOS {
 	case "windows":
-		cmd = "move " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
+		cmd = "move /y " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + file.PathSeparator() + ac.Name + " " + s
 		_, err = exec.Command("cmd", "/C", cmd).Output()
 	default: //Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
