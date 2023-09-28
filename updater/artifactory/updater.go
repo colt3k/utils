@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -339,16 +340,21 @@ func download(ac *updater.AppConfig) bool {
 		ac.Issue = "not a packaged executable"
 		return success
 	}
+	var output []byte
 	cmd = "mv " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + "/" + ac.Name + " " + s
 	switch runtime.GOOS {
 	case "windows":
-		cmd = "move /y " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + file.PathSeparator() + ac.Name + " " + s
-		_, err = exec.Command("cmd", "/C", cmd).Output()
+		// move, copy robocopy; can't replace file while running on windows it's locked; provide notice here instead
+		cmd = "move /y " + strings.TrimSuffix(ac.ArchiveName, ".tgz") + file.PathSeparator() + ac.Name + " " + filepath.Dir(s) + file.PathSeparator() + ac.Name + ".new"
+		output, err = exec.Command("cmd", "/C", cmd).CombinedOutput()
+		if err == nil {
+			log.Logf(log.WARN, "MANUAL: Due to Windows locking the new version is placed here %v, remove the original file and rename this by removing .new", filepath.Dir(s)+file.PathSeparator()+ac.Name+".new")
+		}
 	default: //Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
 	}
 	if err != nil {
-		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s", cmd, err.Error()))
+		log.Logln(log.WARN, fmt.Sprintf("--- failed to execute command: %s %s\nOutput: |%s|", cmd, err.Error(), string(output)))
 		ac.Issue = "failed to move/replace application"
 		return success
 	}
