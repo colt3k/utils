@@ -220,7 +220,13 @@ func downloadUpdate(ac *updater.AppConfig) {
 		log.DisableTimestamp()
 		log.Println("\n** successful download, exiting so you can restart the application **")
 		log.EnableTimestamp()
-		os.Exit(0)
+		switch runtime.GOOS {
+		case "windows":
+			return
+		default: //Mac & Linux
+			os.Exit(0)
+		}
+
 	}
 	// failed
 	log.DisableTimestamp()
