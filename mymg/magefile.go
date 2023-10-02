@@ -326,6 +326,24 @@ func setupProjects(props map[string]interface{}) error {
 				return err
 			}
 		}
+		for j, k := range d.WindowsFiles {
+			prjkts.Projects[i].WindowsFiles[j], err = filepath.Abs(k)
+			if err != nil {
+				return err
+			}
+		}
+		for j, k := range d.LinuxFiles {
+			prjkts.Projects[i].LinuxFiles[j], err = filepath.Abs(k)
+			if err != nil {
+				return err
+			}
+		}
+		for j, k := range d.MacFiles {
+			prjkts.Projects[i].MacFiles[j], err = filepath.Abs(k)
+			if err != nil {
+				return err
+			}
+		}
 
 		for j, k := range d.OSDeployScripts {
 			prjkts.Projects[i].OSDeployScripts[j], err = filepath.Abs(k)
@@ -522,6 +540,21 @@ func parseToml() error {
 				return fmt.Errorf("file not found %v for %v", q, b.Name)
 			}
 		}
+		for _, q := range b.WindowsFiles {
+			if !fileExistsAndIsNotADir(q) {
+				return fmt.Errorf("windows file not found %v for %v", q, b.Name)
+			}
+		}
+		for _, q := range b.LinuxFiles {
+			if !fileExistsAndIsNotADir(q) {
+				return fmt.Errorf("linux file not found %v for %v", q, b.Name)
+			}
+		}
+		for _, q := range b.MacFiles {
+			if !fileExistsAndIsNotADir(q) {
+				return fmt.Errorf("mac file not found %v for %v", q, b.Name)
+			}
+		}
 	}
 
 	var processApp bool
@@ -611,6 +644,9 @@ type application struct {
 	VersionFile       string   `json:"version"`
 	ChangelogFile     string   `json:"changelog"`
 	Files             []string `json:"files"`
+	WindowsFiles      []string `json:"windowsfiles"`
+	LinuxFiles        []string `json:"linuxfiles"`
+	MacFiles          []string `json:"macfiles"`
 	OverrideVariables string   `json:"override_variables"`
 	YNPrompt          string   `json:"ynprompt"`
 }
@@ -731,6 +767,9 @@ type Project struct {
 	ChangelogFile     string   `json:"changelog" toml:"changelog"`
 	ChangelogFullFile string   `json:"changelogfull" toml:"changelogfull"`
 	Files             []string `json:"files" toml:"files"`
+	WindowsFiles      []string `json:"windowsfiles" toml:"windowsfiles"`
+	LinuxFiles        []string `json:"linuxfiles" toml:"linuxfiles"`
+	MacFiles          []string `json:"macfiles" toml:"macfiles"`
 	OverrideVariables string   `json:"override_variables" toml:"override_variables,omitempty"`
 	YNPrompt          string   `json:"ynprompt" toml:"ynprompt,omitempty"`
 }
@@ -787,6 +826,7 @@ func GenConf() {
 	c.Project = []Project{{Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
 		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
+		WindowsFiles: []string{}, LinuxFiles: []string{}, MacFiles: []string{},
 		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}
 
 	b, err := toml.Marshal(c)
@@ -1495,7 +1535,6 @@ func NoAuto() error {
 
 // Build for all defined Architectures
 func cross(app Project) error {
-
 	fmt.Println("CrossBuilding...")
 	gocmd := mg.GoCmd()
 
@@ -1624,15 +1663,9 @@ func cross(app Project) error {
 		} else {
 			fmt.Println("DRY_RUN: copying " + executableName + " to " + filepath.Join(osarchDir, name))
 		}
-		scriptContent := buildDeployScript(app.OSDeployScripts[i], app.Name)
-
-		//${release_dir}/deploy_${goosarch[0]}.sh
-		var scriptName string
-		if goos != "windows" {
-			scriptName = "deploy_" + goos + ".sh"
-		} else {
-			scriptName = "deploy_" + goos + ".txt"
-		}
+		scriptName := filepath.Base(app.OSDeployScripts[i])
+		scriptContent := buildDeployScript(app.OSDeployScripts[i])
+		fmt.Printf("Loading %v", scriptName)
 		if !dryRun {
 			_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 			if err != nil {
@@ -1641,6 +1674,49 @@ func cross(app Project) error {
 		} else {
 			fmt.Println("DRY_RUN: writing out deploy script to " + filepath.Join(osarchDir, scriptName))
 		}
+
+		switch goos {
+		case "windows":
+			for _, x := range app.WindowsFiles {
+				scriptName = filepath.Base(x)
+				scriptContent = buildDeployScript(x)
+				if !dryRun {
+					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
+					if err != nil {
+						return err
+					}
+				} else {
+					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+				}
+			}
+		case "linux":
+			for _, x := range app.LinuxFiles {
+				scriptName = filepath.Base(x)
+				scriptContent = buildDeployScript(x)
+				if !dryRun {
+					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
+					if err != nil {
+						return err
+					}
+				} else {
+					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+				}
+			}
+		case "darwin":
+			for _, x := range app.MacFiles {
+				scriptName = filepath.Base(x)
+				scriptContent = buildDeployScript(x)
+				if !dryRun {
+					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
+					if err != nil {
+						return err
+					}
+				} else {
+					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+				}
+			}
+		}
+
 		// create sha files
 		if !dryRun {
 			md5sum, err := sh.Output(apps.MD5Exe, executableName)
@@ -2126,7 +2202,7 @@ func buildUpdateDir(u update) ([]byte, error) {
 	}
 	return b, nil
 }
-func buildDeployScript(scriptPath, name string) []byte {
+func buildDeployScript(scriptPath string) []byte {
 	f, err := os.Open(scriptPath)
 	if err != nil {
 		log.Fatal(err)
@@ -2136,8 +2212,8 @@ func buildDeployScript(scriptPath, name string) []byte {
 		log.Fatal(err)
 	}
 	// replace $name with name of project
-	s := strings.Replace(string(b), "$name", name, -1)
-	return []byte(s)
+	//s := strings.Replace(string(b), "$name", name, -1)
+	return b
 }
 
 // Format your go code
