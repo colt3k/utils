@@ -104,7 +104,7 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 		//log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
 		// set to timeout after a day per request, accommodates file uploads
 		client = NewClient(HTTPClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
-			HTTPClientRequestTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
+			HTTPClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
 			DialTimeout(h.DialTimeout), DialKeepAliveTimeout(h.DialKeepAliveTimeout), MaxIdleConnections(h.MaxIdleConnections),
 			IdleConnectionTimeout(h.IdleConnectionTimeout), TLSHandshakeTimeout(h.TLSHandshakeTimeout))
 	}
