@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/colt3k/nglog v0.0.27
 	github.com/colt3k/utils/mathut v0.0.2
-	github.com/colt3k/utils/osut v0.0.3
+	github.com/colt3k/utils/osut v0.0.4
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 )
