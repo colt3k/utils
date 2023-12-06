@@ -1870,6 +1870,7 @@ func scpCopyAutoStatus(projectName string) error {
 				fmt.Println("  scp'ing ", k.Path+projectName+".auto")
 				fmt.Println("    to ", projectName+".auto")
 				out(apps.ScpExe, k.Path+projectName+".auto", projectName+".auto")
+				fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
 				readAndOutput(projectName + ".auto")
 				err := os.Remove(projectName + ".auto")
 				if err != nil {
@@ -1988,6 +1989,8 @@ func sftpCopyAutoStatus(projectName string) error {
 				if err != nil {
 					log.Printf("err :%v\n%v", err, errorBuffer2.String())
 				}
+
+				fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
 				readAndOutput(projectName + ".auto")
 				err = os.Remove(projectName + ".auto")
 				if err != nil {
@@ -2083,6 +2086,7 @@ func artifactoryPullAutoStatus(projectName string) error {
 				creds := loadArtifactoryCreds(k.Creds)
 				//fmt.Printf("to pull: %v\n", k.Path+projectName+".auto")
 				out(apps.CurlExe, "-u"+string(creds), "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
+				fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
 				readAndOutput(projectName + ".auto")
 				err := os.Remove(projectName + ".auto")
 				if err != nil {
@@ -2432,11 +2436,14 @@ func version(versionFile string) string {
 }
 
 func readAndOutput(targetFile string) string {
+	if !exists(targetFile) {
+		fmt.Printf("file not found: %v\n", targetFile)
+	}
 	content, err := sh.Output("cat", targetFile)
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("content: ", content)
+	fmt.Printf("content: %v\n", content)
 	return content
 }
 
