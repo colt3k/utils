@@ -3,9 +3,9 @@ module github.com/colt3k/utils/mymg
 go 1.17
 
 require (
-	github.com/colt3k/utils/crypt v0.0.8
+	github.com/colt3k/utils/crypt v0.0.9
 	github.com/colt3k/utils/io v0.0.17
-	github.com/colt3k/utils/ques v0.0.2
+	github.com/colt3k/utils/ques v0.0.3
 	github.com/colt3k/utils/stringut v0.0.3
 	github.com/magefile/mage v1.15.0
 	github.com/pelletier/go-toml/v2 v2.0.6
