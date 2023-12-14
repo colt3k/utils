@@ -787,18 +787,19 @@ type Apps struct {
 	WhichExe  string `json:"whichExe" toml:"whichExe"`
 }
 
-func findApp(app string) string {
+func findApp(app string) (string, bool) {
 	if !fileExistsAndIsNotADir(app) {
 		path, err := findExec(filepath.Base(app))
 		if err != nil {
 			log.Printf("- Not Found on Path: %v\n", app)
-			return app
+			return app, false
 		}
 		log.Printf("- Not Found: %v -> Using: %v\n", app, path)
-		return path
+		return path, true
 	}
-	return app
+	return app, true
 }
+
 func GenConf() {
 	fmt.Println("- building config")
 	c := &GenConfig{}
@@ -806,18 +807,19 @@ func GenConf() {
 	c.Build.UseAltApps = "yes"
 	c.PostClean.Dirs = []string{"PREP/", "cross"}
 	c.PostClean.Files = []string{}
+
 	// Build c.Apps from found in environment and add fillers as needed
-	c.Apps.MD5Exe = findApp("/sbin/md5sum")
-	c.Apps.SHA1Exe = findApp("/usr/local/bin/sha1sum")
-	c.Apps.SHA256Exe = findApp("/usr/local/bin/sha256sum")
-	c.Apps.CurlExe = findApp("/usr/bin/curl")
-	c.Apps.CatExe = findApp("/bin/cat")
-	c.Apps.GitExe = findApp("/usr/local/bin/git")
-	c.Apps.TarExe = findApp("/usr/bin/tar")
-	c.Apps.ScpExe = findApp("/usr/bin/scp")
-	c.Apps.SftpExe = findApp("/usr/bin/sftp")
-	c.Apps.UPXExe = findApp("/usr/local/bin/upx")
-	c.Apps.WhichExe = findApp("/usr/bin/which")
+	c.Apps.MD5Exe, _ = findApp("/sbin/md5sum")
+	c.Apps.SHA1Exe, _ = findApp("/usr/local/bin/sha1sum")
+	c.Apps.SHA256Exe, _ = findApp("/usr/local/bin/sha256sum")
+	c.Apps.CurlExe, _ = findApp("/usr/bin/curl")
+	c.Apps.CatExe, _ = findApp("/bin/cat")
+	c.Apps.GitExe, _ = findApp("/usr/local/bin/git")
+	c.Apps.TarExe, _ = findApp("/usr/bin/tar")
+	c.Apps.ScpExe, _ = findApp("/usr/bin/scp")
+	c.Apps.SftpExe, _ = findApp("/usr/bin/sftp")
+	c.Apps.UPXExe, _ = findApp("/usr/local/bin/upx")
+	c.Apps.WhichExe, _ = findApp("/usr/bin/which")
 	c.SCP = []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}
 	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
 	c.SCPCustom = []ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}
@@ -878,57 +880,57 @@ func Convert() {
 	if props["md5Exe"] != nil {
 		c.Apps.MD5Exe = props["md5Exe"].(string)
 	} else {
-		c.Apps.MD5Exe = findApp("/sbin/md5sum")
+		c.Apps.MD5Exe, _ = findApp("/sbin/md5sum")
 	}
 	if props["sha1Exe"] != nil {
 		c.Apps.SHA1Exe = props["sha1Exe"].(string)
 	} else {
-		c.Apps.SHA1Exe = findApp("/usr/local/bin/sha1sum")
+		c.Apps.SHA1Exe, _ = findApp("/usr/local/bin/sha1sum")
 	}
 	if props["sha256Exe"] != nil {
 		c.Apps.SHA256Exe = props["sha256Exe"].(string)
 	} else {
-		c.Apps.SHA256Exe = findApp("/usr/local/bin/sha256sum")
+		c.Apps.SHA256Exe, _ = findApp("/usr/local/bin/sha256sum")
 	}
 	if props["curlExe"] != nil {
 		c.Apps.CurlExe = props["curlExe"].(string)
 	} else {
-		c.Apps.CurlExe = findApp("/usr/bin/curl")
+		c.Apps.CurlExe, _ = findApp("/usr/bin/curl")
 	}
 	if props["catExe"] != nil {
 		c.Apps.CatExe = props["catExe"].(string)
 	} else {
-		c.Apps.CatExe = findApp("/bin/cat")
+		c.Apps.CatExe, _ = findApp("/bin/cat")
 	}
 	if props["gitExe"] != nil {
 		c.Apps.GitExe = props["gitExe"].(string)
 	} else {
-		c.Apps.GitExe = findApp("/usr/local/bin/git")
+		c.Apps.GitExe, _ = findApp("/usr/local/bin/git")
 	}
 	if props["tarExe"] != nil {
 		c.Apps.TarExe = props["tarExe"].(string)
 	} else {
-		c.Apps.TarExe = findApp("/usr/bin/tar")
+		c.Apps.TarExe, _ = findApp("/usr/bin/tar")
 	}
 	if props["scpExe"] != nil {
 		c.Apps.ScpExe = props["scpExe"].(string)
 	} else {
-		c.Apps.ScpExe = findApp("/usr/bin/scp")
+		c.Apps.ScpExe, _ = findApp("/usr/bin/scp")
 	}
 	if props["sftpExe"] != nil {
 		c.Apps.SftpExe = props["sftpExe"].(string)
 	} else {
-		c.Apps.SftpExe = findApp("/usr/bin/sftp")
+		c.Apps.SftpExe, _ = findApp("/usr/bin/sftp")
 	}
 	if props["upxExe"] != nil {
 		c.Apps.UPXExe = props["upxExe"].(string)
 	} else {
-		c.Apps.UPXExe = findApp("/usr/local/bin/upx")
+		c.Apps.UPXExe, _ = findApp("/usr/local/bin/upx")
 	}
 	if props["whichExe"] != nil {
 		c.Apps.WhichExe = props["whichExe"].(string)
 	} else {
-		c.Apps.WhichExe = findApp("/usr/bin/which")
+		c.Apps.WhichExe, _ = findApp("/usr/bin/which")
 	}
 	fmt.Println("- Converting - SCP")
 	scps := convertOldToGenConf(props, "scp").SCP
@@ -1266,11 +1268,18 @@ func BumpVersion() error {
 				fmt.Println()
 				fmt.Println("Rebuilding CHANGELOG.md")
 				// Rebuild CHANGELOG.md d.ChangelogFullFile
-				output, err := sh.Output("chglog", "init", "-file", d.ChangelogFullFile)
-				if err != nil {
-					return err
+
+				var chglogPath string
+				var found bool
+				if chglogPath, found = findApp("chglog"); found {
+					output, err := sh.Output(chglogPath, "init", "-file", d.ChangelogFullFile)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%v", output)
+				} else {
+					fmt.Printf("chglog application not found at %v\n", chglogPath)
 				}
-				fmt.Printf("%v", output)
 			} else {
 				fmt.Println("ChangelogFullFile Not Set")
 			}
@@ -1279,11 +1288,17 @@ func BumpVersion() error {
 				fmt.Println()
 				fmt.Println("Updating CHANGES.txt")
 				// Update CHANGES.txt d.ChangelogFile
-				output, err := sh.Output("chglog", "changes", "-file", d.ChangelogFile)
-				if err != nil {
-					return err
+				var chglogPath string
+				var found bool
+				if chglogPath, found = findApp("chglog"); found {
+					output, err := sh.Output(chglogPath, "changes", "-file", d.ChangelogFile)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%v", output)
+				} else {
+					fmt.Printf("chglog application not found at %v\n", chglogPath)
 				}
-				fmt.Printf("%v", output)
 			} else {
 				fmt.Println("ChangelogFile Not Set")
 			}
