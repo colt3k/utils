@@ -3,24 +3,26 @@ module github.com/colt3k/utils/mymg
 go 1.17
 
 require (
-	github.com/colt3k/utils/crypt v0.0.9
-	github.com/colt3k/utils/io v0.0.17
-	github.com/colt3k/utils/ques v0.0.3
-	github.com/colt3k/utils/stringut v0.0.3
+	github.com/colt3k/utils/crypt v0.0.10
+	github.com/colt3k/utils/io v0.0.18
+	github.com/colt3k/utils/ques v0.0.4
+	github.com/colt3k/utils/stringut v0.0.4
 	github.com/magefile/mage v1.15.0
 	github.com/pelletier/go-toml/v2 v2.0.6
 )
 
+replace golang.org/x/net => golang.org/x/net v0.19.0 //CVE-2023-48795
+
 require (
-	github.com/colt3k/nglog v0.0.27 // indirect
+	github.com/colt3k/nglog v0.0.28 // indirect
 	github.com/colt3k/utils/archive v0.0.9 // indirect
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
-	github.com/gorilla/http v0.0.0-20180526232503-732371cf4733 // indirect
-	github.com/iancoleman/orderedmap v0.0.0-20190103220030-893c443ae36e // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/gorilla/http v1.0.0 // indirect
+	github.com/iancoleman/orderedmap v0.3.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/term v0.11.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )
