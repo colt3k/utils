@@ -71,7 +71,6 @@ Salt is a unique salt for the system this will be running on and doesn't change
 	returns as []byte of sections split by $ in order N, R, P, Salt, Derived Key
 */
 func Key(password string, params Params) ([]byte, error) {
-
 	if params.Salt == nil {
 		return nil, errSalt
 	}
