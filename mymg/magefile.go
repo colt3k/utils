@@ -8,6 +8,7 @@ import (
 	"github.com/colt3k/utils/stringut"
 	"github.com/pelletier/go-toml/v2"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -352,13 +353,35 @@ func setupProjects(props map[string]interface{}) error {
 			}
 		}
 
+		if len(d.OverrideVarFiles) > 0 {
+			// find files; if one doesn't exist throw an error
+			for j, k := range d.OverrideVarFiles {
+				prjkts.Projects[i].OverrideVarFiles[j], err = filepath.Abs(k)
+				if err != nil {
+					return err
+				}
+				if !fileExistsAndIsNotADir(prjkts.Projects[i].OverrideVarFiles[j]) {
+					fmt.Printf("\n!! One or more override_var_files NOT Found\n\t%v\n", prjkts.Projects[i].OverrideVarFiles[j])
+					os.Exit(1)
+				} else {
+					fmt.Printf("Found\n\t%v\n", prjkts.Projects[i].OverrideVarFiles[j])
+				}
+			}
+		}
 		if len(d.OverrideVariables) > 0 && !displayOnly {
 			// Split on semi-colon, create an array to store answers
 			overrides := strings.Split(d.OverrideVariables, ";")
 			overwriteValues = make([]string, 0)
-			for _, k := range overrides {
-				ans := ques.Question(k + " value ? ")
-				overwriteValues = append(overwriteValues, ans)
+			if len(d.OverrideVarFiles) > 0 && len(d.OverrideVarFiles) == len(overrides) {
+				// set answers and skip asking for each; output on cmd line to show what is being used for each
+				for _, q := range d.OverrideVarFiles {
+					overwriteValues = append(overwriteValues, readAndOutput(q))
+				}
+			} else {
+				for _, k := range overrides {
+					ans := ques.Question(k + " value ? ")
+					overwriteValues = append(overwriteValues, ans)
+				}
 			}
 			fmt.Printf("Answers: %v\n", overwriteValues)
 		}
@@ -648,6 +671,7 @@ type application struct {
 	LinuxFiles        []string `json:"linuxfiles"`
 	MacFiles          []string `json:"macfiles"`
 	OverrideVariables string   `json:"override_variables"`
+	OverrideVarFiles  []string `json:"override_var_files"`
 	YNPrompt          string   `json:"ynprompt"`
 }
 
@@ -760,6 +784,7 @@ type Project struct {
 	Enable            bool     `json:"-" toml:"-"`
 	Name              string   `json:"name" toml:"name"`
 	OSTargets         []string `json:"ostargets" toml:"ostargets"`
+	OSEnvFlags        []string `json:"os_env_flags" toml:"os_env_flags"`
 	OSDeployScripts   []string `json:"osdeployscripts" toml:"osdeployscripts"`
 	Package           string   `json:"package" toml:"package"`
 	VersionFile       string   `json:"version" toml:"version"`
@@ -770,7 +795,8 @@ type Project struct {
 	WindowsFiles      []string `json:"windowsfiles" toml:"windowsfiles"`
 	LinuxFiles        []string `json:"linuxfiles" toml:"linuxfiles"`
 	MacFiles          []string `json:"macfiles" toml:"macfiles"`
-	OverrideVariables string   `json:"override_variables" toml:"override_variables,omitempty"`
+	OverrideVariables string   `json:"override_variables" toml:"override_variables,omitempty" comment:"needs to be full repository path to variable defined semi-colon separated"`
+	OverrideVarFiles  []string `json:"override_var_files" toml:"override_var_files,omitempty" comment:"local files used to fill override variables in order"`
 	YNPrompt          string   `json:"ynprompt" toml:"ynprompt,omitempty"`
 }
 type Apps struct {
@@ -829,7 +855,7 @@ func GenConf() {
 		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
 		WindowsFiles: []string{}, LinuxFiles: []string{}, MacFiles: []string{},
-		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: ""}}
+		YNPrompt: "Did you pull the latest? (y/n), will exit on 'n'", OverrideVariables: "-X \"domain.com/projectx/util.SEED=%s\";-X \"domain.com/projectx/util.KEY=%s\""}}
 
 	b, err := toml.Marshal(c)
 	if err != nil {
@@ -1015,9 +1041,13 @@ func Display() {
 	var byt bytes.Buffer
 	for _, m := range config.Project.Projects {
 		targs := len(m.OSTargets)
+		ostargs := len(m.OSEnvFlags)
 		depScripts := len(m.OSDeployScripts)
 		if targs != depScripts {
 			byt.WriteString(fmt.Sprintf("-- In project %v ostargets and osdeployscripts count should match one for one.\n", m.Name))
+		}
+		if targs != ostargs {
+			byt.WriteString(fmt.Sprintf("-- In project %v ostargets and os_env_flags count should match one for one.\n", m.Name))
 		}
 	}
 	if byt.Len() > 0 || configMessages.Len() > 0 {
@@ -1313,20 +1343,20 @@ func BuildCross() error {
 		if !d.Enable {
 			continue
 		}
-		fmt.Println("\nSetup")
+		fmt.Println("\n** Setup")
 		err := setup(d)
 		if err != nil {
 			fmt.Println("issue setup :", err)
 		}
-		fmt.Println("Release Prep")
+		fmt.Println("\n** Release Prep")
 		// make dir PREP
-		fmt.Println("  create PREP dir")
+		fmt.Println("  - create PREP dir")
 		if err = os.MkdirAll(prepDir, 0700); err != nil && !os.IsExist(err) {
 			return fmt.Errorf("failed to create %q: %v", prepDir, err)
 		}
 
 		// loop through included files and place in PREP
-		fmt.Println("  add files to PREP")
+		fmt.Println("  - add files to PREP")
 		for _, k := range d.Files {
 			fileName := filepath.Base(k)
 			if fileName == "bash_autocomplete" {
@@ -1339,7 +1369,7 @@ func BuildCross() error {
 			if err != nil {
 				return err
 			}
-			log.Printf("copying %s to %s\n", fullFilePath, fileTarget)
+			log.Printf("    copying %s to %s\n", fullFilePath, fileTarget)
 			err = sh.Copy(fileTarget, fullFilePath)
 			if err != nil {
 				return err
@@ -1548,12 +1578,58 @@ func NoAuto() error {
 	return nil
 }
 
+func setEnvFlags(flags string, dryRun bool) error {
+	fmt.Println("  - Set Environment Vars")
+	if len(strings.TrimSpace(flags)) > 0 {
+		for _, q := range strings.Split(flags, ",") {
+			flgParts := strings.Split(q, "=")
+			p1 := strings.TrimSpace(flgParts[0])
+			p2 := strings.TrimSpace(flgParts[1])
+			if strings.Contains(p2, "\"") {
+				p2 = strings.ReplaceAll(p2, "\"", "")
+			}
+			fmt.Printf("    setting env var %v = %v\n", p1, p2)
+			if !dryRun {
+				err := os.Setenv(p1, p2)
+				if err != nil {
+					fmt.Printf("    !!! issue setting %v to %v: %v\n", p1, p2, err)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+func clearEnvFlags(flags string, dryRun bool) error {
+	// clear any prior flags
+	fmt.Println("  Remove Environment Vars")
+	if len(strings.TrimSpace(flags)) > 0 {
+		for _, q := range strings.Split(flags, ",") {
+			flgParts := strings.Split(q, "=")
+			p1 := strings.TrimSpace(flgParts[0])
+			p2 := strings.TrimSpace(flgParts[1])
+			if strings.Contains(p2, "\"") {
+				p2 = strings.ReplaceAll(p2, "\"", "")
+			}
+			fmt.Printf("    clearing env var %v = %v\n", p1, p2)
+			if !dryRun {
+				err := os.Unsetenv(p1)
+				if err != nil {
+					fmt.Printf("    !!! issue setting %v to %v: %v\n", p1, p2, err)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // Build for all defined Architectures
 func cross(app Project) error {
-	fmt.Println("CrossBuilding...")
+	fmt.Println("\n** CrossBuilding...")
 	gocmd := mg.GoCmd()
-
 	for i, d := range app.OSTargets {
+		fmt.Println("\n  Building...")
 		goosArch := strings.Split(d, "/")
 		goos := goosArch[0]
 		arch := goosArch[1]
@@ -1563,24 +1639,24 @@ func cross(app Project) error {
 		}
 		err := os.Setenv("GOOS", goos)
 		if err != nil {
-			fmt.Println("issue setting GOOS :", goos, err)
+			fmt.Println("  !!! issue setting GOOS :", goos, err)
 		} else {
-			fmt.Printf("GOOS set to %v\n", goos)
+			fmt.Printf("  GOOS set to %v\n", goos)
 		}
 		err = os.Setenv("GOARCH", arch)
 		if err != nil {
-			fmt.Println("issue setting GOARCH :", arch, err)
+			fmt.Println("  !!! issue setting GOARCH :", arch, err)
 		} else {
-			fmt.Printf("GOARCH set to %v\n", arch)
+			fmt.Printf("  GOARCH set to %v\n", arch)
 		}
-		err = os.Setenv("GOARM", arm)
+		err = os.Setenv("  GOARM", arm)
 		if err != nil {
-			fmt.Println("issue setting GOARM :", arm, err)
+			fmt.Println("  !!! issue setting GOARM :", arm, err)
 		} else {
 			if len(arm) > 0 {
-				fmt.Printf("GOARM set to %v\n", arm)
+				fmt.Printf("  GOARM set to %v\n", arm)
 			} else {
-				fmt.Println("GOARM NOT set")
+				fmt.Println("  GOARM NOT set")
 			}
 		}
 
@@ -1588,15 +1664,42 @@ func cross(app Project) error {
 		if goos == "darwin" && (arch == "arm64" || arch == "amd64") {
 			skipUPX = true
 		}
+		//goosAct := runtime.GOOS
+		//goarchAct := runtime.GOARCH
 
-		if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
-			err = os.Setenv("CGO_ENABLED", "0")
+		var flags string
+		if len(app.OSEnvFlags) > 0 {
+			flags = app.OSEnvFlags[i]
+			fmt.Printf("flags found %v", flags)
+			err = setEnvFlags(flags, dryRun)
 			if err != nil {
-				fmt.Println("issue setting CGO_ENABLED to 0:", err)
+				return fmt.Errorf("  !!! failed to set env vars %v", err)
 			}
-		} else {
-			fmt.Printf("CGO_ENABLED set to %v\n", cgoval)
 		}
+
+		//fmt.Printf("actual %v/%v, building %v/%v\n", goosAct, goarchAct, goos, arch)
+		//if goosAct == goos && goarchAct == arch {
+		//	if cgoval, ok := os.LookupEnv("CGO_ENABLED"); ok {
+		//		wasCGO = cgoval
+		//		err = os.Setenv("CGO_ENABLED", "0")
+		//		if err != nil {
+		//			fmt.Println("issue setting CGO_ENABLED to 0:", err)
+		//		}
+		//	}
+		//} else if wasCGO != "0" {
+		//	err = os.Setenv("CGO_ENABLED", wasCGO)
+		//	if err != nil {
+		//		fmt.Println("issue setting CGO_ENABLED to 0:", err)
+		//	}
+		//}
+		//if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
+		//	err = os.Setenv("CGO_ENABLED", "0")
+		//	if err != nil {
+		//		fmt.Println("issue setting CGO_ENABLED to 0:", err)
+		//	}
+		//} else {
+		//	fmt.Printf("CGO_ENABLED set to %v was CGO Set %v\n", cgoval, wasCGO)
+		//}
 
 		name := app.Name
 		if goos == "windows" {
@@ -1610,17 +1713,18 @@ func cross(app Project) error {
 
 		if !dryRun {
 			if err = os.MkdirAll(path, 0700); err != nil && !os.IsExist(err) {
-				return fmt.Errorf("  failed to create %q: %v", path, err)
+				clearEnvFlags(flags, dryRun)
+				return fmt.Errorf("  !!! failed to create %q: %v", path, err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: creating directory " + path)
+			fmt.Printf("  - DRY_RUN: creating directory\n\t%v\n", path)
 		}
-		fmt.Printf("  Packaging %s\n", goos)
+		fmt.Printf("  - Packaging %s/%s\n", goos, arch)
 		executableName := filepath.Join(path, name)
 
 		projectMainDir := "./cmd/" + app.Name + "/"
 		if !exists(projectMainDir) {
-			fmt.Println("Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
+			fmt.Println("    !!! Path doesn't exist: " + projectMainDir + " using local dir '.' instead")
 			projectMainDir = "."
 		} else {
 			projectMainDir = projectMainDir + "."
@@ -1632,21 +1736,25 @@ func cross(app Project) error {
 			}
 			err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
+				fmt.Println("\n** If failed cross build on arm64 for amd64 with CGO_ENABLED try this on the command line instead. **\n")
+				fmt.Printf("GOOS=%v GOARCH=%v CGO_ENABLED=1 go build -tags %v '-ldflags %v' -o %v %v\n\n", goos, arch, buildTags, goLDFlagsStatic, executableName, projectMainDir)
 				return err
 			}
 			if exists(apps.UPXExe) && !skipUPX {
-				fmt.Printf("\n*** START UPX binary compression on  %v ***\n", executableName)
+				fmt.Printf("\n  *** START UPX binary compression on  %v ***\n", executableName)
 				fi, _ := os.Stat(executableName)
 				fmt.Printf("\n")
 				err = sh.RunV(apps.UPXExe, "-q", "-q", "-q", executableName)
 				if err != nil {
+					clearEnvFlags(flags, dryRun)
 					return err
 				}
 				fmt.Printf("\n")
 				fmt.Printf("    - prior to compression: %v\n", stringut.HRByteCount(fi.Size(), false))
 				fi, _ = os.Stat(executableName)
 				fmt.Printf("    - post compression: %v\n", stringut.HRByteCount(fi.Size(), false))
-				fmt.Printf("\n*** END UPX binary compression on  %v ***\n", executableName)
+				fmt.Printf("\n  *** END UPX binary compression on  %v ***\n", executableName)
 			} else if skipUPX {
 				fmt.Println("- upx not applicable for darwin/arm64 - ")
 			} else {
@@ -1656,38 +1764,40 @@ func cross(app Project) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			fmt.Println("DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlagsStatic + " -o " + executableName + " " + projectMainDir)
+			fmt.Println("    - DRY_RUN: " + gocmd + " build -trimpath -tags " + buildTags + " '-ldflags " + goLDFlagsStatic + "' -o " + executableName + " " + projectMainDir)
 		}
 		// make release dir for this OS
 
 		osarchDir := filepath.Join(baseDir, osarchName)
 		if !dryRun {
 			if err = os.MkdirAll(osarchDir, 0700); err != nil && !os.IsExist(err) {
+				clearEnvFlags(flags, dryRun)
 				return fmt.Errorf("  failed to create %q: %v", path, err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: making directory " + osarchDir)
+			fmt.Printf("  - DRY_RUN: making directory\n\t%v\n", osarchDir)
 		}
 
 		if !dryRun {
 			// copy executable to release dir
 			err = sh.Copy(filepath.Join(osarchDir, name), executableName)
 			if err != nil {
-				fmt.Println("issue copying :", executableName, err)
+				fmt.Println("  !!! issue copying :", executableName, err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: copying " + executableName + " to " + filepath.Join(osarchDir, name))
+			fmt.Printf("  - DRY_RUN: copying\n\t%v\n\tto  %v\n", executableName, filepath.Join(osarchDir, name))
 		}
 		scriptName := filepath.Base(app.OSDeployScripts[i])
 		scriptContent := buildDeployScript(app.OSDeployScripts[i])
-		fmt.Printf("Loading %v", scriptName)
+		fmt.Printf("  - Reading %v\n", scriptName)
 		if !dryRun {
 			_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 		} else {
-			fmt.Println("DRY_RUN: writing out deploy script to " + filepath.Join(osarchDir, scriptName))
+			fmt.Printf("    DRY_RUN: writing out deploy script to\n\t%v\n", filepath.Join(osarchDir, scriptName))
 		}
 
 		switch goos {
@@ -1698,10 +1808,11 @@ func cross(app Project) error {
 				if !dryRun {
 					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 					if err != nil {
+						clearEnvFlags(flags, dryRun)
 						return err
 					}
 				} else {
-					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+					fmt.Println("  - DRY_RUN: writing out windows deploy script to " + filepath.Join(osarchDir, scriptName))
 				}
 			}
 		case "linux":
@@ -1711,10 +1822,11 @@ func cross(app Project) error {
 				if !dryRun {
 					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 					if err != nil {
+						clearEnvFlags(flags, dryRun)
 						return err
 					}
 				} else {
-					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+					fmt.Println("  - DRY_RUN: writing out linux deploy script to " + filepath.Join(osarchDir, scriptName))
 				}
 			}
 		case "darwin":
@@ -1724,51 +1836,57 @@ func cross(app Project) error {
 				if !dryRun {
 					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
 					if err != nil {
+						clearEnvFlags(flags, dryRun)
 						return err
 					}
 				} else {
-					fmt.Println("DRY_RUN: writing out file to " + filepath.Join(osarchDir, scriptName))
+					fmt.Println("  - DRY_RUN: writing out mac deploy script to " + filepath.Join(osarchDir, scriptName))
 				}
 			}
 		}
 
-		// create sha files
+		// create hash files
 		if !dryRun {
-			md5sum, err := sh.Output(apps.MD5Exe, executableName)
+			var md5sum string
+			md5sum, err = sh.Output(apps.MD5Exe, executableName)
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 			md5sumParts := strings.Fields(md5sum)
 
 			_, err = iout.WriteOut([]byte(md5sumParts[0]), executableName+".md5")
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
+			err = sh.Copy(filepath.Join(osarchDir, name+".md5"), executableName+".md5")
+			if err != nil {
+				fmt.Println("  !!! issue copying :", executableName+".md5", err)
+			}
 		} else {
-			fmt.Println("DRY_RUN: creating and writing md5 hash file")
+			fmt.Printf("  - DRY_RUN: creating/writing and copying md5 hash file \n\t%v\n\t%v\n", executableName+".md5", filepath.Join(osarchDir, name+".md5"))
 		}
 
 		if !dryRun {
 			var shasum string
 			shasum, err = sh.Output(apps.SHA256Exe, executableName)
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 			sha256Parts := strings.Fields(shasum)
 			_, err = iout.WriteOut([]byte(sha256Parts[0]), executableName+".sha256")
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
-			}
-			err = sh.Copy(filepath.Join(osarchDir, name+".md5"), executableName+".md5")
-			if err != nil {
-				fmt.Println("issue copying :", executableName+".md5", err)
 			}
 			err = sh.Copy(filepath.Join(osarchDir, name+".sha256"), executableName+".sha256")
 			if err != nil {
-				fmt.Println("issue copying :", executableName+".sha256", err)
+				fmt.Println("  !!! issue copying :", executableName+".sha256", err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: creating and writing sha256 hash file")
+			fmt.Printf("  - DRY_RUN: creating/writing and copying sha256 hash file \n\t%v\n\t%v\n", executableName+".sha256", filepath.Join(osarchDir, name+".sha256"))
 		}
 
 		if !dryRun {
@@ -1776,10 +1894,10 @@ func cross(app Project) error {
 			nm := filepath.Base(app.ChangelogFile)
 			err = sh.Copy(filepath.Join(osarchDir, nm), app.ChangelogFile)
 			if err != nil {
-				log.Printf("ERROR issue copying changelog %v", err)
+				log.Printf("  !!! ERROR issue copying changelog %v", err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: copying Changelog file: ", app.ChangelogFile)
+			fmt.Printf("  - DRY_RUN: copying Changelog file: \n\t%v\n", app.ChangelogFile)
 		}
 
 		// Copy all prep files into osarchDir
@@ -1787,34 +1905,40 @@ func cross(app Project) error {
 
 		entries, err := os.ReadDir(prepDir)
 		if err != nil {
+			clearEnvFlags(flags, dryRun)
 			log.Fatal(err)
 		}
 		for _, entry := range entries {
-			info, err := entry.Info()
+			var info fs.FileInfo
+			info, err = entry.Info()
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				log.Fatal(err)
 			}
 			files = append(files, info)
 		}
 
 		if dryRun && len(files) == 0 {
-			fmt.Println("DRY_RUN: no files found in " + prepDir)
+			fmt.Printf("  - DRY_RUN: no files found in \n\t%v\n", prepDir)
+		} else {
+			fmt.Printf("  - DRY_RUN: writing out prep files in \n\t%v\n", prepDir)
 		}
 		for _, f := range files {
 			if goos == "windows" && f.Name() == app.Name+".bash" {
 				continue
 			}
-			fmt.Println("  Found: ", f.Name())
+			fmt.Println("    Found: ", f.Name())
 			// Copy here
 			fileTarget := filepath.Join(osarchDir, f.Name())
-			log.Println("copy ", filepath.Join(prepDir, f.Name()), " to ", fileTarget)
 			if !dryRun {
+				log.Printf("    copy \n\t%v\n\tto  %v\n", filepath.Join(prepDir, f.Name()), fileTarget)
 				err = sh.Copy(fileTarget, filepath.Join(prepDir, f.Name()))
 				if err != nil {
+					clearEnvFlags(flags, dryRun)
 					return err
 				}
 			} else {
-				fmt.Println("DRY_RUN: copy ", filepath.Join(prepDir, f.Name()), " to ", fileTarget)
+				fmt.Printf("    DRY_RUN: copy \n\t%v\n\tto  %v\n", filepath.Join(prepDir, f.Name()), fileTarget)
 			}
 		}
 
@@ -1822,47 +1946,51 @@ func cross(app Project) error {
 			fmt.Println("  Creating archive ", osarchName)
 			err = sh.RunV(apps.TarExe, "cfz", osarchName+".tgz", osarchName)
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 		} else {
-			fmt.Println("DRY_RUN:  Creating archive ", osarchName)
+			fmt.Println("  - DRY_RUN:  Creating archive ", osarchName)
 		}
 
 		v := version(app.VersionFile)
 		u := update{Os: goos, Arch: arch, Name: name, Timestamp: timestamp, Version: v, Changelog: app.Name + "-changes.txt"}
 		updater, err := buildUpdateDir(u)
 		if err != nil {
+			clearEnvFlags(flags, dryRun)
 			return err
 		}
 		fmt.Println("  ", string(updater))
 		if !dryRun {
 			_, err = iout.WriteOut(updater, filepath.Join(baseDir, osarchName+".update"))
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 		} else {
-			fmt.Println("DRY_RUN: writing out update file " + filepath.Join(baseDir, osarchName+".update"))
+			fmt.Printf("  - DRY_RUN: writing out update file\n\t%v\n", filepath.Join(baseDir, osarchName+".update"))
 		}
 		// Copy changelog to release dir
 		if !dryRun {
 			err = sh.Copy(filepath.Join(baseDir, app.Name+"-changes.txt"), app.ChangelogFile)
 			if err != nil {
-				log.Printf("ERROR issue copying changelogfile %v", err)
+				log.Printf("  !!! ERROR issue copying changelogfile %v", err)
 			}
 		} else {
 			nm := filepath.Base(app.ChangelogFile)
-			fmt.Println("DRY_RUN: copying Changes file " + filepath.Join(baseDir, nm))
+			fmt.Printf("  - DRY_RUN: copying Changes file\n\t%v\n", filepath.Join(baseDir, nm))
 		}
 
 		if !dryRun {
 			// remove release dir
 			err = os.RemoveAll(osarchDir)
 			if err != nil {
-				fmt.Println("issue removing all :", osarchDir, err)
+				fmt.Println("  !!! issue removing all :", osarchDir, err)
 			}
 		} else {
-			fmt.Println("DRY_RUN: removing all files in " + osarchDir)
+			fmt.Printf("  - DRY_RUN: removing all files in\n\t%v\n", osarchDir)
 		}
+		clearEnvFlags(flags, dryRun)
 	}
 
 	return nil
@@ -2403,23 +2531,23 @@ func cleaner(projectName string, dirsOnly bool) {
 // Setup preTask
 func setup(app Project) error {
 	mg.SerialDeps(parseToml)
-	fmt.Println("  retrieve version")
+	fmt.Println("  - retrieve version")
 	ver := version(app.VersionFile)
-	fmt.Println("  retrieve git commit hash")
+	fmt.Println("  - retrieve git commit hash")
 	gitCommit := gitCommitHash()
 
-	fmt.Println("  retrieve current path")
+	fmt.Println("  - retrieve current path")
 	cur := currentPath()
 	baseDir = cur
 
 	prepDir = filepath.Join(baseDir, "PREP")
 	//app.Package += "/" + app.Name
 	buildDir = filepath.Join(baseDir, crossBuildDir)
-	log.Printf("** Project: %s \n** Project Pkg: %s\n** CurrentPath: %s", app.Name, app.Package, baseDir)
+	log.Printf("  - Reading\n   - Project: %s \n     Project Pkg: %s\n     CurrentPath: %s", app.Name, app.Package, baseDir)
 
-	fmt.Println("  setup ldflag version templates")
+	fmt.Println("  - setup ldflag version templates")
 	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
-	fmt.Println("Version Fields: ", versionFields)
+	fmt.Println("    Version Fields: ", versionFields)
 	if len(app.OverrideVariables) > 0 {
 		overrides := strings.Split(app.OverrideVariables, ";")
 		for i, k := range overrides {
@@ -2432,7 +2560,7 @@ func setup(app Project) error {
 	goLDFlags = fmt.Sprintf(goLDFlagsTemplate, versionFields)
 	goLDFlagsStatic = fmt.Sprintf(goLDFlagsStaticTemplate, versionFields)
 
-	fmt.Println("  load artifactory creds")
+	fmt.Println("  - load artifactory creds")
 
 	return nil
 }
@@ -2446,7 +2574,7 @@ func version(versionFile string) string {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("reading ", versionFile, "found", ver)
+	log.Println("    reading ", versionFile, "found", ver)
 	return ver
 }
 
@@ -2467,7 +2595,7 @@ func gitCommitHash() string {
 
 	gitCommit += gitStatus()
 
-	log.Println("** GIT HASH:", gitCommit)
+	log.Println("    ** GIT HASH:", gitCommit)
 
 	return gitCommit
 }
