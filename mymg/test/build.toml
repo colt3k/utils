@@ -36,11 +36,13 @@ whichExe="/usr/bin/which"
 [[scp]]
 host="main.domain.com"
 path="main:/root/apps/"
+backup=true
 
 [[sftp]]
 host="main.domain.com"
 path="/apps/"
 skip_ping="true"
+backup=true
 
 # this will call your exec and pass two parameters 1 original local file location, 2 name of file
 [[scp-custom]]
@@ -51,6 +53,7 @@ exec="./folder/in/project/script-example.sh"
 host="main.domain.com"
 path="http://main.domain.com:8081/artifactory/artifactoryreponame/appname/"
 creds="/Users/username/tckey/keys/auths/.myartifactorycreds"
+backup=true
 
 [[artifactory]]
 host="artifactory.domain2.com"

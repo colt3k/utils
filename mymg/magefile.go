@@ -752,6 +752,7 @@ type ScpData struct {
 	Host     string `json:"host" toml:"host"`
 	Path     string `json:"path" toml:"path"`
 	SkipPing string `json:"skip_ping" toml:"skip_ping"`
+	Backup   bool   `json:"backup" toml:"backup"`
 }
 
 func (s *ScpData) UnmarshalJSON(data []byte) error {
@@ -771,14 +772,16 @@ type SftpData struct {
 	Host     string `json:"host" toml:"host"`
 	Path     string `json:"path" toml:"path"`
 	SkipPing string `json:"skip_ping" toml:"skip_ping"`
+	Backup   bool   `json:"backup" toml:"backup"`
 }
 type ScpCustom struct {
 	Exec string `json:"exec" toml:"exec"`
 }
 type ArtifactoryData struct {
-	Host  string `json:"host" toml:"host"`
-	Path  string `json:"path" toml:"path"`
-	Creds string `json:"creds" toml:"creds"`
+	Host   string `json:"host" toml:"host"`
+	Path   string `json:"path" toml:"path"`
+	Creds  string `json:"creds" toml:"creds"`
+	Backup bool   `json:"backup" toml:"backup"`
 }
 type Project struct {
 	Enable            bool     `json:"-" toml:"-"`
@@ -2044,7 +2047,26 @@ func scpCopy(projectName string) error {
 				if len(matches) == 0 {
 					fmt.Println("  no files to transfer")
 				}
+				t := time.Now()
+				unxTime := t.Unix()
 				for _, d := range matches {
+					if k.Backup {
+						// pull backup here
+						bkupDir := filepath.Join(filepath.Dir(d), "backup")
+						if err := os.MkdirAll(bkupDir, 0700); err != nil && !os.IsExist(err) {
+							fmt.Printf("failed to create %q: %v", bkupDir, err)
+							os.Exit(1)
+						}
+						bkupSCPDir := filepath.Join(bkupDir, "scp")
+						if err := os.MkdirAll(bkupSCPDir, 0700); err != nil && !os.IsExist(err) {
+							fmt.Printf("failed to create %q: %v", bkupSCPDir, err)
+							os.Exit(1)
+						}
+						iout.WriteOut([]byte(strconv.Itoa(int(unxTime))+"\n"+t.Format(time.RFC3339)+"\n"), filepath.Join(bkupSCPDir, "last_timestamp.txt"))
+						fn := filepath.Base(d)
+						fmt.Printf("**** BACKUP TO \n%v\nfrom\n%v\n", bkupSCPDir, k.Path+fn)
+						out(apps.ScpExe, k.Path+fn, bkupSCPDir)
+					}
 					fmt.Println("  scp'ing ", d)
 					fmt.Println("    to ", k.Path)
 					if !dryRun {
@@ -2149,6 +2171,45 @@ func sftpCopyAutoStatus(projectName string) error {
 	return nil
 }
 
+func sftpCall(name, hostname string, args ...string) {
+	var errorBuffer bytes.Buffer
+	var errorBuffer2 bytes.Buffer
+	c1 := exec.Command(name, args...)
+	c2 := exec.Command(apps.SftpExe, hostname)
+	c1.Stderr = &errorBuffer
+	c2.Stderr = &errorBuffer2
+	pr, pw := io.Pipe()
+	c1.Stdout = pw
+	c2.Stdin = pr
+
+	var b2 bytes.Buffer
+	c2.Stdout = &b2
+
+	err := c1.Start()
+	if err != nil {
+		log.Printf("err: %v\n%v", err, errorBuffer.String())
+	}
+	err = c2.Start()
+	if err != nil {
+		log.Printf("err: %v\n%v", err, errorBuffer2.String())
+	}
+	err = c1.Wait()
+	if err != nil {
+		log.Printf("err: %v\n%v", err, errorBuffer.String())
+	}
+	err = pw.Close()
+	if err != nil {
+		log.Printf("err :%v\n", err)
+	}
+	err = c2.Wait()
+	if err != nil {
+		log.Printf("err :%v\n%v", err, errorBuffer2.String())
+	}
+	_, err = io.Copy(os.Stdout, &b2)
+	if err != nil {
+		log.Printf("err :%v\n%v", err, errorBuffer2.String())
+	}
+}
 func sftpCopy(projectName string) error {
 	for _, k := range sftpS.Instance {
 		fmt.Println("SFTP... ")
@@ -2165,48 +2226,32 @@ func sftpCopy(projectName string) error {
 				if len(matches) == 0 {
 					fmt.Println("  no files to transfer")
 				}
+				if k.Backup && len(matches) > 0 {
+					fmt.Println("  BACKUP started... ")
+					t := time.Now()
+					unxTime := t.Unix()
+					// pull backup here
+					bkupDir := filepath.Join(filepath.Dir(matches[0]), "backup")
+					if err := os.MkdirAll(bkupDir, 0700); err != nil && !os.IsExist(err) {
+						fmt.Printf("failed to create %q: %v", bkupDir, err)
+						os.Exit(1)
+					}
+					bkupSFTPDir := filepath.Join(bkupDir, "sftp")
+					if err := os.MkdirAll(bkupSFTPDir, 0700); err != nil && !os.IsExist(err) {
+						fmt.Printf("failed to create %q: %v", bkupSFTPDir, err)
+						os.Exit(1)
+					}
+					iout.WriteOut([]byte(strconv.Itoa(int(unxTime))+"\n"+t.Format(time.RFC3339)+"\n"), filepath.Join(bkupSFTPDir, "last_timestamp.txt"))
+					sftpCall("echo", k.Host, "get", k.Path+projectName+"-*", bkupSFTPDir)
+					fmt.Println("  BACKUP complete. ")
+					os.Exit(1)
+				}
 				for _, d := range matches {
 					f := filepath.Base(d)
 					exe := "echo put " + d + " " + k.Path + f + " | " + apps.SftpExe + " " + k.Host
 					fmt.Printf("Exe: |%v|\n", exe)
 
-					var errorBuffer bytes.Buffer
-					var errorBuffer2 bytes.Buffer
-					c1 := exec.Command("echo", "put", d, k.Path+f)
-					c2 := exec.Command(apps.SftpExe, k.Host)
-					c1.Stderr = &errorBuffer
-					c2.Stderr = &errorBuffer2
-					pr, pw := io.Pipe()
-					c1.Stdout = pw
-					c2.Stdin = pr
-
-					var b2 bytes.Buffer
-					c2.Stdout = &b2
-
-					err := c1.Start()
-					if err != nil {
-						log.Printf("err: %v\n%v", err, errorBuffer.String())
-					}
-					err = c2.Start()
-					if err != nil {
-						log.Printf("err: %v\n%v", err, errorBuffer2.String())
-					}
-					err = c1.Wait()
-					if err != nil {
-						log.Printf("err: %v\n%v", err, errorBuffer.String())
-					}
-					err = pw.Close()
-					if err != nil {
-						log.Printf("err :%v\n", err)
-					}
-					err = c2.Wait()
-					if err != nil {
-						log.Printf("err :%v\n%v", err, errorBuffer2.String())
-					}
-					_, err = io.Copy(os.Stdout, &b2)
-					if err != nil {
-						log.Printf("err :%v\n%v", err, errorBuffer2.String())
-					}
+					sftpCall("echo", k.Host, "put", d, k.Path+f)
 				}
 			} else if !foundHost {
 				fmt.Println("  sftp not configured")
@@ -2248,6 +2293,7 @@ func artifactoryPullAutoStatus(projectName string) error {
 }
 func artifactoryPush(projectName string) error {
 	fmt.Println("Artifactory... ")
+	t := time.Now().Unix()
 	for _, k := range arts.Instance {
 		fmt.Println("  processing ", k.Host)
 		if len(k.Host) > 0 {
@@ -2265,6 +2311,18 @@ func artifactoryPush(projectName string) error {
 				if byt.Len() > 2 {
 					// build hash to upload
 					for _, d := range matches {
+						if k.Backup {
+							// pull backup here
+							bkupDir := filepath.Join(filepath.Dir(d), "backup")
+							if err := os.MkdirAll(bkupDir, 0700); err != nil && !os.IsExist(err) {
+								fmt.Printf("failed to create %q: %v", bkupDir, err)
+								os.Exit(1)
+							}
+							fn := filepath.Base(d)
+							svFile := filepath.Join(bkupDir, fn) + ".af." + strconv.Itoa(int(t))
+							fmt.Printf("**** BACKUP TO \n%v\nfrom\n%v\n", svFile, k.Path+fn)
+							out(apps.CurlExe, "-u"+string(creds), "-sS", "-o", svFile, k.Path+fn)
+						}
 						fmt.Println("  pushing via artifactory ", d)
 						fmt.Println("    to ", k.Path)
 						// hash each before uploading
