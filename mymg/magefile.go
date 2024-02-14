@@ -1129,6 +1129,20 @@ func Build() error {
 		if !d.Enable {
 			continue
 		}
+
+		var flags string
+		if len(d.OSEnvFlags) > 0 {
+			for i, q := range d.OSTargets {
+				if q == goos+"/"+goarch {
+					flags = d.OSEnvFlags[i]
+					fmt.Printf("flags found %v", flags)
+					err = setEnvFlags(flags, dryRun)
+					if err != nil {
+						return fmt.Errorf("  !!! failed to set env vars %v", err)
+					}
+				}
+			}
+		}
 		fmt.Println("Building ", d.Name)
 		err = setup(d)
 		if err != nil {
@@ -1167,6 +1181,7 @@ func Build() error {
 		if !dryRun {
 			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
 			if err != nil {
+				clearEnvFlags(flags, dryRun)
 				return err
 			}
 			if exists(apps.UPXExe) && !skipUPX {
@@ -1175,6 +1190,7 @@ func Build() error {
 				fmt.Printf("\n")
 				err = sh.RunV(apps.UPXExe, "-q", "-q", "-q", name)
 				if err != nil {
+					clearEnvFlags(flags, dryRun)
 					return err
 				}
 				fmt.Printf("\n")
@@ -1187,6 +1203,7 @@ func Build() error {
 			} else {
 				fmt.Println("- no upx available for binary compression - ")
 			}
+			clearEnvFlags(flags, dryRun)
 		} else {
 			var byt bytes.Buffer
 			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " " + projectMainDir)
