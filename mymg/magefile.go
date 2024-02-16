@@ -1205,6 +1205,7 @@ func Build() error {
 			}
 			clearEnvFlags(flags, dryRun)
 		} else {
+			clearEnvFlags(flags, dryRun)
 			var byt bytes.Buffer
 			byt.WriteString(gocmd + " build -trimpath -tags " + buildTags + " -ldflags " + goLDFlags + " -o " + name + " " + projectMainDir)
 			if exists(apps.UPXExe) {
@@ -1609,13 +1610,13 @@ func setEnvFlags(flags string, dryRun bool) error {
 				p2 = strings.ReplaceAll(p2, "\"", "")
 			}
 			fmt.Printf("    setting env var %v = %v\n", p1, p2)
-			if !dryRun {
-				err := os.Setenv(p1, p2)
-				if err != nil {
-					fmt.Printf("    !!! issue setting %v to %v: %v\n", p1, p2, err)
-					return err
-				}
+			//if !dryRun {
+			err := os.Setenv(p1, p2)
+			if err != nil {
+				fmt.Printf("    !!! issue setting %v to %v: %v\n", p1, p2, err)
+				return err
 			}
+			//}
 		}
 	}
 	return nil
