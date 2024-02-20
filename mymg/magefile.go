@@ -534,8 +534,23 @@ func parseToml() error {
 	}
 	// validate credential paths
 	for _, b := range arts.Instance {
-		if !fileExistsAndIsNotADir(b.Creds) {
-			return fmt.Errorf("af credential not found %v", b.Creds)
+		//if !fileExistsAndIsNotADir(b.Creds) && !fileExistsAndIsNotADir(b.CredsPath) {
+		//	return fmt.Errorf("af credentials not found %v", b.Creds)
+		//}
+		if len(b.CredsPath) > 0 {
+			if !fileExistsAndIsNotADir(b.CredsPath) {
+				fmt.Printf("af credential path not found %v\n", b.CredsPath)
+				os.Exit(1)
+			}
+			credsPath := readAndOutput(b.CredsPath)
+			if !fileExistsAndIsNotADir(credsPath) {
+				fmt.Printf("af creds path declared but credentials not found %v\n", b.Creds)
+				os.Exit(1)
+			}
+			fmt.Printf("creds path found %v\n", b.CredsPath)
+		} else if len(b.Creds) > 0 && !fileExistsAndIsNotADir(b.Creds) {
+			fmt.Printf("af credentials not found %v\n", b.Creds)
+			os.Exit(1)
 		}
 	}
 	err = setupProjects(props)
@@ -778,10 +793,11 @@ type ScpCustom struct {
 	Exec string `json:"exec" toml:"exec"`
 }
 type ArtifactoryData struct {
-	Host   string `json:"host" toml:"host"`
-	Path   string `json:"path" toml:"path"`
-	Creds  string `json:"creds" toml:"creds"`
-	Backup bool   `json:"backup" toml:"backup"`
+	Host      string `json:"host" toml:"host"`
+	Path      string `json:"path" toml:"path"`
+	Creds     string `json:"creds" toml:"creds"`
+	CredsPath string `json:"creds_path" toml:"creds_path"`
+	Backup    bool   `json:"backup" toml:"backup"`
 }
 type Project struct {
 	Enable            bool     `json:"-" toml:"-"`
@@ -853,7 +869,8 @@ func GenConf() {
 	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
 	c.SCPCustom = []ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}
 	c.Artifactory = []ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
-		Creds: "/Users/username/tckey/keys/auths/.myartifactorycreds"}}
+		Creds:     "/Users/username/keys/auths/.myartifactorycreds",
+		CredsPath: "./pkgr/creds.txt"}}
 	c.Project = []Project{{Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
 		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
@@ -1049,7 +1066,7 @@ func Display() {
 		if targs != depScripts {
 			byt.WriteString(fmt.Sprintf("-- In project %v ostargets and osdeployscripts count should match one for one.\n", m.Name))
 		}
-		if targs != ostargs {
+		if targs != ostargs && ostargs > 0 {
 			byt.WriteString(fmt.Sprintf("-- In project %v ostargets and os_env_flags count should match one for one.\n", m.Name))
 		}
 	}
@@ -2289,8 +2306,14 @@ func artifactoryPullAutoStatus(projectName string) error {
 		if len(k.Host) > 0 {
 			foundHost := ping(k.Host)
 			fmt.Println("found? ", foundHost)
-			if foundHost && len(k.Creds) > 0 {
-				creds := loadArtifactoryCreds(k.Creds)
+			if foundHost && (len(k.Creds) > 0 || len(k.CredsPath) > 0) {
+				var creds []byte
+				if len(k.Creds) > 0 {
+					creds = loadArtifactoryCreds(k.Creds)
+				} else if len(k.CredsPath) > 0 {
+					credsPath := readAndOutput(k.CredsPath)
+					creds = loadArtifactoryCreds(credsPath)
+				}
 				//fmt.Printf("to pull: %v\n", k.Path+projectName+".auto")
 				out(apps.CurlExe, "-u"+string(creds), "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
 				fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
@@ -2318,8 +2341,15 @@ func artifactoryPush(projectName string) error {
 		if len(k.Host) > 0 {
 			foundHost := ping(k.Host)
 			fmt.Println("found? ", foundHost)
-			if foundHost && len(k.Creds) > 0 {
-				creds := loadArtifactoryCreds(k.Creds)
+			if foundHost && (len(k.Creds) > 0 || len(k.CredsPath) > 0) {
+				var creds []byte
+				if len(k.Creds) > 0 {
+					creds = loadArtifactoryCreds(k.Creds)
+				} else if len(k.CredsPath) > 0 {
+					credsPath := readAndOutput(k.CredsPath)
+					creds = loadArtifactoryCreds(credsPath)
+					//fmt.Printf("Creds found %v\n", string(creds))
+				}
 				var byt bytes.Buffer
 				matches := findFiles(projectName)
 				byt.WriteString("{")
@@ -2372,7 +2402,7 @@ func artifactoryPush(projectName string) error {
 					// Upload all at once without hashes
 					//out(curlExe, "-u"+string(artifactoryCreds), "-T", byt.String(), artifactoryPath)
 				}
-			} else if foundHost && len(k.Creds) == 0 {
+			} else if foundHost && len(k.Creds) == 0 && len(k.CredsPath) == 0 {
 				fmt.Println("  no artifactory credentials found")
 			} else if !foundHost {
 				fmt.Println("  artifactory not configured")
