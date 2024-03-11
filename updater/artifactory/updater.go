@@ -448,7 +448,7 @@ func pullURLToString(url string, auth *hc.Auth, disableVerifyCert bool) (string,
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %v", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s: %v", url, resp.Status)
