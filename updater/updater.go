@@ -75,6 +75,7 @@ type Connection struct {
 	hostNameSuffix      bool
 	OnAvailableViaHTTP  bool
 	DisableValidateCert bool
+	AQLSupport          bool
 }
 
 func (c *Connection) Available() bool {
