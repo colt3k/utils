@@ -74,7 +74,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		if !test {
 			upURL.WriteString(appName + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".update")
 		} else {
-			upURL.WriteString(appName + "-linux-" + runtime.GOARCH + ".update")
+			upURL.WriteString(appName + "-linux-amd64.update")
 		}
 		log.Logf(log.DEBUG, "-- Update File URL: %v", upURL.String())
 
