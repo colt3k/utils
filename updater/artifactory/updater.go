@@ -30,10 +30,10 @@ import (
 	"github.com/colt3k/utils/updater"
 )
 
-func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version) (*updater.AppConfig, bool, bool) {
+func CheckUpdate(appName string, hosts []updater.Connection, version updater.Version, checkOnly bool) (*updater.AppConfig, bool, bool) {
 	var ac *updater.AppConfig
 	test := false
-	testHosts(hosts)
+	testHosts(hosts, checkOnly)
 	if len(hosts) == 0 {
 		log.Logln(log.DEBUG, "-- no configured hosts")
 	}
@@ -43,6 +43,9 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			disabledHostCount++
 			continue
 		}
+		//if checkOnly {
+		//	break
+		//}
 	}
 	if disabledHostCount == len(hosts) {
 		log.Logln(log.DEBUG, "-- no reachable hosts")
@@ -198,13 +201,13 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 	log.Logln(log.DEBUG, "")
 	log.Logln(log.DEBUG, "**** START Update process ****")
 	if checkOnly {
-		if _, found, _ := CheckUpdate(appName, hosts, version); found {
+		if _, found, _ := CheckUpdate(appName, hosts, version, checkOnly); found {
 			log.Logf(log.WARN, "Update Available, use the application update call to obtain the latest version.")
 			return found
 		}
 		return false
 	}
-	if appConfig, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
+	if appConfig, found, autoUpdate := CheckUpdate(appName, hosts, version, checkOnly); found {
 		s := UpdateAvailableMsg(appConfig)
 		fmt.Println(s)
 		if autoUpdate {
@@ -392,16 +395,16 @@ func download(ac *updater.AppConfig) bool {
 	return success
 }
 
-func testHosts(hosts []updater.Connection) {
+func testHosts(hosts []updater.Connection, checkOnly bool) {
 	log.Logln(log.DEBUG, "- START testHosts process")
 	host := osut.Hostname()
 	log.Logf(log.DEBUG, "-- local host %v", host)
 	for i, d := range hosts {
 		log.Logln(log.DEBUG, "")
+		var avail bool
 		// if neither is set skip entry
 		if len(d.OnAvailable) > 0 {
 			// test available
-			var avail bool
 			var err error
 			if d.OnAvailableViaHTTP {
 				if d.OnAvailableTimeout == 0 {
@@ -432,6 +435,9 @@ func testHosts(hosts []updater.Connection) {
 		if len(d.OnHostNameSuffix) > 0 && strings.HasSuffix(strings.ToLower(host), d.OnHostNameSuffix) {
 			log.Logf(log.DEBUG, "--- on host ending with: %s hostname %s", d.OnHostNameSuffix, host)
 			hosts[i].SetHostSfx(true)
+		}
+		if checkOnly && avail {
+			break
 		}
 	}
 	log.Logln(log.DEBUG, "")
