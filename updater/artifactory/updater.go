@@ -188,7 +188,7 @@ func UpdateAvailableMsg(ac *updater.AppConfig) string {
 	return buf.String()
 }
 
-func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question bool) bool {
+func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question, checkOnly bool) bool {
 	/*
 		1. Pull file from archive
 			myappname-darwin-amd64/myappname
@@ -197,6 +197,13 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 	*/
 	log.Logln(log.DEBUG, "")
 	log.Logln(log.DEBUG, "**** START Update process ****")
+	if checkOnly {
+		if _, found, _ := CheckUpdate(appName, hosts, version); found {
+			log.Logf(log.WARN, "Update Available, use the application update call to obtain the latest version.")
+			return found
+		}
+		return false
+	}
 	if appConfig, found, autoUpdate := CheckUpdate(appName, hosts, version); found {
 		s := UpdateAvailableMsg(appConfig)
 		fmt.Println(s)

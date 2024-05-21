@@ -30,5 +30,5 @@ func main() {
 
 	cons := make([]updater.Connection, 0)
 	cons = append(cons, c)
-	artifactory.PerformUpdate("myappname", cons, v, true)
+	artifactory.PerformUpdate("myappname", cons, v, true, false)
 }
