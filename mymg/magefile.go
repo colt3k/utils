@@ -47,7 +47,7 @@ var (
 	arts           Artifactories
 	scpS           SCPs
 	sftpS          SFTPs
-	scpCustom      SCPCustoms
+	pushCustom     PushCustoms
 	timestamp      = time.Now().Unix()
 	baseDir        = ""
 	buildDir       = ""
@@ -201,21 +201,21 @@ func setupScps(props map[string]interface{}) error {
 }
 
 func setupCustomScps(props map[string]interface{}) error {
-	mapProps := props["scp-custom"]
+	mapProps := props["push-custom"]
 	wrapper := make(map[string]interface{}, 1)
-	wrapper["scp-custom"] = mapProps
+	wrapper["push-custom"] = mapProps
 
 	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(bytesWrapper, &scpCustom)
+	err = json.Unmarshal(bytesWrapper, &pushCustom)
 	if err != nil {
 		return err
 	}
 
-	config.SCPCustom = scpCustom
+	config.PushCustom = pushCustom
 	return nil
 }
 func setupSftps(props map[string]interface{}) error {
@@ -726,7 +726,7 @@ type Config struct {
 	Apps        Apps          `json:"apps"`
 	SCP         SCPs          `json:"scp"`
 	SFTP        SFTPs         `json:"sftp"`
-	SCPCustom   SCPCustoms    `json:"scp-custom"`
+	PushCustom  PushCustoms   `json:"push-custom"`
 	Artifactory Artifactories `json:"artifactory"`
 	Project     Projects      `json:"projects"`
 }
@@ -736,7 +736,7 @@ type GenConfig struct {
 	Apps        Apps              `json:"apps" toml:"apps" comment:"Application paths"`
 	SCP         []ScpData         `json:"scp" toml:"scp,omitempty" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
 	SFTP        []SftpData        `json:"sftp" toml:"sftp,omitempty" comment:"Array of SFTP Configurations"`
-	SCPCustom   []ScpCustom       `json:"scp-custom" toml:"scp-custom,omitempty" comment:"Array of Custom SCP using script"`
+	PushCustom  []PushCustom      `json:"push-custom" toml:"push-custom,omitempty" comment:"Array of Custom Pushes using script passes two params full local path and name"`
 	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory,omitempty" comment:"Array of Artifactory instances\n- host must be available via http check"`
 	Project     []Project         `json:"project" toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
@@ -746,8 +746,8 @@ type Projects struct {
 type SCPs struct {
 	Instance []ScpData `json:"scp" toml:"scp"`
 }
-type SCPCustoms struct {
-	Instance []ScpCustom `json:"scp-custom" toml:"scp-custom"`
+type PushCustoms struct {
+	Instance []PushCustom `json:"push-custom" toml:"push-custom"`
 }
 type SFTPs struct {
 	Instance []SftpData `json:"sftp" toml:"sftp"`
@@ -789,7 +789,7 @@ type SftpData struct {
 	SkipPing string `json:"skip_ping" toml:"skip_ping"`
 	Backup   bool   `json:"backup" toml:"backup"`
 }
-type ScpCustom struct {
+type PushCustom struct {
 	Exec string `json:"exec" toml:"exec"`
 }
 type ArtifactoryData struct {
@@ -867,7 +867,7 @@ func GenConf() {
 	c.Apps.WhichExe, _ = findApp("/usr/bin/which")
 	c.SCP = []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}
 	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
-	c.SCPCustom = []ScpCustom{{Exec: "./folder/in/project/script-example.sh"}}
+	c.PushCustom = []PushCustom{{Exec: "./folder/in/project/script-example.sh"}}
 	c.Artifactory = []ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
 		Creds:     "/Users/username/keys/auths/.myartifactorycreds",
 		CredsPath: "./pkgr/creds.txt"}}
@@ -984,9 +984,9 @@ func Convert() {
 		c.SCP = scps
 	}
 	fmt.Println("- Converting - SCP Custom")
-	scpsCust := convertOldToGenConf(props, "scp-custom").SCPCustom
+	scpsCust := convertOldToGenConf(props, "scp-custom").PushCustom
 	if len(scpsCust) > 0 {
-		c.SCPCustom = scpsCust
+		c.PushCustom = scpsCust
 	}
 	fmt.Println("- Converting - SFTP")
 	sftps := convertOldToGenConf(props, "sftp").SFTP
@@ -1479,9 +1479,9 @@ func Release() error {
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = customCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue scp custom copy :", err)
+			fmt.Println("issue push custom copy :", err)
 		}
 		err = sftpCopy(d.Name)
 		if err != nil {
@@ -1524,9 +1524,9 @@ func Auto() error {
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = customCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue scp custom copy :", err)
+			fmt.Println("issue push custom copy :", err)
 		}
 		err = sftpCopy(d.Name)
 		if err != nil {
@@ -1559,9 +1559,9 @@ func AutoStatus() error {
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = customCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue scp custom copy :", err)
+			fmt.Println("issue push custom copy :", err)
 		}
 		err = sftpCopyAutoStatus(d.Name)
 		if err != nil {
@@ -1597,9 +1597,9 @@ func NoAuto() error {
 		if err != nil {
 			fmt.Println("issue scp copy :", err)
 		}
-		err = scpCustomCopy(d.Name)
+		err = customCopy(d.Name)
 		if err != nil {
-			fmt.Println("issue scp custom copy :", err)
+			fmt.Println("issue push custom copy :", err)
 		}
 		err = sftpCopy(d.Name)
 		if err != nil {
@@ -2122,9 +2122,9 @@ func scpCopy(projectName string) error {
 	return nil
 }
 
-func scpCustomCopy(projectName string) error {
-	for _, k := range scpCustom.Instance {
-		fmt.Println("\nSCP Custom... ")
+func customCopy(projectName string) error {
+	for _, k := range pushCustom.Instance {
+		fmt.Println("\nPush Custom... ")
 
 		matches := findFiles(projectName)
 		if len(matches) == 0 {
