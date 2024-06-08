@@ -2,6 +2,7 @@ package passthrough
 
 import (
 	"fmt"
+	log "github.com/colt3k/nglog/ng"
 	"io"
 	"strconv"
 	"sync"
@@ -64,7 +65,7 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 	if err == nil {
 		if !pt.readOnce {
 			if pt.showPart {
-				fmt.Printf("Starting part #%d of %d\n", pt.partId, pt.totalParts)
+				log.Logf(log.DEBUG, "Starting part #%d of %d\n", pt.partId, pt.totalParts)
 			}
 			go func() {
 				for range pt.ticker.C {
