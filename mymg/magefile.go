@@ -200,7 +200,7 @@ func setupScps(props map[string]interface{}) error {
 	return nil
 }
 
-func setupCustomScps(props map[string]interface{}) error {
+func setupCustomPushes(props map[string]interface{}) error {
 	mapProps := props["push-custom"]
 	wrapper := make(map[string]interface{}, 1)
 	wrapper["push-custom"] = mapProps
@@ -514,7 +514,7 @@ func parseToml() error {
 	//		return fmt.Errorf("scp path not found %v", b.Path)
 	//	}
 	//}
-	err = setupCustomScps(props)
+	err = setupCustomPushes(props)
 	if err != nil {
 		return err
 	}
@@ -736,7 +736,7 @@ type GenConfig struct {
 	Apps        Apps              `json:"apps" toml:"apps" comment:"Application paths"`
 	SCP         []ScpData         `json:"scp" toml:"scp,omitempty" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
 	SFTP        []SftpData        `json:"sftp" toml:"sftp,omitempty" comment:"Array of SFTP Configurations"`
-	PushCustom  []PushCustom      `json:"push-custom" toml:"push-custom,omitempty" comment:"Array of Custom Pushes using script passes two params full local path and name"`
+	PushCustom  []PushCustom      `json:"push-custom" toml:"push-custom,omitempty" comment:"Array of Custom Pushes, provide executable, parameters if needed and \n\twhich values (1,passes only full path) and (2, passes both full path and name)"`
 	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory,omitempty" comment:"Array of Artifactory instances\n- host must be available via http check"`
 	Project     []Project         `json:"project" toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
@@ -790,7 +790,9 @@ type SftpData struct {
 	Backup   bool   `json:"backup" toml:"backup"`
 }
 type PushCustom struct {
-	Exec string `json:"exec" toml:"exec"`
+	Exec       string `json:"exec" toml:"exec"`
+	Parameters string `json:"parameters" toml:"parameters"`
+	PassValues int64  `json:"values" toml:"values"`
 }
 type ArtifactoryData struct {
 	Host      string `json:"host" toml:"host"`
@@ -867,7 +869,7 @@ func GenConf() {
 	c.Apps.WhichExe, _ = findApp("/usr/bin/which")
 	c.SCP = []ScpData{{Host: "main.domain.com", Path: "main:/root/apps", SkipPing: "false"}}
 	c.SFTP = []SftpData{{Host: "main.domain.com", Path: "/apps/", SkipPing: "true"}}
-	c.PushCustom = []PushCustom{{Exec: "./folder/in/project/script-example.sh"}}
+	c.PushCustom = []PushCustom{{Exec: "path to executable", Parameters: "-d abc -f xzy", PassValues: 2}}
 	c.Artifactory = []ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
 		Creds:     "/Users/username/keys/auths/.myartifactorycreds",
 		CredsPath: "./pkgr/creds.txt"}}
@@ -2132,8 +2134,49 @@ func customCopy(projectName string) error {
 		}
 		for _, d := range matches {
 			f := filepath.Base(d)
-			fmt.Printf("\tpassing \n\tparameter 1 %v,\n\tparameter 2 %v\n\tto %v\n", d, f, k.Exec)
-			out(k.Exec, d, f)
+			var oldformat bool
+			exe := "" + k.Exec
+			fmt.Printf("Exec %v, Parameters: %v, PassValues: %v\n", k.Exec, k.Parameters, k.PassValues)
+			if k.PassValues == 1 {
+				fmt.Println("NEW FORMAT")
+				exe += " " + k.Parameters + " " + d
+			} else if k.PassValues == 2 {
+				fmt.Println("NEW FORMAT")
+				exe += " " + k.Parameters + " " + d + " " + f
+			} else {
+				fmt.Println("OLD FORMAT")
+				oldformat = true
+				// old format
+				exe += " " + d + " " + f
+			}
+			fmt.Printf("Exe: |%v|\n", exe)
+
+			params := make([]string, 0)
+			if len(k.Parameters) > 0 {
+				parts := strings.Split(k.Parameters, " ")
+				for _, q := range parts {
+					params = append(params, strings.TrimSpace(q))
+				}
+			}
+			if !oldformat {
+				if k.PassValues == 1 && len(k.Parameters) > 0 {
+					params = append(params, d)
+					out(k.Exec, params...)
+				} else if k.PassValues == 1 && len(k.Parameters) == 0 {
+					out(k.Exec, d)
+				} else if k.PassValues == 2 && len(k.Parameters) > 0 {
+					params = append(params, d)
+					params = append(params, f)
+					out(k.Exec, params...)
+				} else if k.PassValues == 2 && len(k.Parameters) == 0 {
+					params = append(params, d)
+					params = append(params, f)
+					out(k.Exec, d, f)
+				}
+			} else {
+				out(k.Exec, d, f)
+			}
+
 		}
 	}
 	return nil
