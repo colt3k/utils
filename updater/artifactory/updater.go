@@ -191,6 +191,7 @@ func UpdateAvailableMsg(ac *updater.AppConfig) string {
 	return buf.String()
 }
 
+// PerformUpdate return true(found update) if check only, return true when successfully updated
 func PerformUpdate(appName string, hosts []updater.Connection, version updater.Version, question, checkOnly bool) bool {
 	/*
 		1. Pull file from archive
@@ -211,9 +212,9 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 		s := UpdateAvailableMsg(appConfig)
 		fmt.Println(s)
 		if autoUpdate {
-			downloadUpdate(appConfig)
+			return downloadUpdate(appConfig)
 		} else if !autoUpdate && question && ques.Confirm("\nPerform Update ? ") {
-			downloadUpdate(appConfig)
+			return downloadUpdate(appConfig)
 		} else {
 			return found
 		}
@@ -222,7 +223,8 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 	return false
 }
 
-func downloadUpdate(ac *updater.AppConfig) {
+// return true on success
+func downloadUpdate(ac *updater.AppConfig) bool {
 	log.Logln(log.DEBUG, "- Download Update")
 	//Download
 	if download(ac) {
@@ -232,11 +234,11 @@ func downloadUpdate(ac *updater.AppConfig) {
 		log.EnableTimestamp()
 		switch runtime.GOOS {
 		case "windows":
-			return
+			return true
 		default: //Mac & Linux
-			os.Exit(0)
+			//os.Exit(0)
+			return true
 		}
-
 	}
 	// failed
 	log.DisableTimestamp()
@@ -244,6 +246,7 @@ func downloadUpdate(ac *updater.AppConfig) {
 	log.EnableTimestamp()
 
 	log.Logln(log.DEBUG, "- Download Update END")
+	return false
 }
 
 func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
@@ -255,7 +258,11 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 		if len(ac.Changelog) > 0 {
 			httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(30), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 			var err error
-			url := ac.BaseURL + "/" + ac.Changelog
+			url := ac.BaseURL
+			if ac.BaseURL[len(ac.BaseURL)-1:] != "/" {
+				url += "/"
+			}
+			url += ac.Changelog
 			auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
 			resp, err := httpClient.Fetch("GET", url, auth, nil, nil)
 			if resp != nil {
