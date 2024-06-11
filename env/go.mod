@@ -5,6 +5,7 @@ go 1.17
 require github.com/colt3k/nglog v0.0.28
 
 replace golang.org/x/net => golang.org/x/net v0.19.0 //CVE-2023-48795
+
 require (
 	github.com/colt3k/utils/archive v0.0.9 // indirect
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
