@@ -15,8 +15,6 @@ require (
 	github.com/colt3k/utils/encode v0.0.5 // indirect
 	github.com/colt3k/utils/hash v0.0.7 // indirect
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
-	github.com/gorilla/http v1.0.0 // indirect
-	github.com/iancoleman/orderedmap v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/crypto v0.17.0 // indirect

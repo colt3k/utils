@@ -8,7 +8,9 @@ require (
 	github.com/gonutz/w32 v1.0.0
 	github.com/mgutz/str v1.2.0
 )
+
 replace golang.org/x/net => golang.org/x/net v0.19.0 //CVE-2023-48795
+
 require (
 	github.com/colt3k/utils/archive v0.0.9 // indirect
 	github.com/colt3k/utils/stats v0.0.1 // indirect
