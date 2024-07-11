@@ -48,6 +48,7 @@ var (
 	scpS           SCPs
 	sftpS          SFTPs
 	pushCustom     PushCustoms
+	pullCustom     PullCustoms
 	timestamp      = time.Now().Unix()
 	baseDir        = ""
 	buildDir       = ""
@@ -218,6 +219,26 @@ func setupCustomPushes(props map[string]interface{}) error {
 	config.PushCustom = pushCustom
 	return nil
 }
+
+func setupCustomPull(props map[string]interface{}) error {
+	mapProps := props["pull-custom"]
+	wrapper := make(map[string]interface{}, 1)
+	wrapper["pull-custom"] = mapProps
+
+	bytesWrapper, err := json.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bytesWrapper, &pullCustom)
+	if err != nil {
+		return err
+	}
+
+	config.PullCustom = pullCustom
+	return nil
+}
+
 func setupSftps(props map[string]interface{}) error {
 	mapProps := props["sftp"]
 	wrapper := make(map[string]interface{}, 1)
@@ -518,6 +539,10 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
+	err = setupCustomPull(props)
+	if err != nil {
+		return err
+	}
 	//for _, b := range scpCustom.Instance {
 	//	if !fileExistsAndIsNotADir(b.Exec) {
 	//		return fmt.Errorf("scp-custom exec path not found %v", b.Exec)
@@ -727,6 +752,7 @@ type Config struct {
 	SCP         SCPs          `json:"scp"`
 	SFTP        SFTPs         `json:"sftp"`
 	PushCustom  PushCustoms   `json:"push-custom"`
+	PullCustom  PullCustoms   `json:"pull-custom"`
 	Artifactory Artifactories `json:"artifactory"`
 	Project     Projects      `json:"projects"`
 }
@@ -737,6 +763,7 @@ type GenConfig struct {
 	SCP         []ScpData         `json:"scp" toml:"scp,omitempty" comment:"Array of Secure Copy Configurations\n- host must be available via ping check, requires ppk setup"`
 	SFTP        []SftpData        `json:"sftp" toml:"sftp,omitempty" comment:"Array of SFTP Configurations"`
 	PushCustom  []PushCustom      `json:"push-custom" toml:"push-custom,omitempty" comment:"Array of Custom Pushes, provide executable, parameters if needed and \n\twhich values (1,passes only full path) and (2, passes both full path and name)"`
+	PullCustom  []PullCustom      `json:"pull-custom" toml:"pull-custom,omitempty" comment:"Array of Custom Pulls, provide executable, parameters if needed and \n\twhich values (1,passes only full path) and (2, passes both full path and name)"`
 	Artifactory []ArtifactoryData `json:"artifactory" toml:"artifactory,omitempty" comment:"Array of Artifactory instances\n- host must be available via http check"`
 	Project     []Project         `json:"project" toml:"project" comment:"Array of projects to build\n- duplicate this section for each project to build"`
 }
@@ -748,6 +775,9 @@ type SCPs struct {
 }
 type PushCustoms struct {
 	Instance []PushCustom `json:"push-custom" toml:"push-custom"`
+}
+type PullCustoms struct {
+	Instance []PullCustom `json:"pull-custom" toml:"pull-custom"`
 }
 type SFTPs struct {
 	Instance []SftpData `json:"sftp" toml:"sftp"`
@@ -793,6 +823,12 @@ type PushCustom struct {
 	Exec       string `json:"exec" toml:"exec"`
 	Parameters string `json:"parameters" toml:"parameters"`
 	PassValues int64  `json:"values" toml:"values"`
+}
+type PullCustom struct {
+	Exec       string `json:"exec" toml:"exec"`
+	Parameters string `json:"parameters" toml:"parameters"`
+	PassValues int64  `json:"values" toml:"values"`
+	PrefixPath string `json:"prefix_path" toml:"prefix_path"`
 }
 type ArtifactoryData struct {
 	Host      string `json:"host" toml:"host"`
@@ -1559,20 +1595,20 @@ func AutoStatus() error {
 
 		err = scpCopyAutoStatus(d.Name)
 		if err != nil {
-			fmt.Println("issue scp copy :", err)
+			fmt.Println("issue scp pull auto status :", err)
 		}
-		err = customCopy(d.Name)
+		err = customPull(d.Name)
 		if err != nil {
-			fmt.Println("issue push custom copy :", err)
+			fmt.Println("issue pull auto status :", err)
 		}
 		err = sftpCopyAutoStatus(d.Name)
 		if err != nil {
-			fmt.Println("issue sftp copy :", err)
+			fmt.Println("issue sftp pull auto status :", err)
 		}
 
 		err = artifactoryPullAutoStatus(d.Name)
 		if err != nil {
-			fmt.Println("issue artifactory push :", err)
+			fmt.Println("issue artifactory pull auto status :", err)
 		}
 	}
 	return nil
@@ -2182,6 +2218,62 @@ func customCopy(projectName string) error {
 	return nil
 }
 
+func customPull(projectName string) error {
+	for _, k := range pullCustom.Instance {
+		fmt.Println("\nPull Custom... ")
+
+		var oldformat bool
+		exe := "" + k.Exec
+		fmt.Printf("Exec %v, Parameters: %v, PassValues: %v\n", k.Exec, k.Parameters, k.PassValues)
+		if k.PassValues == 1 {
+			fmt.Println("NEW FORMAT")
+			exe += " " + k.Parameters + " " + k.PrefixPath + projectName + ".auto"
+		} else if k.PassValues == 2 {
+			fmt.Println("NEW FORMAT")
+			exe += " " + k.Parameters + " " + k.PrefixPath + projectName + ".auto" + " ."
+		} else {
+			fmt.Println("OLD FORMAT")
+			oldformat = true
+			// old format
+			exe += " " + k.PrefixPath + projectName + ".auto" + " " + "."
+		}
+		fmt.Printf("Exe: |%v|\n", exe)
+
+		params := make([]string, 0)
+		if len(k.Parameters) > 0 {
+			parts := strings.Split(k.Parameters, " ")
+			for _, q := range parts {
+				params = append(params, strings.TrimSpace(q))
+			}
+		}
+		if !oldformat {
+			if k.PassValues == 1 && len(k.Parameters) > 0 {
+				params = append(params, k.PrefixPath+projectName+".auto")
+				out(k.Exec, params...)
+			} else if k.PassValues == 1 && len(k.Parameters) == 0 {
+				out(k.Exec, k.PrefixPath+projectName+".auto")
+			} else if k.PassValues == 2 && len(k.Parameters) > 0 {
+				params = append(params, k.PrefixPath+projectName+".auto")
+				params = append(params, ".")
+				out(k.Exec, params...)
+			} else if k.PassValues == 2 && len(k.Parameters) == 0 {
+				params = append(params, k.PrefixPath+projectName+".auto")
+				params = append(params, ".")
+				out(k.Exec, k.PrefixPath+projectName+".auto", ".")
+			}
+		} else {
+			out(k.Exec, k.PrefixPath+projectName+".auto", ".")
+		}
+
+		fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
+		readAndOutput(projectName + ".auto")
+		err := os.Remove(projectName + ".auto")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func sftpCopyAutoStatus(projectName string) error {
 	for _, k := range sftpS.Instance {
 		fmt.Println("\nSFTP Pull... ")
