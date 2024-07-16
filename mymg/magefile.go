@@ -1894,6 +1894,9 @@ func cross(app Project) error {
 		case "linux":
 			for _, x := range app.LinuxFiles {
 				scriptName = filepath.Base(x)
+				if scriptName == "bash_autocomplete" {
+					scriptName = app.Name + ".bash"
+				}
 				scriptContent = buildDeployScript(x)
 				if !dryRun {
 					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
@@ -1908,6 +1911,9 @@ func cross(app Project) error {
 		case "darwin":
 			for _, x := range app.MacFiles {
 				scriptName = filepath.Base(x)
+				if scriptName == "bash_autocomplete" {
+					scriptName = app.Name + ".bash"
+				}
 				scriptContent = buildDeployScript(x)
 				if !dryRun {
 					_, err = iout.WriteOut(scriptContent, filepath.Join(osarchDir, scriptName))
