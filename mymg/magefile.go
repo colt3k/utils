@@ -55,7 +55,7 @@ var (
 	prepDir        = ""
 
 	versionPkg            = "github.com/colt3k/utils"
-	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
+	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.GITBRANCH=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
 	overwriteValues       []string
 	goLDFlagsTemplate     = "-s -w %s"
 	goLDFlags             string
@@ -2785,6 +2785,7 @@ func setup(app Project) error {
 	ver := version(app.VersionFile)
 	fmt.Println("  - retrieve git commit hash")
 	gitCommit := gitCommitHash()
+	gitBranch := gitbranch()
 
 	fmt.Println("  - retrieve current path")
 	cur := currentPath()
@@ -2796,7 +2797,7 @@ func setup(app Project) error {
 	log.Printf("  - Reading\n   - Project: %s \n     Project Pkg: %s\n     CurrentPath: %s", app.Name, app.Package, baseDir)
 
 	fmt.Println("  - setup ldflag version templates")
-	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
+	versionFields := fmt.Sprintf(versionFieldsTemplate, versionPkg, gitCommit, versionPkg, gitBranch, versionPkg, ver, versionPkg, strconv.FormatInt(timestamp, 10), versionPkg, goVersion())
 	fmt.Println("    Version Fields: ", versionFields)
 	if len(app.OverrideVariables) > 0 {
 		overrides := strings.Split(app.OverrideVariables, ";")
@@ -2854,6 +2855,13 @@ func gitCommitHash() string {
 func hash() string {
 	hashResp, _ := sh.Output("git", "rev-parse", "--short", "HEAD")
 	return hashResp
+}
+
+// gitbranch returns the git branch for the current repo or "" if none.
+func gitbranch() string {
+	// git branch --format='%(refname:short)'
+	branchResp, _ := sh.Output("git", "branch", "--format=%(refname:short)")
+	return branchResp
 }
 
 func gitStatus() string {
