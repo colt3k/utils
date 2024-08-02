@@ -317,6 +317,7 @@ func setupProjects(props map[string]interface{}) error {
 			}
 		}
 
+		fmt.Printf("d.VersionFile: %v\n", d.VersionFile)
 		prjkts.Projects[i].VersionFile, err = filepath.Abs(d.VersionFile)
 		if err != nil {
 			return err
@@ -1208,6 +1209,7 @@ func Build() error {
 		if err != nil {
 			fmt.Println("issue formatting :", err)
 		}
+
 		err = Lint()
 		if err != nil {
 			fmt.Println("issue linting :", err)
@@ -2675,6 +2677,10 @@ func Install() error {
 		} else {
 			projectMainDir = projectMainDir + "."
 		}
+		err = setup(d)
+		if err != nil {
+			fmt.Println("issue with setup :", err)
+		}
 		if !dryRun {
 			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, projectMainDir)
 			if err != nil {
@@ -2783,6 +2789,7 @@ func setup(app Project) error {
 	mg.SerialDeps(parseToml)
 	fmt.Println("  - retrieve version")
 	ver := version(app.VersionFile)
+	fmt.Printf("  - version found %s\n", ver)
 	fmt.Println("  - retrieve git commit hash")
 	gitCommit := gitCommitHash()
 	gitBranch := gitbranch()
