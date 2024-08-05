@@ -2867,7 +2867,7 @@ func hash() string {
 // gitbranch returns the git branch for the current repo or "" if none.
 func gitbranch() string {
 	// git branch --format='%(refname:short)'
-	branchResp, _ := sh.Output("git", "branch", "--format=%(refname:short)")
+	branchResp, _ := sh.Output("git", "rev-parse", "--abbrev-ref", "HEAD")
 	return branchResp
 }
 
