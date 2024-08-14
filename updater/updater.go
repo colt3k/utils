@@ -19,6 +19,7 @@ type AppConfig struct {
 	ArchiveName       string
 	User              []byte
 	Pass              []byte
+	Bearer            bool
 	DisableVerifyCert bool
 	Issue             string
 }
@@ -63,6 +64,7 @@ type Connection struct {
 	HostName            string
 	User                string
 	PassOrToken         string
+	Bearer              bool
 	URLPrefix           string
 	Repository          string
 	Path                string

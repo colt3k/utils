@@ -91,7 +91,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		}
 
 		auth := &hc.Auth{Username: user, Password: pass}
-		data, err := pullURLToString(url, auth, d.DisableValidateCert)
+		data, err := pullURLToString(url, auth, d.DisableValidateCert, d.Bearer)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
 			//return nil, updateAvailable
@@ -102,6 +102,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		ac.BaseURL = base.String()
 		ac.User = user
 		ac.Pass = pass
+		ac.Bearer = d.Bearer
 		ac.DisableVerifyCert = d.DisableValidateCert
 
 		dec := json.NewDecoder(io.NopCloser(strings.NewReader(data)))
@@ -116,7 +117,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 		autoURL.WriteString(appName + ".auto")
 		log.Logf(log.DEBUG, "-- Auto File URL: %v", autoURL.String())
 		autoURI := autoURL.String()
-		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert)
+		autoDat, err := pullURLToString(autoURI, auth, d.DisableValidateCert, d.Bearer)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
 		}
@@ -263,8 +264,17 @@ func pullChangeLogAndDisplay(ac *updater.AppConfig) string {
 				url += "/"
 			}
 			url += ac.Changelog
+			// Bearer
 			auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
-			resp, err := httpClient.Fetch("GET", url, auth, nil, nil)
+			header := make(map[string]string)
+			if ac.Bearer {
+				bearerTkn := "Bearer " + string(auth.Password)
+				header["Authorization"] = bearerTkn
+				auth = nil
+			} else {
+				header = nil
+			}
+			resp, err := httpClient.Fetch("GET", url, auth, header, nil)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -299,7 +309,16 @@ func download(ac *updater.AppConfig) bool {
 	httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(120), hc.DisableVerifyClientCert(ac.DisableVerifyCert))
 
 	auth := &hc.Auth{Username: ac.User, Password: ac.Pass}
-	resp, err := httpClient.Fetch("GET", ac.URL, auth, nil, nil)
+	header := make(map[string]string)
+	if ac.Bearer {
+		bearerTkn := "Bearer " + string(auth.Password)
+		header["Authorization"] = bearerTkn
+		auth = nil
+	} else {
+		header = nil
+	}
+
+	resp, err := httpClient.Fetch("GET", ac.URL, auth, header, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -459,11 +478,19 @@ func testHosts(hosts []updater.Connection, checkOnly bool) {
 	log.Logln(log.DEBUG, "- END testHosts process")
 }
 
-func pullURLToString(url string, auth *hc.Auth, disableVerifyCert bool) (string, error) {
+func pullURLToString(url string, auth *hc.Auth, disableVerifyCert, bearer bool) (string, error) {
 	log.Logln(log.DEBUG, "--- Pull URL Content To String")
 	httpClient := hc.NewClient(hc.HTTPClientRequestTimeout(30), hc.DisableVerifyClientCert(disableVerifyCert))
 
-	resp, err := httpClient.Fetch("GET", url, auth, nil, nil)
+	header := make(map[string]string)
+	if bearer {
+		bearerTkn := "Bearer " + string(auth.Password)
+		header["Authorization"] = bearerTkn
+		auth = nil
+	} else {
+		header = nil
+	}
+	resp, err := httpClient.Fetch("GET", url, auth, header, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
