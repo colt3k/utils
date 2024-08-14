@@ -12,7 +12,7 @@ require (
 	github.com/colt3k/utils/netut v0.0.24
 	github.com/colt3k/utils/osut v0.0.6
 	github.com/colt3k/utils/ques v0.0.6
-	github.com/colt3k/utils/version v0.0.4
+	github.com/colt3k/utils/version v0.0.5
 )
 
 require (
