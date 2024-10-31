@@ -94,16 +94,16 @@ func Process(ctx context.Context, o Task, r Rule) error {
 		case <-ctx.Done():
 			return nil
 		case <-timer.C:
+			// if no error then exit
+			if err := o(); err == nil {
+				return nil
+			}
 			if r.currentAttempt == r.MaxAttempts+1 {
 				return fmt.Errorf("exceeded attempts")
 			}
 			// Only exit if set to something other than 0
 			if r.MaxElapsed > 0 && (r.elapsed >= r.MaxElapsed) {
 				return fmt.Errorf("exceeded maximum elapsed")
-			}
-			// if no error then exit
-			if err := o(); err == nil {
-				return nil
 			}
 			d := r.NextBackoff()
 			fmt.Printf("failed retrying in %v...\n", d)
