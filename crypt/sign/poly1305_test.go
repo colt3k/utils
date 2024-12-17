@@ -78,22 +78,22 @@ func Equals(tb testing.TB, exp, act interface{}) {
 }
 
 func TestMine(t *testing.T) {
-	//Generate a Random Key
+	// Generate a Random Key
 	k := NewRandomKey()
 
-	//Create a buffer of the data size + Extension(ivSize+macSize) == (aes.BlockSize)+(poly1305.TagSize)
+	// Create a buffer of the data size + Extension(ivSize+macSize) == (aes.BlockSize)+(poly1305.TagSize)
 	buf := make([]byte, 0, len(exText)+Extension)
 
-	//Create Random Nonce AKA IV (initialization vector), saved with Key for storage
+	// Create Random Nonce AKA IV (initialization vector), saved with Key for storage
 	nonce := crypt.GenerateRandomBytes(ivSize)
 
-	//Seal our data pass in our dst, iv, plaintext, nil for additional Data
-	//MAC is stored in buf
+	// Seal our data pass in our dst, iv, plaintext, nil for additional Data
+	// MAC is stored in buf
 	ciphertext := k.Seal(buf[:0], nonce, []byte(exText), nil)
 
 	trusted, err := k.Safe(nonce, ciphertext)
 	if err != nil {
-		log.Printf("Error: ", err)
+		log.Printf("Error: %v", err)
 		t.FailNow()
 	}
 	if !trusted {
@@ -101,10 +101,10 @@ func TestMine(t *testing.T) {
 	}
 	println("Cipher text has NOT been tampered with and CAN be trusted.")
 
-	//Create byte array the size of our ciphertext
+	// Create byte array the size of our ciphertext
 	plaintext := make([]byte, 0, len(ciphertext))
 
-	//Decrypt and Authenticate via Open pass in dst, IV, ciphertext, nil for additional data
+	// Decrypt and Authenticate via Open pass in dst, IV, ciphertext, nil for additional data
 	plaintext, err = k.Open(plaintext[:0], nonce, ciphertext, nil)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
@@ -118,42 +118,42 @@ func TestMine(t *testing.T) {
 
 func TestSomething(t *testing.T) {
 
-	//Generate a Random Key
+	// Generate a Random Key
 	k := NewRandomKey()
 
 	tests := []int{5, 23, 2<<18 + 23, 1 << 20}
 
 	for _, size := range tests {
-		//Generate a random set of data
+		// Generate a random set of data
 		data := Random(42, size)
 
-		//Create a buffer of the data size + Extension(ivSize+macSize) == (aes.BlockSize)+(poly1305.TagSize)
+		// Create a buffer of the data size + Extension(ivSize+macSize) == (aes.BlockSize)+(poly1305.TagSize)
 		buf := make([]byte, 0, size+Extension)
 
-		//Create Random Nonce AKA IV (initialization vector)
+		// Create Random Nonce AKA IV (initialization vector)
 		nonce := NewRandomNonce()
-		//Seal our data pass in our dst, iv, plaintext, nil for additional Data
+		// Seal our data pass in our dst, iv, plaintext, nil for additional Data
 		ciphertext := k.Seal(buf[:0], nonce, data, nil)
 
-		//Length of ciphertext is equal to length of data plus poly1305.TagSize(Overhead)
+		// Length of ciphertext is equal to length of data plus poly1305.TagSize(Overhead)
 		Assert(t, len(ciphertext) == len(data)+k.Overhead(),
 			"ciphertext length does not match: want %d, got %d",
 			len(data)+Extension, len(ciphertext))
 
-		//Create byte array the size of our ciphertext
+		// Create byte array the size of our ciphertext
 		plaintext := make([]byte, 0, len(ciphertext))
 
-		//Decrypt and Authenticate via Open pass in dst, IV, ciphertext, nil for additional data
+		// Decrypt and Authenticate via Open pass in dst, IV, ciphertext, nil for additional data
 		plaintext, err := k.Open(plaintext[:0], nonce, ciphertext, nil)
-		//Ensure err is nil
+		// Ensure err is nil
 		OK(t, err)
 
-		//CHECK If the length of plaintext is equal to length of original data
+		// CHECK If the length of plaintext is equal to length of original data
 		Assert(t, len(plaintext) == len(data),
 			"plaintext length does not match: want %d, got %d",
 			len(data), len(plaintext))
 
-		//Does the plaintext equal the original data?
+		// Does the plaintext equal the original data?
 		Equals(t, plaintext, data)
 
 	}

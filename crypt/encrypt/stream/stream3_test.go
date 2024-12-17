@@ -40,8 +40,8 @@ func TestEncrypt(t *testing.T) {
 	parts := strings.Split(string(derivedKey), "$")
 	lastPart := parts[len(parts)-1]
 	aesKey2 := []byte(lastPart)
-	//aesKey2 := derivedKey[0:16]
-	//aesIv2 := derivedKey[16:32]
+	// aesKey2 := derivedKey[0:16]
+	// aesIv2 := derivedKey[16:32]
 
 	hmacKey := []byte("this is my hmackey")
 	err = Encrypt(fo, tf, aesKey2, hmacKey)
@@ -72,20 +72,20 @@ func TestEncrypt(t *testing.T) {
 	}
 }
 
-//type devZero byte
+// type devZero byte
 //
-//func (z devZero) Read(b []byte) (int, error) {
+// func (z devZero) Read(b []byte) (int, error) {
 //	for i := range b {
 //		b[i] = byte(z)
 //	}
 //	return len(b), nil
-//}
+// }
 //
-//func mockDataSrc(size int64) io.Reader {
+// func mockDataSrc(size int64) io.Reader {
 //	fmt.Printf("dev/zero of size %d (%d MB)\n", size, size/1024/1024)
 //	var z devZero
 //	return io.LimitReader(z, size)
-//}
+// }
 
 func TestDecrypt(t *testing.T) {
 
@@ -102,8 +102,8 @@ func TestDecrypt(t *testing.T) {
 	}
 	fmt.Println("Here is the temp: ", tf.Name())
 
-	//keyAes, _ := hex.DecodeString(strings.Repeat("6368616e676520746869732070617373", 2))
-	//keyHmac := keyAes // don't do this
+	// keyAes, _ := hex.DecodeString(strings.Repeat("6368616e676520746869732070617373", 2))
+	// keyHmac := keyAes // don't do this
 
 	saltAR := crypt.GenSalt(nil, ScryptParams.SaltLen)
 	ScryptParams.Salt = saltAR
@@ -115,7 +115,7 @@ func TestDecrypt(t *testing.T) {
 	lastPart := parts[len(parts)-1]
 	dk := []byte(lastPart)
 	aesKey2 := dk[0:16]
-	//aesIv2 := derivedKey[16:32]
+	// aesIv2 := derivedKey[16:32]
 
 	err = Encrypt(fo, tf, aesKey2, aesKey2)
 	if err != nil {
