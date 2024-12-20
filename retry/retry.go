@@ -36,6 +36,7 @@ type Rule struct {
 	MaxElapsed              time.Duration // 15 min
 	elapsed                 time.Duration
 	SleepDurationType       DurationType
+	DisableMessaging        bool
 }
 
 func NewRule() Rule {
@@ -106,7 +107,9 @@ func Process(ctx context.Context, o Task, r Rule) error {
 				return fmt.Errorf("exceeded maximum elapsed")
 			}
 			d := r.NextBackoff()
-			fmt.Printf("failed retrying in %v...\n", d)
+			if !r.DisableMessaging {
+				fmt.Printf("failed retrying in %v...\n", d)
+			}
 			r.elapsed += d
 			r.currentAttempt++
 			timer.Reset(d)
