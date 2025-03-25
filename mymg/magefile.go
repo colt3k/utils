@@ -35,6 +35,10 @@ import (
 // mage -v install or release
 // bump= mage -v install or release
 
+const (
+	mymgVersion = "v0.1.43c"
+)
+
 var (
 	dryRun         bool
 	displayOnly    bool
@@ -447,11 +451,11 @@ func parseTargets() error {
 	if err != nil {
 		panic(err)
 	}
-	//tree, err := toml.LoadFile(path)
-	//if err != nil {
+	// tree, err := toml.LoadFile(path)
+	// if err != nil {
 	//	return err
-	//}
-	//props := tree.ToMap()
+	// }
+	// props := tree.ToMap()
 
 	err = setupProjects(props)
 	if err != nil {
@@ -531,11 +535,11 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
-	//for _, b := range scpS.Instance {
+	// for _, b := range scpS.Instance {
 	//	if !fileExistsAndIsNotADir(b.Path) {
 	//		return fmt.Errorf("scp path not found %v", b.Path)
 	//	}
-	//}
+	// }
 	err = setupCustomPushes(props)
 	if err != nil {
 		return err
@@ -544,11 +548,11 @@ func parseToml() error {
 	if err != nil {
 		return err
 	}
-	//for _, b := range scpCustom.Instance {
+	// for _, b := range scpCustom.Instance {
 	//	if !fileExistsAndIsNotADir(b.Exec) {
 	//		return fmt.Errorf("scp-custom exec path not found %v", b.Exec)
 	//	}
-	//}
+	// }
 
 	err = setupSftps(props)
 	if err != nil {
@@ -560,9 +564,9 @@ func parseToml() error {
 	}
 	// validate credential paths
 	for _, b := range arts.Instance {
-		//if !fileExistsAndIsNotADir(b.Creds) && !fileExistsAndIsNotADir(b.CredsPath) {
+		// if !fileExistsAndIsNotADir(b.Creds) && !fileExistsAndIsNotADir(b.CredsPath) {
 		//	return fmt.Errorf("af credentials not found %v", b.Creds)
-		//}
+		// }
 		if len(b.CredsPath) > 0 {
 			if !fileExistsAndIsNotADir(b.CredsPath) {
 				fmt.Printf("af credential path not found %v\n", b.CredsPath)
@@ -590,9 +594,9 @@ func parseToml() error {
 				return fmt.Errorf("os deploy script not found %v for %v", q, b.Name)
 			}
 		}
-		//if !exists(b.Package) {
+		// if !exists(b.Package) {
 		//	return fmt.Errorf("package path not found %v", b.Package)
-		//}
+		// }
 		if !fileExistsAndIsNotADir(b.VersionFile) {
 			return fmt.Errorf("version file not found %v", b.VersionFile)
 		}
@@ -622,7 +626,7 @@ func parseToml() error {
 	}
 
 	var processApp bool
-	//fmt.Println("") // clear line output
+	// fmt.Println("") // clear line output
 	if len(prjkts.Projects) == 0 {
 		log.Println()
 		log.Println("!!! No projects defined !!!")
@@ -647,7 +651,7 @@ func parseToml() error {
 	return nil
 }
 
-//type configuration struct {
+// type configuration struct {
 //	EnvVars       map[string]string `json:"env_vars"`
 //	BuildTags     string            `json:"build_tags"`
 //	CleanDirs     []string          `json:"clean_dirs"`
@@ -657,42 +661,42 @@ func parseToml() error {
 //	Sftp          sftps             `json:"sftp"`
 //	Artifactories artifactories     `json:"artifactories"`
 //	Applications  projects          `json:"projects"`
-//}
-//type scps struct {
+// }
+// type scps struct {
 //	Instance []scp `json:"scp"`
-//}
-//type scp struct {
+// }
+// type scp struct {
 //	Host     string `json:"host"`
 //	Path     string `json:"path"`
 //	SkipPing string `json:"skip_ping"`
-//}
+// }
 
-//type scpcustoms struct {
+// type scpcustoms struct {
 //	Instance []scpcust `json:"scp-custom"`
-//}
-//type scpcust struct {
+// }
+// type scpcust struct {
 //	Exec string `json:"exec"`
-//}
-//type sftps struct {
+// }
+// type sftps struct {
 //	Instance []sftp `json:"sftp"`
-//}
-//type sftp struct {
+// }
+// type sftp struct {
 //	Host     string `json:"host"`
 //	Path     string `json:"path"`
 //	SkipPing string `json:"skip_ping"`
-//}
-//type artifactories struct {
+// }
+// type artifactories struct {
 //	Instance []artifactory `json:"artifactory"`
-//}
-//type artifactory struct {
+// }
+// type artifactory struct {
 //	Host  string `json:"host"`
 //	Path  string `json:"path"`
 //	Creds string `json:"creds"`
-//}
+// }
 //
-//type projects struct {
+// type projects struct {
 //	Projects []Project `json:"project"`
-//}
+// }
 
 type applications struct {
 	Apps []application `json:"application"`
@@ -739,6 +743,7 @@ func Help() {
 	fmt.Println("  auto         build true auto file and release")
 	fmt.Println("  noauto       build false auto file and release")
 	fmt.Println("  autostatus   show status of the auto file if it exists")
+	fmt.Println("  myversion    show current version")
 	fmt.Println("Flags")
 	fmt.Println("  -v		show verbose mage output")
 	fmt.Println("  -d		show custom debug output")
@@ -837,6 +842,8 @@ type ArtifactoryData struct {
 	Creds     string `json:"creds" toml:"creds"`
 	CredsPath string `json:"creds_path" toml:"creds_path"`
 	Backup    bool   `json:"backup" toml:"backup"`
+	Bearer    bool   `json:"bearer" toml:"bearer"`
+	Ping      bool   `json:"ping" toml:"ping"`
 }
 type Project struct {
 	Enable            bool     `json:"-" toml:"-"`
@@ -909,7 +916,7 @@ func GenConf() {
 	c.PushCustom = []PushCustom{{Exec: "path to executable", Parameters: "-d abc -f xzy", PassValues: 2}}
 	c.Artifactory = []ArtifactoryData{{Host: "main.domain.com", Path: "http://main.domain.com:8081/artifactory/artifactoryreponame/appname/",
 		Creds:     "/Users/username/keys/auths/.myartifactorycreds",
-		CredsPath: "./pkgr/creds.txt"}}
+		CredsPath: "./pkgr/creds.txt", Bearer: true, Ping: false, Backup: true}}
 	c.Project = []Project{{Name: "appname", OSTargets: []string{"darwin/amd64"}, OSDeployScripts: []string{"./pkgr/deploy_darwin.sh"},
 		Package: "go.domain.com/colt3k/appname", VersionFile: "cmd/appname/VERSION.txt", ReadmeFile: "cmd/appname/README.md",
 		ChangelogFile: "cmd/appname/CHANGES.txt", Files: []string{"./pkgr/bash_autocomplete", "cmd/appname/README.md"},
@@ -1039,7 +1046,7 @@ func Convert() {
 	}
 	fmt.Println("- Converting - Projects/Applications")
 	var tmp applications
-	//log.Printf("scp : %v\n", props["scp"])
+	// log.Printf("scp : %v\n", props["scp"])
 	mapProps := props["application"]
 	wrapper := make(map[string]interface{}, 1)
 	wrapper["application"] = mapProps
@@ -1124,7 +1131,7 @@ func Comment() {
 	mg.SerialDeps(parseToml)
 	fmt.Println()
 	lastTag, _ := sh.Output(apps.GitExe, "describe", "--tags", "--abbrev=0")
-	//fmt.Printf("last Tag : %v\n", lastTag)
+	// fmt.Printf("last Tag : %v\n", lastTag)
 	comments, _ := sh.Output(apps.GitExe, "log", lastTag+"..HEAD", "--oneline")
 	fmt.Printf("Comments : %v\n", comments)
 	lines := strings.Split(comments, "\n")
@@ -1167,7 +1174,7 @@ func Build() error {
 	}
 	gocmd := mg.GoCmd()
 	fmt.Println("Building...")
-	//$(GO) build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o $(NAME) .
+	// $(GO) build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o $(NAME) .
 	var err error
 	if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
 		err = os.Setenv("CGO_ENABLED", "0")
@@ -1467,6 +1474,10 @@ func BuildCross() error {
 	return nil
 }
 
+func MyVersion() error {
+	fmt.Printf("ONLY FOR TESTING - VERSION %v", mymgVersion)
+	return nil
+}
 func Release() error {
 	mg.SerialDeps(parseToml, BumpVersion)
 
@@ -1555,10 +1566,10 @@ func Auto() error {
 			return err
 		}
 
-		//_, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
-		//if err != nil {
+		// _, err = iout.WriteOut([]byte("false"), filepath.Join(baseDir, d.Name+".auto"))
+		// if err != nil {
 		//	return err
-		//}
+		// }
 
 		err = scpCopy(d.Name)
 		if err != nil {
@@ -1577,7 +1588,7 @@ func Auto() error {
 			fmt.Println("issue artifactory push :", err)
 		}
 
-		//cleaner(d.Name, false)
+		// cleaner(d.Name, false)
 	}
 
 	return nil
@@ -1667,13 +1678,13 @@ func setEnvFlags(flags string, dryRun bool) error {
 				p2 = strings.ReplaceAll(p2, "\"", "")
 			}
 			fmt.Printf("    setting env var %v = %v\n", p1, p2)
-			//if !dryRun {
+			// if !dryRun {
 			err := os.Setenv(p1, p2)
 			if err != nil {
 				fmt.Printf("    !!! issue setting %v to %v: %v\n", p1, p2, err)
 				return err
 			}
-			//}
+			// }
 		}
 	}
 	return nil
@@ -1742,8 +1753,8 @@ func cross(app Project) error {
 		if goos == "darwin" && (arch == "arm64" || arch == "amd64") {
 			skipUPX = true
 		}
-		//goosAct := runtime.GOOS
-		//goarchAct := runtime.GOARCH
+		// goosAct := runtime.GOOS
+		// goarchAct := runtime.GOARCH
 
 		var flags string
 		if len(app.OSEnvFlags) > 0 {
@@ -1755,8 +1766,8 @@ func cross(app Project) error {
 			}
 		}
 
-		//fmt.Printf("actual %v/%v, building %v/%v\n", goosAct, goarchAct, goos, arch)
-		//if goosAct == goos && goarchAct == arch {
+		// fmt.Printf("actual %v/%v, building %v/%v\n", goosAct, goarchAct, goos, arch)
+		// if goosAct == goos && goarchAct == arch {
 		//	if cgoval, ok := os.LookupEnv("CGO_ENABLED"); ok {
 		//		wasCGO = cgoval
 		//		err = os.Setenv("CGO_ENABLED", "0")
@@ -1764,20 +1775,20 @@ func cross(app Project) error {
 		//			fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		//		}
 		//	}
-		//} else if wasCGO != "0" {
+		// } else if wasCGO != "0" {
 		//	err = os.Setenv("CGO_ENABLED", wasCGO)
 		//	if err != nil {
 		//		fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		//	}
-		//}
-		//if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
+		// }
+		// if cgoval, ok := os.LookupEnv("CGO_ENABLED"); !ok {
 		//	err = os.Setenv("CGO_ENABLED", "0")
 		//	if err != nil {
 		//		fmt.Println("issue setting CGO_ENABLED to 0:", err)
 		//	}
-		//} else {
+		// } else {
 		//	fmt.Printf("CGO_ENABLED set to %v was CGO Set %v\n", cgoval, wasCGO)
-		//}
+		// }
 
 		name := app.Name
 		if goos == "windows" {
@@ -2447,7 +2458,14 @@ func artifactoryPullAutoStatus(projectName string) error {
 	for _, k := range arts.Instance {
 		fmt.Println("  processing ", k.Host)
 		if len(k.Host) > 0 {
-			foundHost := ping(k.Host)
+			fmt.Println("  check ping? ", k.Ping)
+			foundHost := false
+			if k.Ping {
+				foundHost = ping(k.Host)
+			} else {
+				fmt.Println("ping disabled, trying AF Push without test")
+				foundHost = true
+			}
 			fmt.Println("found? ", foundHost)
 			if foundHost && (len(k.Creds) > 0 || len(k.CredsPath) > 0) {
 				var creds []byte
@@ -2457,8 +2475,14 @@ func artifactoryPullAutoStatus(projectName string) error {
 					credsPath := readAndOutput(k.CredsPath)
 					creds = loadArtifactoryCreds(credsPath)
 				}
-				//fmt.Printf("to pull: %v\n", k.Path+projectName+".auto")
-				out(apps.CurlExe, "-u"+string(creds), "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
+				// fmt.Printf("to pull: %v\n", k.Path+projectName+".auto")
+				if k.Bearer {
+					bearerTkn := fmt.Sprintf("Authorization: Bearer %v", string(creds))
+					out(apps.CurlExe, "--header", bearerTkn, "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
+				} else {
+					out(apps.CurlExe, "-u"+string(creds), "-sS", k.Path+projectName+".auto", "-o", projectName+".auto")
+				}
+
 				fmt.Printf("Read And Output content: |%v|\n", projectName+".auto")
 				readAndOutput(projectName + ".auto")
 				err := os.Remove(projectName + ".auto")
@@ -2482,7 +2506,14 @@ func artifactoryPush(projectName string) error {
 	for _, k := range arts.Instance {
 		fmt.Println("  processing ", k.Host)
 		if len(k.Host) > 0 {
-			foundHost := ping(k.Host)
+			fmt.Println("  check ping? ", k.Ping)
+			foundHost := false
+			if k.Ping {
+				foundHost = ping(k.Host)
+			} else {
+				fmt.Println("ping disabled, trying AF Push without test")
+				foundHost = true
+			}
 			fmt.Println("found? ", foundHost)
 			if foundHost && (len(k.Creds) > 0 || len(k.CredsPath) > 0) {
 				var creds []byte
@@ -2491,7 +2522,7 @@ func artifactoryPush(projectName string) error {
 				} else if len(k.CredsPath) > 0 {
 					credsPath := readAndOutput(k.CredsPath)
 					creds = loadArtifactoryCreds(credsPath)
-					//fmt.Printf("Creds found %v\n", string(creds))
+					// fmt.Printf("Creds found %v\n", string(creds))
 				}
 				var byt bytes.Buffer
 				matches := findFiles(projectName)
@@ -2514,7 +2545,12 @@ func artifactoryPush(projectName string) error {
 							fn := filepath.Base(d)
 							svFile := filepath.Join(bkupDir, fn) + ".af." + strconv.Itoa(int(t))
 							fmt.Printf("**** BACKUP TO \n%v\nfrom\n%v\n", svFile, k.Path+fn)
-							out(apps.CurlExe, "-u"+string(creds), "-sS", "-o", svFile, k.Path+fn)
+							if k.Bearer {
+								bearerTkn := fmt.Sprintf("Authorization: Bearer %v", string(creds))
+								out(apps.CurlExe, "--header", bearerTkn, "-sS", "-o", svFile, k.Path+fn)
+							} else {
+								out(apps.CurlExe, "-u"+string(creds), "-sS", "-o", svFile, k.Path+fn)
+							}
 							fmt.Println("  BACKUP complete. ")
 						}
 						fmt.Println("  pushing via artifactory ", d)
@@ -2538,12 +2574,16 @@ func artifactoryPush(projectName string) error {
 								return err
 							}
 							sha256Parts := strings.Fields(shasum256)
-
-							out(apps.CurlExe, "-u"+string(creds), "-sS", "-T", d, "-H", "X-Checksum-MD5:"+md5sum, "-H", "X-Checksum-Sha1:"+shaParts[0], "-H", "X-Checksum-Sha256:"+sha256Parts[0], k.Path)
+							if k.Bearer {
+								bearerTkn := fmt.Sprintf("Authorization: Bearer %v", string(creds))
+								out(apps.CurlExe, "--header", bearerTkn, "-sS", "-T", d, "-H", "X-Checksum-MD5:"+md5sum, "-H", "X-Checksum-Sha1:"+shaParts[0], "-H", "X-Checksum-Sha256:"+sha256Parts[0], k.Path)
+							} else {
+								out(apps.CurlExe, "-u"+string(creds), "-sS", "-T", d, "-H", "X-Checksum-MD5:"+md5sum, "-H", "X-Checksum-Sha1:"+shaParts[0], "-H", "X-Checksum-Sha256:"+sha256Parts[0], k.Path)
+							}
 						}
 					}
 					// Upload all at once without hashes
-					//out(curlExe, "-u"+string(artifactoryCreds), "-T", byt.String(), artifactoryPath)
+					// out(curlExe, "-u"+string(artifactoryCreds), "-T", byt.String(), artifactoryPath)
 				}
 			} else if foundHost && len(k.Creds) == 0 && len(k.CredsPath) == 0 {
 				fmt.Println("  no artifactory credentials found")
@@ -2611,7 +2651,7 @@ func buildDeployScript(scriptPath string) []byte {
 		log.Fatal(err)
 	}
 	// replace $name with name of project
-	//s := strings.Replace(string(b), "$name", name, -1)
+	// s := strings.Replace(string(b), "$name", name, -1)
 	return b
 }
 
@@ -2799,7 +2839,7 @@ func setup(app Project) error {
 	baseDir = cur
 
 	prepDir = filepath.Join(baseDir, "PREP")
-	//app.Package += "/" + app.Name
+	// app.Package += "/" + app.Name
 	buildDir = filepath.Join(baseDir, crossBuildDir)
 	log.Printf("  - Reading\n   - Project: %s \n     Project Pkg: %s\n     CurrentPath: %s", app.Name, app.Package, baseDir)
 
