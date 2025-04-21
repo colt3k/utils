@@ -43,7 +43,7 @@ type Client struct {
 	IdleConnTimeout       time.Duration
 	TLSHandshakeTimeout   time.Duration
 	ResponseHeaderTimeout time.Duration
-	//ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
+	// ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
 	HTTPClientRequestTimeout  time.Duration
 	CheckRedirectUserLastResp bool
 	disableVerifyCert         bool
@@ -67,7 +67,7 @@ func NewClient(opts ...ClientOption) *Client {
 	t.IdleConnTimeout = 90 * time.Second
 	t.TLSHandshakeTimeout = 10 * time.Second
 	t.ResponseHeaderTimeout = 10 * time.Second
-	//t.ExpectContinueTimeout = 1 * time.Second
+	// t.ExpectContinueTimeout = 1 * time.Second
 	t.HTTPClientRequestTimeout = 30 * time.Second
 
 	for _, opt := range opts {
@@ -79,23 +79,34 @@ func NewClient(opts ...ClientOption) *Client {
 func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	return c.FetchWithContext(context.Background(), method, url, auth, header, body)
 }
-func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
+func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
 	// Test for HTTP_PROXY and HTTPS_PROXY and use appropriate one
 	var netTransport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			purl, err := http.ProxyFromEnvironment(req)
+			if err != nil {
+				log.Logf(log.WARN, "%v", err)
+			}
+			if purl != nil {
+				log.Printf("Using proxy: %s for request to: %s\n", purl.String(), req.URL.String())
+			} else {
+				log.Printf("Using NO proxy for request to: %s\n", req.URL.String())
+			}
+			return purl, nil
+		},
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout, // time spent establishing a TCP connection
 			KeepAlive: c.DialKeepAliveTimeout,
-			//DualStack: true,		// now set by default and deprecated
+			// DualStack: true,		// now set by default and deprecated
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
 		TLSHandshakeTimeout: c.TLSHandshakeTimeout, // time spent performing the TLS handshake
-		//ExpectContinueTimeout: c.ExpectContinueTimeout, //time client will wait between sending request headers and receiving the go-ahead to send the body
-		ResponseHeaderTimeout: c.ResponseHeaderTimeout, //time spent reading the headers of the response
+		// ExpectContinueTimeout: c.ExpectContinueTimeout, //time client will wait between sending request headers and receiving the go-ahead to send the body
+		ResponseHeaderTimeout: c.ResponseHeaderTimeout, // time spent reading the headers of the response
 		TLSClientConfig:       tlsConfig,
 	}
 	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert {
@@ -107,19 +118,19 @@ func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth 
 			}
 		}
 		c.httpClient = &http.Client{
-			Timeout:       c.HTTPClientRequestTimeout, //entire exchange, from Dial to reading the body
+			Timeout:       c.HTTPClientRequestTimeout, // entire exchange, from Dial to reading the body
 			Transport:     netTransport,
 			CheckRedirect: checkRedirect,
 		}
 	}
 	// Can be used instead of all timers to perform cancel based on time set for the client
-	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
-	//ctx, cancel := context.WithCancel(context.Background())
-	//timer := time.AfterFunc(5*time.Second, func() {
+	// https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
+	// ctx, cancel := context.WithCancel(context.Background())
+	// timer := time.AfterFunc(5*time.Second, func() {
 	//	cancel()
-	//})
+	// })
 
-	req, _ := http.NewRequestWithContext(ctx, method, url, body)
+	req, _ := http.NewRequestWithContext(ctx, method, urlStr, body)
 	req.Close = true
 	if auth != nil {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
@@ -138,15 +149,15 @@ func (c *Client) FetchWithContext(ctx context.Context, method, url string, auth 
 	}
 
 	// Disabled due to spitting out contents of uploaded files
-	//if log.IsDebug() {
+	// if log.IsDebug() {
 	//	dump, _ := httputil.DumpRequestOut(req, true)
 	//	fmt.Println(string(dump))
-	//}
+	// }
 	// Perform said network call.
-	//log.Logf(log.DBGL3, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
+	// log.Logf(log.DBGL3, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		//glog.Error(err.Error()) // use glog it's amazing
+		// glog.Error(err.Error()) // use glog it's amazing
 		return nil, err
 	}
 
@@ -177,12 +188,12 @@ func (c *Client) FetchTLSWithContext(ctx context.Context, method, url string, au
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout,
 			KeepAlive: c.DialKeepAliveTimeout,
-			//DualStack: true,		// now set by default and deprecated
+			// DualStack: true,		// now set by default and deprecated
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
 		TLSHandshakeTimeout: c.TLSHandshakeTimeout,
-		//ExpectContinueTimeout: c.ExpectContinueTimeout,
+		// ExpectContinueTimeout: c.ExpectContinueTimeout,
 		TLSClientConfig: config,
 	}
 	if c.httpClient == nil {
@@ -233,12 +244,12 @@ func (c *Client) ProxiedClient() *http.Client {
 			DialContext: (&net.Dialer{
 				Timeout:   c.DialTimeout,
 				KeepAlive: c.DialKeepAliveTimeout,
-				//DualStack: true,		// now set by default and deprecated
+				// DualStack: true,		// now set by default and deprecated
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
 			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
-			//ExpectContinueTimeout: c.ExpectContinueTimeout,
+			// ExpectContinueTimeout: c.ExpectContinueTimeout,
 			Proxy:           http.ProxyURL(proxyURL),
 			TLSClientConfig: tlsConfig,
 		}
@@ -247,12 +258,12 @@ func (c *Client) ProxiedClient() *http.Client {
 			DialContext: (&net.Dialer{
 				Timeout:   c.DialTimeout,
 				KeepAlive: c.DialKeepAliveTimeout,
-				//DualStack: true,		// now set by default and deprecated
+				// DualStack: true,		// now set by default and deprecated
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
 			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
-			//ExpectContinueTimeout: c.ExpectContinueTimeout,
+			// ExpectContinueTimeout: c.ExpectContinueTimeout,
 			TLSClientConfig: tlsConfig,
 		}
 	}
@@ -276,7 +287,7 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 		httpClient = NewClient(HTTPClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	httpClient.disableVerifyCert = disableVerifyCert
-	//log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
+	// log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -298,12 +309,12 @@ func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, er
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Logf(log.ERROR, "Error reading body %v", err)
-		//debug.PrintStack()
+		// debug.PrintStack()
 		return false, errors.New("unable to read response")
 	}
 
 	if body != nil && len(body) > 0 {
-		//log.Println(string(body))
+		// log.Println(string(body))
 		return true, nil
 	} else if body != nil && len(body) == 0 {
 		// no body but reachable
