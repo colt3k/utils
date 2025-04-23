@@ -91,9 +91,9 @@ func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, au
 				log.Logf(log.WARN, "%v", err)
 			}
 			if purl != nil {
-				log.Printf("Using proxy: %s for request to: %s\n", purl.String(), req.URL.String())
+				log.Logf(log.DEBUG, "proxy: %s for request to: %s\n", purl.String(), req.URL.String())
 			} else {
-				log.Printf("Using NO proxy for request to: %s\n", req.URL.String())
+				log.Logf(log.DEBUG, "NO proxy for request to: %s\n", req.URL.String())
 			}
 			return purl, nil
 		},
