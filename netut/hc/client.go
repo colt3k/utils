@@ -79,6 +79,38 @@ func NewClient(opts ...ClientOption) *Client {
 func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	return c.FetchWithContext(context.Background(), method, url, auth, header, body)
 }
+func proxURL(tmpURL string) string {
+	tmpPartURL := ""
+	pfx := ""
+	if strings.HasPrefix(tmpURL, "http://") {
+		pfx = "http://"
+	}
+	if strings.HasPrefix(tmpURL, "https://") {
+		pfx = "https://"
+	}
+	if strings.Contains(pfx, "http") {
+		// replace prefix of http?://
+		tmpURL = strings.Replace(tmpURL, pfx, "", 1)
+		// find first / this should be after the domain
+		idx := strings.Index(tmpURL, "/")
+		// add our prefix back on for output
+		tmpPartURL = pfx
+		// if not found then skip, otherwise add domain
+		if idx > -1 {
+			// fmt.Printf("First: %v\n", tmpURL[:idx])
+			tmpPartURL += tmpURL[:idx] + "..."
+		}
+		// find last index of /
+		lIdx := strings.LastIndex(tmpURL, "/")
+		// if there are none skip, otherwise add last slash until end of url
+		if lIdx > -1 {
+			// fmt.Printf("Last: %v\n", tmpURL[lIdx:])
+			tmpPartURL += tmpURL[lIdx:]
+		}
+		// fmt.Printf("PartURL: %v\n", tmpPartURL)
+	}
+	return tmpPartURL
+}
 func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
@@ -90,10 +122,14 @@ func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, au
 			if err != nil {
 				log.Logf(log.WARN, "%v", err)
 			}
+			toDisp := ""
+			if req.URL != nil {
+				toDisp = proxURL(req.URL.String())
+			}
 			if purl != nil {
-				log.Logf(log.DEBUG, "proxy: %s for request to: %s\n", purl.String(), req.URL.String())
+				log.Logf(log.DBGL2, "proxy: %s for request to: %s\n", purl.String(), toDisp)
 			} else {
-				log.Logf(log.DEBUG, "NO proxy for request to: %s\n", req.URL.String())
+				log.Logf(log.DBGL2, "NO proxy for request to: %s\n", toDisp)
 			}
 			return purl, nil
 		},
