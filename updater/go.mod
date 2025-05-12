@@ -8,10 +8,10 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/colt3k/nglog v0.0.32
 	github.com/colt3k/utils/debug v0.0.2
-	github.com/colt3k/utils/file v0.0.12
-	github.com/colt3k/utils/io v0.0.21
+	github.com/colt3k/utils/file v0.0.13
+	github.com/colt3k/utils/io v0.0.22
 	github.com/colt3k/utils/mathut v0.0.3
-	github.com/colt3k/utils/netut v0.0.28
+	github.com/colt3k/utils/netut v0.0.29
 	github.com/colt3k/utils/osut v0.0.7
 	github.com/colt3k/utils/ques v0.0.7
 	github.com/colt3k/utils/version v0.0.5
