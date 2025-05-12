@@ -7,7 +7,7 @@ toolchain go1.23.8
 require (
 	github.com/colt3k/nglog v0.0.32
 	github.com/colt3k/utils/mathut v0.0.3
-	github.com/colt3k/utils/osut v0.0.6
+	github.com/colt3k/utils/osut v0.0.7
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 )

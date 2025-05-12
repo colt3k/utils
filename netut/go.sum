@@ -4,8 +4,8 @@ github.com/colt3k/utils/archive v0.0.10 h1:3PndmK3jl4taIVyq6TyRHtDGSL+zOb1MnUjEU
 github.com/colt3k/utils/archive v0.0.10/go.mod h1:PczTXO3TMRQ0kcYasM6wcc64958N73fFawM/2T62lec=
 github.com/colt3k/utils/mathut v0.0.3 h1:CRji8GLhYz+tQEC5u/tpNwKPGcBv6k3V88ydJ8o8UDs=
 github.com/colt3k/utils/mathut v0.0.3/go.mod h1:zqWPfeq8kIaHGXyPENaUKTZ+KO7op8lD56GerTS96VI=
-github.com/colt3k/utils/osut v0.0.6 h1:Srz6SOMRDZoJB91bQnSIUzB71LxeMB4REqpTkGtLMvk=
-github.com/colt3k/utils/osut v0.0.6/go.mod h1:SIg3jQpmq6XgYoDuTNMSCp56Yv1pc6kXyvf8jWj2loA=
+github.com/colt3k/utils/osut v0.0.7 h1:2aCCQCOhvx3Q3/og1+WH1E5ADQ/WQzXjNpFkTOJyo8w=
+github.com/colt3k/utils/osut v0.0.7/go.mod h1:tXbUP7YgI1l7WMEtEjw64EPYxB0Ec/8el4+9Lo5EySc=
 github.com/colt3k/utils/stats v0.0.1 h1:rKlyHfXNXbftjIBdabM4TP4A4mDarR168E95B6mp4YQ=
 github.com/colt3k/utils/stats v0.0.1/go.mod h1:cisus6IGJ7SeXR/AfG5wctFr0C4yV+gFrnn4ME7G2Gs=
 github.com/go-mail/mail v2.3.1+incompatible h1:UzNOn0k5lpfVtO31cK3hn6I4VEVGhe3lX8AJBAxXExM=
