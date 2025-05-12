@@ -5,14 +5,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/mattn/go-isatty"
 	"io"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 type Writer interface {
@@ -99,7 +98,8 @@ func WriteTempFileOfSize(filesize int64, fileprefix string) (fileName string, fi
 func CheckIfTerminal(w io.Writer) bool {
 	switch v := w.(type) {
 	case *os.File:
-		return terminal.IsTerminal(int(v.Fd()))
+		// return terminal.IsTerminal(int(v.Fd()))
+		return isatty.IsTerminal(v.Fd())
 	default:
 		return false
 	}
