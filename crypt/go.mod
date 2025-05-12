@@ -7,9 +7,9 @@ toolchain go1.23.8
 require (
 	github.com/colt3k/nglog v0.0.32
 	github.com/colt3k/utils/encode v0.0.8
-	github.com/colt3k/utils/file v0.0.11
-	github.com/colt3k/utils/hash v0.0.8
-	github.com/colt3k/utils/netut v0.0.27
+	github.com/colt3k/utils/file v0.0.13
+	github.com/colt3k/utils/hash v0.0.9
+	github.com/colt3k/utils/netut v0.0.29
 	github.com/pkg/errors v0.9.1
 	golang.org/x/crypto v0.37.0
 )
