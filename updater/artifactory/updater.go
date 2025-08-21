@@ -43,9 +43,9 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			disabledHostCount++
 			continue
 		}
-		//if checkOnly {
+		// if checkOnly {
 		//	break
-		//}
+		// }
 	}
 	if disabledHostCount == len(hosts) {
 		log.Logln(log.DEBUG, "-- no reachable hosts")
@@ -90,13 +90,15 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			compressdSuffix = "-linux-" + runtime.GOARCH + ".tgz"
 		}
 
+		log.Logf(log.DEBUG, "-- Validating: %v using Bearer: %v", d.Name, d.Bearer)
 		auth := &hc.Auth{Username: user, Password: pass}
 		data, err := pullURLToString(url, auth, d.DisableValidateCert, d.Bearer)
 		if err != nil {
 			log.Logf(log.WARN, "--- %v", err.Error())
-			//return nil, updateAvailable
+			// return nil, updateAvailable
 			continue
 		}
+		log.Logf(log.DEBUG, "-- Using: %v using Bearer: %v", d.Name, d.Bearer)
 
 		ac = new(updater.AppConfig)
 		ac.BaseURL = base.String()
@@ -156,7 +158,7 @@ func CheckUpdate(appName string, hosts []updater.Connection, version updater.Ver
 			updateAvailable = true
 			return ac, updateAvailable, autoUpdate
 		} else if localTime.Before(remoteTime) { // if current app is older than remote pull, could be a roll back
-			//Check build time instead
+			// Check build time instead
 			log.Logf(log.DEBUG, "-- remote time is newer than local %v > %v", remoteTime, localTime)
 			base.WriteString(appName + compressdSuffix)
 			ac.URL = base.String()
@@ -227,7 +229,7 @@ func PerformUpdate(appName string, hosts []updater.Connection, version updater.V
 // return true on success
 func downloadUpdate(ac *updater.AppConfig) bool {
 	log.Logln(log.DEBUG, "- Download Update")
-	//Download
+	// Download
 	if download(ac) {
 		// success
 		log.DisableTimestamp()
@@ -236,8 +238,8 @@ func downloadUpdate(ac *updater.AppConfig) bool {
 		switch runtime.GOOS {
 		case "windows":
 			return true
-		default: //Mac & Linux
-			//os.Exit(0)
+		default: // Mac & Linux
+			// os.Exit(0)
 			return true
 		}
 	}
@@ -352,7 +354,7 @@ func download(ac *updater.AppConfig) bool {
 	switch runtime.GOOS {
 	case "windows":
 		_, err = exec.Command("cmd", "/C", cmd).Output()
-	default: //Mac & Linux
+	default: // Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
 	}
 	if err != nil {
@@ -392,7 +394,7 @@ func download(ac *updater.AppConfig) bool {
 		if err == nil {
 			log.Logf(log.WARN, "MANUAL: Due to Windows locking the new version is placed here %v, remove the original file and rename this by removing .new", filepath.Dir(s)+file.PathSeparator()+ac.Name+".new")
 		}
-	default: //Mac & Linux
+	default: // Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
 	}
 	if err != nil {
@@ -407,7 +409,7 @@ func download(ac *updater.AppConfig) bool {
 	case "windows":
 		cmd = "rmdir /s /q " + strings.TrimSuffix(ac.ArchiveName, ".tgz")
 		_, err = exec.Command("cmd", "/C", cmd).Output()
-	default: //Mac & Linux
+	default: // Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
 	}
 	if err != nil {
@@ -530,7 +532,7 @@ func validateHash(hashFileName, archivePathDir string, ac *updater.AppConfig) bo
 	switch runtime.GOOS {
 	case "windows":
 		_, err = exec.Command("cmd", "/C", cmd).Output()
-	default: //Mac & Linux
+	default: // Mac & Linux
 		_, err = exec.Command("sh", "-c", cmd).Output()
 	}
 	if err != nil {
