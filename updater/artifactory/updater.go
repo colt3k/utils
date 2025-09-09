@@ -7,8 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/colt3k/utils/debug"
-	"github.com/colt3k/utils/file"
 	"io"
 	"net/http"
 	"os"
@@ -18,6 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/colt3k/utils/debug"
+	"github.com/colt3k/utils/file"
 
 	"github.com/colt3k/utils/netut"
 
@@ -435,8 +436,11 @@ func testHosts(hosts []updater.Connection, checkOnly bool) {
 			// test available
 			var err error
 			if d.OnAvailableViaHTTP {
-				if d.OnAvailableTimeout == 0 {
+				if d.OnAvailableTimeout == 0 && !checkOnly {
 					d.OnAvailableTimeout = 10
+				} else if checkOnly {
+					log.Logln(log.DEBUG, "-- check only mode changing timeout to 3 seconds")
+					d.OnAvailableTimeout = 3
 				}
 				log.Logf(log.DEBUG, "-- onAvailable check '%v' at (%v), timeout (%v seconds)", d.Name, d.OnAvailable, d.OnAvailableTimeout)
 				avail, err = hc.Reachable(d.OnAvailable, d.Name, d.OnAvailableTimeout, d.DisableValidateCert)
@@ -464,9 +468,10 @@ func testHosts(hosts []updater.Connection, checkOnly bool) {
 			log.Logf(log.DEBUG, "--- on host ending with: %s hostname %s", d.OnHostNameSuffix, host)
 			hosts[i].SetHostSfx(true)
 		}
-		if checkOnly && avail {
-			break
-		}
+		// commented out 9/9/2025 due to possible failures and no backup location being set
+		// if checkOnly && avail {
+		// 	break
+		// }
 	}
 	log.Logln(log.DEBUG, "")
 	log.Logln(log.DEBUG, "-- Available Hosts Found --")
