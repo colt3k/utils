@@ -6,7 +6,7 @@ toolchain go1.24.10
 
 require (
 	github.com/colt3k/nglog v0.0.32
-	github.com/colt3k/utils/file v0.0.13
+	github.com/colt3k/utils/file v0.0.14
 )
 
 require (
