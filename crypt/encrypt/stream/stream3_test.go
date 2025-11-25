@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/colt3k/utils/file/filenative"
 
 	"github.com/colt3k/utils/crypt"
 	"github.com/colt3k/utils/crypt/encrypt/scrypt"
@@ -54,9 +53,13 @@ func TestEncrypt(t *testing.T) {
 	tf.Close()
 
 	// DECRYPT
-	f := filenative.NewFile(tf.Name())
+	fPath := tf.Name()
+	if !filepath.IsAbs(tf.Name()) {
+		tmppath, _ := filepath.Abs(tf.Name())
+		fPath = tmppath
+	}
 
-	fo, err = os.Open(f.Path())
+	fo, err = os.Open(fPath)
 	if err != nil {
 		panic(err)
 	}
@@ -124,9 +127,13 @@ func TestDecrypt(t *testing.T) {
 	tf.Sync()
 	tf.Close()
 
-	f := filenative.NewFile(tf.Name())
+	fPath := tf.Name()
+	if !filepath.IsAbs(tf.Name()) {
+		tmppath, _ := filepath.Abs(tf.Name())
+		fPath = tmppath
+	}
 
-	fo, err = os.Open(f.Path())
+	fo, err = os.Open(fPath)
 	if err != nil {
 		panic(err)
 	}
