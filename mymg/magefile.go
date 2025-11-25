@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/colt3k/utils/crypt/genppk"
-	"github.com/colt3k/utils/stringut"
-	"github.com/pelletier/go-toml/v2"
 	"io"
 	"io/fs"
 	"log"
@@ -17,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/colt3k/utils/crypt/genppk"
+	"github.com/colt3k/utils/stringut"
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/colt3k/utils/ques"
 
@@ -58,19 +59,27 @@ var (
 	buildDir       = ""
 	prepDir        = ""
 
-	versionPkg            = "github.com/colt3k/utils"
+	versionPkg = "github.com/colt3k/utils"
+	// linker flags used to set values for variables in the code
+	// https://pkg.go.dev/cmd/link
 	versionFieldsTemplate = `-X "%s/version.GITCOMMIT=%s" -X "%s/version.GITBRANCH=%s" -X "%s/version.VERSION=%s" -X "%s/version.BUILDDATE=%s" -X "%s/version.GOVERSION=%s"`
 	overwriteValues       []string
-	goLDFlagsTemplate     = "-s -w %s"
-	goLDFlags             string
+	// strips debug information (-s), disables DWARF debugging information (-w)
+	// --ldflags sets the flags that are passed to 'go tool link'
+	goLDFlagsTemplate = "-s -w %s"
+	goLDFlags         string
+	// https://blog.hashbangbash.com/2014/04/linking-golang-statically/
 	// extldflags	Set space-separated flags to pass to the external linker.
 	// -static 		means do not link against shared libraries
 	goLDFlagsStaticTemplate = "-s -w %s -extldflags -static"
-	goLDFlagsStatic         string
-	bump                    bool
-	names                   []string
-	prompt                  bool
-	nostatic                bool
+	// THIS ONE WORKS for buildCross this is causing failure unless run from command line '-extldflags -static'
+	// goLDFlagsStaticTemplate = "-s -w %s"
+
+	goLDFlagsStatic string
+	bump            bool
+	names           []string
+	prompt          bool
+	nostatic        bool
 
 	buildTags     = ""
 	crossBuildDir = "cross"
@@ -847,6 +856,7 @@ type ArtifactoryData struct {
 }
 type Project struct {
 	Enable            bool     `json:"-" toml:"-"`
+	BumpedVersion     string   `json:"-" toml:"-"`
 	Name              string   `json:"name" toml:"name"`
 	OSTargets         []string `json:"ostargets" toml:"ostargets"`
 	OSEnvFlags        []string `json:"os_env_flags" toml:"os_env_flags"`
@@ -1243,6 +1253,8 @@ func Build() error {
 		}
 
 		if !dryRun {
+			// once we figure out GO FLAGS use this one when needed
+			// err = sh.RunWithV(env, gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
 			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
 			if err != nil {
 				clearEnvFlags(flags, dryRun)
@@ -1373,6 +1385,8 @@ func BumpVersion() error {
 				err = sh.RunV(apps.GitExe, "push", "origin", nVersion)
 				if err != nil {
 					fmt.Println("issue pushing tag :", err)
+				} else {
+					d.BumpedVersion = nVersion
 				}
 			} else {
 				fmt.Println("DRY_RUN: " + apps.GitExe + "push origin " + nVersion)
@@ -1759,7 +1773,7 @@ func cross(app Project) error {
 		var flags string
 		if len(app.OSEnvFlags) > 0 {
 			flags = app.OSEnvFlags[i]
-			fmt.Printf("flags found %v", flags)
+			fmt.Printf("flags found %v\n", flags)
 			err = setEnvFlags(flags, dryRun)
 			if err != nil {
 				return fmt.Errorf("  !!! failed to set env vars %v", err)
@@ -1823,11 +1837,31 @@ func cross(app Project) error {
 			if nostatic {
 				goLDFlagsStatic = goLDFlags
 			}
-			err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
+			env := make(map[string]string)
+			env["GOOS"] = goos
+			env["GOARCH"] = arch
+			env["CGO_ENABLED"] = "0"
+			// set them here for mage
+			if len(strings.TrimSpace(flags)) > 0 {
+				for _, q := range strings.Split(flags, ",") {
+					flgParts := strings.Split(q, "=")
+					p1 := strings.TrimSpace(flgParts[0])
+					p2 := strings.TrimSpace(flgParts[1])
+					if strings.Contains(p2, "\"") {
+						p2 = strings.ReplaceAll(p2, "\"", "")
+					}
+					env[p1] = p2
+				}
+			}
+			// fmt.Printf("Running with %v\n", env)
+			// TODO once we figure out GO FLAGS use this one, works fine without CGO_ENABLED=1
+			err = sh.RunWithV(env, gocmd, "build", "-tags", buildTags, "-ldflags="+goLDFlagsStatic, "-o", executableName, projectMainDir)
+			// err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags", goLDFlagsStatic, "-o", executableName, projectMainDir)
+			// err = sh.RunV(gocmd, "build", "-tags", buildTags, "-ldflags="+goLDFlagsStatic, "-o", executableName, projectMainDir)
 			if err != nil {
 				clearEnvFlags(flags, dryRun)
 				fmt.Println("\n** If failed cross build on arm64 for amd64 with CGO_ENABLED try this on the command line instead. **\n")
-				fmt.Printf("GOOS=%v GOARCH=%v CGO_ENABLED=1 go build -tags %v '-ldflags %v' -o %v %v\n\n", goos, arch, buildTags, goLDFlagsStatic, executableName, projectMainDir)
+				fmt.Printf("GOOS=%v GOARCH=%v CGO_ENABLED=%v go build -tags %v '-ldflags=%v' -o %v %v\n\n", goos, arch, env["CGO_ENABLED"], buildTags, goLDFlagsStatic, executableName, projectMainDir)
 				return err
 			}
 			if exists(apps.UPXExe) && !skipUPX {

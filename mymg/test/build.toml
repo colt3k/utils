@@ -1,75 +1,100 @@
-
 ############## EXAMPLES #################
-# mage install
-# mage release
-# bump= mage release // will increase version
+# mage -v install
+# mage -v release
+# bump= mage -v release // will increase VERSION.txt and create a git tag
 # names=one,two mage release | install
+# NOTE if you have more than one subproject in a project these targets install, release will ask which you want to
+#  with y/n questions.
 # mage genconf  // will create a demo.toml configuration, update and change name to build.toml
 # mage display  // will validate and display configuration
 
-###### Build
+# Build Options
 [build]
-tags=""
-useAltApps="y"
+tags = ''
+useAltApps = 'yes'
 
-###### Clean
+# Directories to clean when complete
 [postclean]
-dirs=["PREP/","cross"]
+dirs = ['PREP/', 'cross']
+files = []
 
-###### APPS
+# Application paths
 [apps]
-md5Exe="/sbin/md5sum"
-sha1Exe="/usr/local/bin/sha1sum"
-sha256Exe="/usr/local/bin/sha256sum"
-curlExe="/usr/bin/curl"
-catExe="/bin/cat"
-gitExe="/usr/local/bin/git"
-tarExe="/usr/bin/tar"
-scpExe="/usr/bin/scp"
-sftpExe="/usr/bin/sftp"
-upxExe="/usr/local/bin/upx"
-whichExe="/usr/bin/which"
+md5Exe = '/sbin/md5sum'
+sha1Exe = '/usr/local/bin/sha1sum'
+sha256Exe = '/usr/local/bin/sha256sum'
+curlExe = '/usr/bin/curl'
+catExe = '/bin/cat'
+gitExe = '/usr/local/bin/git'
+tarExe = '/usr/bin/tar'
+scpExe = '/usr/bin/scp'
+sftpExe = '/usr/bin/sftp'
+upxExe = '/usr/local/bin/upx'
+whichExe = '/usr/bin/which'
 
-###### Deployment
+# Array of Secure Copy Configurations
+# - host must be available via ping check, requires ppk setup
+#[[scp]]
+#host = 'main.domain.com'
+#path = 'main:/root/apps/'
+#skip_ping = 'false'
+# Backup available here similar to AF but one location is good enough and AF is primary
 
-# host must be available via ping check, requires ppk setup
-[[scp]]
-host="main.domain.com"
-path="main:/root/apps/"
-backup=true
-
-[[sftp]]
-host="main.domain.com"
-path="/apps/"
-skip_ping="true"
-backup=true
+# Array of SFTP Configurations
+#[[sftp]]
+#host = 'main.domain.com'
+#path = '/apps/'
+#skip_ping = 'true'
+# Backup available here similar to AF but one location is good enough and AF is primary
 
 # this will call your exec and pass two parameters 1 original local file location, 2 name of file
-[[scp-custom]]
-exec="./folder/in/project/script-example.sh"
+#[[scp-custom]]
+#exec="./folder/in/project/script-example.sh"
 
-# host must be available via http check
-[[artifactory]]
-host="main.domain.com"
-path="http://main.domain.com:8081/artifactory/artifactoryreponame/appname/"
-creds="/Users/username/tckey/keys/auths/.myartifactorycreds"
-backup=true
+# Array of Custom Pushes, provide executable, parameters if needed and
+#       which values (1,passes only full path) and (2, passes both full path and name)
+[[push-custom]]
+exec = 'oci-artdepot'
+parameters = 'push -ut apps -fp'
+values = 1
 
-[[artifactory]]
-host="artifactory.domain2.com"
-path="https://artifactory.domain.com/artifactory/artifactoryreponame/artifactorypath/"
-creds="/Users/username/.artifactorycreds"
+# Array of Custom Pulls, provide executable, parameters if needed and
+#       which values (1,passes only full path) and (2, passes both full path and name)
+[[pull-custom]]
+exec = 'oci-artdepot'
+parameters = 'pull -f'
+prefix_path = 'rgbu/apps/'
+values = 1
 
-###### Project Properties
+# Array of Artifactory instances
+# - host must be available via http check
+#[[artifactory]]
+#host = 'main.domain.com'
+#path = 'http://main.domain.com:8081/artifactory/artifactoryreponame/appname/'
+#creds = '/Users/username/tckey/keys/auths/.myartifactorycreds'
+# contains the path you had in creds, making build.toml generic for all; don't commit creds.txt
+#creds_path = './pkgr/creds.txt'
+#bearer = true
+#ping = false
+#backup = true
 
+# Array of projects to build
+# - duplicate this section for each project to build
 [[project]]
-name="appname"
-ostargets=["darwin/amd64"]
-osdeployscripts=["./pkgr/deploy_darwin.sh"]
-package="go.domain.com/colt3k/appname"
-version="cmd/appname/VERSION.txt"
-readme="cmd/appname/README.md"
-changelog="cmd/appname/CHANGES.txt"
-files=["./pkgr/bash_autocomplete","cmd/appname/README.md"]
-###### PROMPT to PULL
-#ynprompt="Did you pull the latest? (y/n), will exit on 'n'"
+name = 'appname'
+ostargets = ['darwin/amd64']
+os_env_flags = []
+osdeployscripts = ['./pkgr/deploy_darwin.sh']
+package = 'go.domain.com/colt3k/appname'
+version = 'cmd/appname/VERSION.txt'
+readme = 'cmd/appname/README.md'
+changelog = 'cmd/appname/CHANGES.txt'
+changelogfull = ''
+files = ['./pkgr/bash_autocomplete','cmd/appname/README.md']
+# ynprompt = "Did you pull the latest? (y/n), will exit on 'n'"
+windowsfiles = []
+linuxfiles = []
+macfiles = []
+# needs to be full repository path to variable defined (this go.mod is defined as oci-apps)
+override_variables=""
+override_var_files=[]
