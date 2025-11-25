@@ -4,7 +4,7 @@ go 1.24.0
 
 toolchain go1.24.10
 
-require github.com/colt3k/utils/store v0.0.7
+require github.com/colt3k/utils/store v0.0.8
 
 require (
 	github.com/colt3k/nglog v0.0.32 // indirect

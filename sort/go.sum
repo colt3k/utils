@@ -14,8 +14,8 @@ github.com/colt3k/utils/mathut v0.0.3 h1:CRji8GLhYz+tQEC5u/tpNwKPGcBv6k3V88ydJ8o
 github.com/colt3k/utils/mathut v0.0.3/go.mod h1:zqWPfeq8kIaHGXyPENaUKTZ+KO7op8lD56GerTS96VI=
 github.com/colt3k/utils/stats v0.0.1 h1:rKlyHfXNXbftjIBdabM4TP4A4mDarR168E95B6mp4YQ=
 github.com/colt3k/utils/stats v0.0.1/go.mod h1:cisus6IGJ7SeXR/AfG5wctFr0C4yV+gFrnn4ME7G2Gs=
-github.com/colt3k/utils/store v0.0.7 h1:gUvXDOx1mVk7pa+oxWIHWRzDJTPOkWjkT0jY4epYqOM=
-github.com/colt3k/utils/store v0.0.7/go.mod h1:lv+O4a4ARCG6urdg9h73J/CGJqc+ChB1q0vZZzMrpKU=
+github.com/colt3k/utils/store v0.0.8 h1:ycWXodxVkyTL65yfrZZaJg0OQUAThxhpjDBA0f85Vyw=
+github.com/colt3k/utils/store v0.0.8/go.mod h1:7MC16u+RTwo/PzV5trqQ7J7B0krr93SfWlXKg246Wnc=
 github.com/go-mail/mail v2.3.1+incompatible h1:UzNOn0k5lpfVtO31cK3hn6I4VEVGhe3lX8AJBAxXExM=
 github.com/go-mail/mail v2.3.1+incompatible/go.mod h1:VPWjmmNyRsWXQZHVHT3g0YbIINUkSmuKOiLIDkWbL6M=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
