@@ -1,8 +1,8 @@
 module github.com/colt3k/utils/netut
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.23.8
+toolchain go1.24.12
 
 require (
 	github.com/colt3k/nglog v0.0.32
@@ -10,6 +10,7 @@ require (
 	github.com/colt3k/utils/osut v0.0.7
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
+	golang.org/x/sync v0.19.0
 )
 
 require (

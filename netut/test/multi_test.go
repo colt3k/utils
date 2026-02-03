@@ -3,15 +3,22 @@ package test
 import (
 	"context"
 	"encoding/json"
-	log "github.com/colt3k/nglog/ng"
-	"github.com/colt3k/utils/netut/hc"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
 	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
+
+	log "github.com/colt3k/nglog/ng"
+	"github.com/colt3k/utils/netut/hc"
+	"github.com/colt3k/utils/netut/https"
+	"github.com/gorilla/mux"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/colt3k/utils/netut"
 )
@@ -30,7 +37,7 @@ func TestProxy(t *testing.T) {
 func TestPing(t *testing.T) {
 	avail, err := netut.Ping("192.168.1.1")
 	if err != nil {
-		t.Errorf( "issue no ping %+v", err)
+		t.Errorf("issue no ping %+v", err)
 	}
 	if avail {
 		t.Log("available")
@@ -52,6 +59,23 @@ func createTransport() *http.Transport {
 		}).DialContext,
 	}
 }
+
+func FileExistsAndIsADir(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
+func certPathDir() string {
+	homeDir, _ := os.UserHomeDir()
+	certPth := filepath.Join(homeDir, "dev", "dev-setup", "certs")
+	if !FileExistsAndIsADir(certPth) {
+		log.Logf(log.ERROR, "Certs NOT Found: %v", certPth)
+	}
+	return certPth
+}
+
 func TestTrace(t *testing.T) {
 	ca := log.NewConsoleAppender("*")
 	log.Modify(log.LogLevel(log.DEBUG), log.ColorsOn(), log.Appenders(ca))
@@ -89,4 +113,45 @@ func TestTrace(t *testing.T) {
 	// output details
 	d, err := json.MarshalIndent(info, "", "    ")
 	t.Logf("%v", string(d))
+}
+
+func TestLoadCert(t *testing.T) {
+	IP := ""
+	testMode := false
+	sslDisable := false
+	certPath := certPathDir()
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("SSL Intermediate Chain Working!"))
+	})
+	var port int64
+	port = 8088
+	log.Logf(log.INFO, "Listening on ...%s:%s", IP, strconv.FormatInt(port, 10))
+	ctx := context.Background()
+	server := https.NewWithContext(ctx, muxRouter, fmt.Sprintf("%s:%s", IP, strconv.FormatInt(port, 10)), false)
+
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+
+		if testMode && !sslDisable {
+			log.Logf(log.INFO, "-- running in SSL mode testMode")
+			return server.ListenAndServeTLS(filepath.Join(certPath, "fullchain-local.pem"),
+				filepath.Join(certPath, "privkey-local.pem"))
+		} else if !sslDisable {
+			log.Logf(log.INFO, "-- running in SSL mode NON testMode\n\tcert: %v\n\tkey %v",
+				filepath.Join(certPath, "fullchain.pem"),
+				filepath.Join(certPath, "privkey.pem"))
+			return server.ListenAndServeTLS(filepath.Join(certPath, "fullchain.pem"),
+				filepath.Join(certPath, "privkey.pem"))
+		}
+		log.Logf(log.INFO, "-- running in NON SSL mode")
+		return server.ListenAndServe()
+	})
+	g.Go(func() error {
+		<-gCtx.Done()
+		return server.Shutdown(context.Background())
+	})
+	if err := g.Wait(); err != nil {
+		fmt.Printf("exit reason: %s \n", err)
+	}
 }
