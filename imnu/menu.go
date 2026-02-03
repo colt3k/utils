@@ -28,9 +28,9 @@ type InteractiveMenu struct {
 
 /*
 Flow
-	1. Show menu with options to enter
-	2. User pushes # and enter
-	3. System performs and outputs data on screen with option to choose what to do next
+ 1. Show menu with options to enter
+ 2. User pushes # and enter
+ 3. System performs and outputs data on screen with option to choose what to do next
 */
 func New(displaySelections interface{}, menulayout []Menu) *InteractiveMenu {
 	t := new(InteractiveMenu)
@@ -151,13 +151,13 @@ func CaptureSelection(datamap map[string]string, msg ...string) []string {
 			// list of numbers separated by commas
 			vals := strings.Split(selection, ",")
 			selections := make([]string, 0)
-			for _,d := range vals {
+			for _, d := range vals {
 				// get value and subtract one for actual value of each
-				v,err := strconv.Atoi(d)
+				v, err := strconv.Atoi(strings.TrimSpace(d))
 				if err != nil {
 					panic(err)
 				}
-				selection = strconv.Itoa(v-1)
+				selection = strconv.Itoa(v - 1)
 				if len(datamap[selection]) > 0 {
 					selections = append(selections, datamap[selection])
 				}

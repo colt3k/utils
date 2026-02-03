@@ -30,7 +30,7 @@ func IdleConnectionTimeout(i int) ClientOption {
 
 func TLSHandshakeTimeout(i int) ClientOption {
 	return func(c *Client) {
-		c.TlsHandshakeTimeout = time.Duration(i) * time.Second
+		c.TLSHandshakeTimeout = time.Duration(i) * time.Second
 	}
 }
 
@@ -40,9 +40,9 @@ func TLSHandshakeTimeout(i int) ClientOption {
 //	}
 //}
 
-func HttpClientRequestTimeout(i int) ClientOption {
+func HTTPClientRequestTimeout(i int) ClientOption {
 	return func(c *Client) {
-		c.HttpClientRequestTimeout = time.Duration(i) * time.Second
+		c.HTTPClientRequestTimeout = time.Duration(i) * time.Second
 	}
 }
 func DisableVerifyClientCert(b bool) ClientOption {
@@ -50,8 +50,13 @@ func DisableVerifyClientCert(b bool) ClientOption {
 		c.disableVerifyCert = b
 	}
 }
-func HttpClientResponseHeaderTimeout(i int) ClientOption {
+func HTTPClientResponseHeaderTimeout(i int) ClientOption {
 	return func(c *Client) {
 		c.ResponseHeaderTimeout = time.Duration(i) * time.Second
+	}
+}
+func CheckRedirectUserLastResp(b bool) ClientOption {
+	return func(c *Client) {
+		c.CheckRedirectUserLastResp = b
 	}
 }

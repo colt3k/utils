@@ -7,7 +7,6 @@ import (
 
 	"github.com/colt3k/utils/archive"
 	"github.com/ulikunitz/xz"
-	fastxz "github.com/xi2/xz"
 )
 
 type Xz struct{}
@@ -29,9 +28,19 @@ func (x *Xz) Compress(in io.Reader, out io.Writer) error {
 	return err
 }
 
-// Decompress reads in, decompresses it, and writes it to out.
+// OldDecompress reads in, decompresses it, and writes it to out. (used to use fastxz "github.com/xi2/xz")
+//func (x *Xz) OldDecompress(in io.Reader, out io.Writer) error {
+//	r, err := fastxz.NewReader(in, 0)
+//	if err != nil {
+//		return err
+//	}
+//	_, err = io.Copy(out, r)
+//	return err
+//}
+
 func (x *Xz) Decompress(in io.Reader, out io.Writer) error {
-	r, err := fastxz.NewReader(in, 0)
+	// decompress buffer and write output to stdout
+	r, err := xz.NewReader(in)
 	if err != nil {
 		return err
 	}

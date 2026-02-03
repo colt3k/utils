@@ -11,7 +11,7 @@ import (
 )
 
 func ExampleFileExif_ReadALLDataAsJSON() {
-	var file = "/Users/gcollins/Desktop/tester/pics2/12-23-05_0543.jpg"
+	var file = "./textRotate.jpg"
 
 	f, err := os.Open(file)
 	if err != nil {

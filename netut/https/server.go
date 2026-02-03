@@ -14,10 +14,12 @@ COMPLETE GUIDE TO TIMEOUTS
 https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 */
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -61,11 +63,14 @@ func HandleHTTPRequest(host string) {
 		log.Logln(log.FATAL, http.ListenAndServe(port, myRouter))
 	}
 }
-
-// https://github.com/dlsniper/gopherconuk
 func New(mux http.Handler, serverAddress string, skipVerify bool) *http.Server {
+	return NewWithContext(context.Background(), mux, serverAddress, skipVerify)
+}
+
+func NewWithContext(ctx context.Context, mux http.Handler, serverAddress string, skipVerify bool) *http.Server {
 	// See https://blog.cloudflare.com/exposing-go-on-the-internet/ for details
 	// about these settings
+	// https://github.com/dlsniper/gopherconuk
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipVerify,
 		// Causes servers to use Go's default cipher suite preferences,
@@ -101,6 +106,9 @@ func New(mux http.Handler, serverAddress string, skipVerify bool) *http.Server {
 			IdleTimeout:  120 * time.Second,
 			TLSConfig:    tlsConfig,
 			Handler:      mux,
+			BaseContext: func(_ net.Listener) context.Context {
+				return ctx
+			},
 		}
 	} else {
 		// setup by default to send http to https if no mux
@@ -115,6 +123,9 @@ func New(mux http.Handler, serverAddress string, skipVerify bool) *http.Server {
 				url := "https://" + req.Host + req.URL.String()
 				http.Redirect(w, req, url, http.StatusMovedPermanently)
 			}),
+			BaseContext: func(_ net.Listener) context.Context {
+				return ctx
+			},
 		}
 	}
 	return srv

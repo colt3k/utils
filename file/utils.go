@@ -1,11 +1,17 @@
 package file
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"log"
 
@@ -176,4 +182,182 @@ func FileAvailable(path string) bool {
 		return true
 	}
 	return false
+}
+
+type ByNumericalFilename []os.FileInfo
+
+func (nf ByNumericalFilename) Len() int      { return len(nf) }
+func (nf ByNumericalFilename) Swap(i, j int) { nf[i], nf[j] = nf[j], nf[i] }
+func (nf ByNumericalFilename) Less(i, j int) bool {
+
+	// Use path names
+	pathA := nf[i].Name()
+	pathB := nf[j].Name()
+
+	// Grab integer value of each filename by parsing the string and slicing off
+	// the extension
+	re := regexp.MustCompile("[0-9]+")
+	var a int64
+	var b int64
+	var err1 error
+	var err2 error
+	oneAr := re.FindAllString(pathA, 1)
+	twoAr := re.FindAllString(pathB, 1)
+	if oneAr != nil {
+		a, err1 = strconv.ParseInt(oneAr[0], 10, 64)
+	} else {
+		err1 = fmt.Errorf("no numbers found")
+	}
+	if twoAr != nil {
+		b, err2 = strconv.ParseInt(twoAr[0], 10, 64)
+	} else {
+		err2 = fmt.Errorf("no numbers found")
+	}
+
+	// If any were not numbers sort lexicographically
+	if err1 != nil || err2 != nil {
+		return pathA < pathB
+	}
+
+	// Which integer is smaller?
+	return a < b
+}
+
+type ByNumericalFilenameRev []os.FileInfo
+
+func (nf ByNumericalFilenameRev) Len() int      { return len(nf) }
+func (nf ByNumericalFilenameRev) Swap(i, j int) { nf[i], nf[j] = nf[j], nf[i] }
+func (nf ByNumericalFilenameRev) Less(i, j int) bool {
+
+	// Use path names
+	pathA := nf[i].Name()
+	pathB := nf[j].Name()
+
+	// Grab integer value of each filename by parsing the string and slicing off
+	// the extension
+	re := regexp.MustCompile("[0-9]+")
+	var a int64
+	var b int64
+	var err1 error
+	var err2 error
+	oneAr := re.FindAllString(pathA, 1)
+	twoAr := re.FindAllString(pathB, 1)
+	if oneAr != nil {
+		a, err1 = strconv.ParseInt(oneAr[0], 10, 64)
+	} else {
+		err1 = fmt.Errorf("no numbers found")
+	}
+	if twoAr != nil {
+		b, err2 = strconv.ParseInt(twoAr[0], 10, 64)
+	} else {
+		err2 = fmt.Errorf("no numbers found")
+	}
+
+	// If any were not numbers sort lexicographically
+	if err1 != nil || err2 != nil {
+		return pathB < pathA
+	}
+
+	// Which integer is smaller?
+	return b < a
+}
+
+func RotateFiles(fileName string) error {
+	parts := strings.Split(filepath.Base(fileName), ".")
+	ext := parts[len(parts)-1]
+	files, err := ioutil.ReadDir(path.Dir(fileName))
+	if err != nil {
+		return err
+	}
+
+	sort.Sort(ByNumericalFilename(files))
+	found := make([]os.FileInfo, 0)
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), "."+ext) {
+			fmt.Println(file.Name())
+			found = append(found, file)
+		}
+	}
+
+	sort.Sort(ByNumericalFilenameRev(found))
+	// Rename to 1 higher
+	re := regexp.MustCompile("[0-9]+")
+	for _, j := range found {
+		if ar := re.FindAllString(j.Name(), 1); ar != nil {
+			lastNum, err := strconv.ParseInt(ar[0], 10, 64)
+			if err != nil {
+				fmt.Printf("issue renaming convert found int %v\n", err)
+			}
+			newNum := lastNum + 1
+			oldName := j.Name()
+			newName := strings.ReplaceAll(oldName, strconv.Itoa(int(lastNum)), strconv.Itoa(int(newNum)))
+			err = os.Rename(path.Join(path.Dir(fileName), oldName), path.Join(path.Dir(fileName), newName))
+			if err != nil {
+				fmt.Printf("issue renaming %v\n", err)
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func findFile(fileName string) ([]os.FileInfo, error) {
+	parts := strings.Split(filepath.Base(fileName), ".")
+	ext := parts[len(parts)-1]
+	re := regexp.MustCompile("[a-zA-Z]+")
+	pfx := ""
+	if ar := re.FindAllString(filepath.Base(fileName), 1); ar != nil {
+		pfx = ar[0]
+	}
+	files, err := ioutil.ReadDir(path.Dir(fileName))
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(ByNumericalFilename(files))
+	found := make([]os.FileInfo, 0)
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasPrefix(file.Name(), pfx) && strings.HasSuffix(file.Name(), "."+ext) {
+			found = append(found, file)
+		}
+	}
+	return found, nil
+}
+func CleanRotatedByCount(fileName string, max int) error {
+	found, err := findFile(fileName)
+	if err != nil {
+		return err
+	}
+	sort.Sort(ByNumericalFilename(found))
+	for i, j := range found {
+		if i >= max {
+			err := os.Remove(path.Join(path.Dir(fileName), j.Name()))
+			if err != nil {
+				fmt.Printf("issue removing %v\n", err)
+			}
+			//fmt.Printf("removing %v\n", j.Name())
+		}
+	}
+	return nil
+}
+
+func CleanRotatedByDays(fileName string, days int) error {
+	t := time.Now()
+	found, err := findFile(fileName)
+	if err != nil {
+		return err
+	}
+	sort.Sort(ByNumericalFilename(found))
+	for _, j := range found {
+		hrs := int(t.Sub(j.ModTime()).Hours())
+		if (hrs / 24) > days {
+			err := os.Remove(path.Join(path.Dir(fileName), j.Name()))
+			if err != nil {
+				fmt.Printf("issue removing %v\n", err)
+			}
+			//fmt.Printf("removing %v\n", j.Name())
+		}
+	}
+	return nil
 }

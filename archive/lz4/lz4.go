@@ -5,8 +5,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/pierrec/lz4"
 	"github.com/colt3k/utils/archive"
+	"github.com/pierrec/lz4/v4"
 )
 
 type Lz4 struct {
@@ -22,8 +22,8 @@ func NewLz4() *Lz4 {
 }
 
 func (lz *Lz4) Compress(in io.Reader, out io.Writer) error {
+	lz4.CompressionLevelOption(lz4.Level9)
 	w := lz4.NewWriter(out)
-	w.Header.CompressionLevel = lz.compressionLevel
 	defer w.Close()
 	_, err := io.Copy(w, in)
 	return err

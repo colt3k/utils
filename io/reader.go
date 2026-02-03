@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
@@ -79,6 +78,7 @@ func newTcpReader(uri string) (io.ReadCloser, error) {
 }
 
 /*
+ReadLine
 Line returns a single line (without the ending \n)
 from the input buffered reader.
 An error is returned if` there is an error with the
@@ -123,10 +123,10 @@ func AsCSVIntoMap() *map[string]string {
 }
 
 func LastLineWithSeek(filepath string, amt int) ([]string, error) {
-	fileHandle, err := os.Open(filepath)
+	fileHandle, errOpen := os.Open(filepath)
 
-	if err != nil {
-		return nil, fmt.Errorf("cannot open file %s\n%+v", filepath, err)
+	if errOpen != nil {
+		return nil, fmt.Errorf("cannot open file %s\n%+v", filepath, errOpen)
 	}
 	defer fileHandle.Close()
 
@@ -138,20 +138,20 @@ func LastLineWithSeek(filepath string, amt int) ([]string, error) {
 		return nil, fmt.Errorf("empty file %s", filepath)
 	} else if filesize <= 2000 {
 		// Check if only new lines???
-		b, err := ioutil.ReadAll(fileHandle)
-		if err != nil {
-			return nil, fmt.Errorf("error reading file %s\n%+v", filepath, err)
+		b, errReadAll := io.ReadAll(fileHandle)
+		if errReadAll != nil {
+			return nil, fmt.Errorf("error reading file %s\n%+v", filepath, errReadAll)
 		}
 		re := regexp.MustCompile(`\r?\n`)
 		tmpInput := re.ReplaceAllString(string(b), "")
 		if len(tmpInput) == 0 {
-			err = fileHandle.Close()
-			if err != nil {
-				log.Fatalf("FATAL: issue closing file\n%+v", err)
+			errFileClose := fileHandle.Close()
+			if errFileClose != nil {
+				log.Fatalf("FATAL: issue closing file\n%+v", errFileClose)
 			}
-			err = os.Truncate(filepath, 0)
-			if err != nil {
-				return nil, fmt.Errorf("empty file except newlines error truncating %s\n%+v", filepath, err)
+			errTruncate := os.Truncate(filepath, 0)
+			if errTruncate != nil {
+				return nil, fmt.Errorf("empty file except newlines error truncating %s\n%+v", filepath, errTruncate)
 			}
 			return nil, fmt.Errorf("empty file except newlines truncated %s", filepath)
 		}
@@ -164,9 +164,9 @@ func LastLineWithSeek(filepath string, amt int) ([]string, error) {
 	for {
 
 		cursor -= 1
-		_, err = fileHandle.Seek(cursor, io.SeekEnd)
-		if err != nil {
-			log.Printf("ERROR: issue seeking %+v\n", err)
+		_, errSeek := fileHandle.Seek(cursor, io.SeekEnd)
+		if errSeek != nil {
+			log.Printf("ERROR: issue seeking %+v\n", errSeek)
 		}
 
 		char := make([]byte, 1)

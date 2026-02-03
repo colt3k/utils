@@ -3,7 +3,7 @@ package iocsv
 import (
 	"bufio"
 	"encoding/csv"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,9 +14,8 @@ import (
 	"github.com/colt3k/utils/io/data"
 )
 
-//ReadOrderedKV reads in as an ordered Map
+// ReadOrderedKV reads in as an ordered Map
 func ReadOrderedKV(filePathStr string) (*orderedmap.OrderedMap, error) {
-
 	kvMap := orderedmap.New()
 
 	if !filepath.IsAbs(filePathStr) {
@@ -44,11 +43,9 @@ func ReadOrderedKV(filePathStr string) (*orderedmap.OrderedMap, error) {
 	return nil, err
 }
 
-//ReadKV read in the file as a key/value pair and return a map of string/string
+// ReadKV read in the file as a key/value pair and return a map of string/string
 func ReadKV(filePathStr string) *map[string]string {
-
-	var kvMap map[string]string
-	kvMap = make(map[string]string)
+	kvMap := make(map[string]string)
 
 	if !filepath.IsAbs(filePathStr) {
 		tmppath, _ := filepath.Abs(filePathStr)
@@ -75,7 +72,9 @@ func ReadKV(filePathStr string) *map[string]string {
 }
 
 /*
-ReadCSV read a file as a CSV and return a Table
+ReadCSVFromFile
+
+	read a file as a CSV and return a Table
 	skipHeader (true) will skip the first line for data but use it for column names
 	skipHeader (false) will include all lines for data and use headAr for column names
 */
@@ -90,15 +89,16 @@ func ReadCSVFromFile(filePath string, skipHeader bool, headAr []string) (*data.T
 	}
 	defer f.Close()
 	rdr := bufio.NewReader(f)
-	byt, err := ioutil.ReadAll(rdr)
+	byt, err := io.ReadAll(rdr)
 	if err != nil {
 		return nil, err
 	}
 
 	return ReadCSV(string(byt), skipHeader, headAr)
 }
-func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, error) {
 
+// ReadCSV read line of CSV data
+func ReadCSV(fileData string, skipHeader bool, headAr []string) (*data.Table, error) {
 	sr := strings.NewReader(fileData)
 	r := csv.NewReader(sr)
 	lines, err := r.ReadAll()

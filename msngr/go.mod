@@ -1,8 +1,21 @@
 module github.com/colt3k/utils/msngr
 
+go 1.23.0
+
+toolchain go1.23.8
+
 require (
-	github.com/colt3k/utils/config v0.0.1
+	github.com/colt3k/utils/config v0.0.4
 	github.com/godbus/dbus v4.1.0+incompatible
 )
 
-go 1.13
+require (
+	github.com/colt3k/nglog v0.0.32 // indirect
+	github.com/colt3k/utils/archive v0.0.10 // indirect
+	github.com/go-mail/mail v2.3.1+incompatible // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/ufoscout/go-up v0.6.1 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
+)

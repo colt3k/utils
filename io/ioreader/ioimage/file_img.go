@@ -25,15 +25,15 @@ func (i *ImageMeta) Dimensions(imagePath string) (int, int, string) {
 		return i.width, i.height, i.imgtype
 	}
 
-	file, err := os.Open(imagePath)
+	file, errOpenFile := os.Open(imagePath)
 	defer file.Close()
-	if err != nil {
-		log.Printf("ERROR: \n%+v\n", err)
+	if errOpenFile != nil {
+		log.Printf("ERROR: \n%+v\n", errOpenFile)
 	}
 
-	cfg, imgtype, err := image.DecodeConfig(file)
-	if err != nil {
-		log.Printf("ERROR: %s:\n%+v\n", imagePath, err)
+	cfg, imgtype, errDecodeConfig := image.DecodeConfig(file)
+	if errDecodeConfig != nil {
+		log.Printf("ERROR: %s:\n%+v\n", imagePath, errDecodeConfig)
 	}
 
 	return cfg.Width, cfg.Height, imgtype

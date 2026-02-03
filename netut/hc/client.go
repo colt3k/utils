@@ -15,12 +15,12 @@ https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 */
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -29,10 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/colt3k/utils/mathut"
-
-	"github.com/colt3k/nglog/ers/bserr"
 	log "github.com/colt3k/nglog/ng"
+	"github.com/colt3k/utils/mathut"
 
 	"github.com/colt3k/utils/netut/nettools"
 )
@@ -43,11 +41,12 @@ type Client struct {
 	DialKeepAliveTimeout  time.Duration
 	MaxIdleConnections    int
 	IdleConnTimeout       time.Duration
-	TlsHandshakeTimeout   time.Duration
+	TLSHandshakeTimeout   time.Duration
 	ResponseHeaderTimeout time.Duration
-	//ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
-	HttpClientRequestTimeout time.Duration
-	disableVerifyCert        bool
+	// ExpectContinueTimeout    time.Duration	// will disable HTTP2 if used
+	HTTPClientRequestTimeout  time.Duration
+	CheckRedirectUserLastResp bool
+	disableVerifyCert         bool
 }
 
 type Auth struct {
@@ -66,10 +65,10 @@ func NewClient(opts ...ClientOption) *Client {
 	t.DialKeepAliveTimeout = 30 * time.Second
 	t.MaxIdleConnections = 100
 	t.IdleConnTimeout = 90 * time.Second
-	t.TlsHandshakeTimeout = 10 * time.Second
+	t.TLSHandshakeTimeout = 10 * time.Second
 	t.ResponseHeaderTimeout = 10 * time.Second
-	//t.ExpectContinueTimeout = 1 * time.Second
-	t.HttpClientRequestTimeout = 30 * time.Second
+	// t.ExpectContinueTimeout = 1 * time.Second
+	t.HTTPClientRequestTimeout = 30 * time.Second
 
 	for _, opt := range opts {
 		opt(t)
@@ -77,41 +76,97 @@ func NewClient(opts ...ClientOption) *Client {
 
 	return t
 }
-
 func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
+	return c.FetchWithContext(context.Background(), method, url, auth, header, body)
+}
+func proxURL(tmpURL string) string {
+	tmpPartURL := ""
+	pfx := ""
+	if strings.HasPrefix(tmpURL, "http://") {
+		pfx = "http://"
+	}
+	if strings.HasPrefix(tmpURL, "https://") {
+		pfx = "https://"
+	}
+	if strings.Contains(pfx, "http") {
+		// replace prefix of http?://
+		tmpURL = strings.Replace(tmpURL, pfx, "", 1)
+		// find first / this should be after the domain
+		idx := strings.Index(tmpURL, "/")
+		// add our prefix back on for output
+		tmpPartURL = pfx
+		// if not found then skip, otherwise add domain
+		if idx > -1 {
+			// fmt.Printf("First: %v\n", tmpURL[:idx])
+			tmpPartURL += tmpURL[:idx] + "..."
+		}
+		// find last index of /
+		lIdx := strings.LastIndex(tmpURL, "/")
+		// if there are none skip, otherwise add last slash until end of url
+		if lIdx > -1 {
+			// fmt.Printf("Last: %v\n", tmpURL[lIdx:])
+			tmpPartURL += tmpURL[lIdx:]
+		}
+		// fmt.Printf("PartURL: %v\n", tmpPartURL)
+	}
+	return tmpPartURL
+}
+func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, auth *Auth, header map[string]string, body io.Reader) (*http.Response, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
 	// Test for HTTP_PROXY and HTTPS_PROXY and use appropriate one
 	var netTransport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			purl, err := http.ProxyFromEnvironment(req)
+			if err != nil {
+				log.Logf(log.WARN, "%v", err)
+			}
+			toDisp := ""
+			if req.URL != nil {
+				toDisp = proxURL(req.URL.String())
+			}
+			if purl != nil {
+				log.Logf(log.DBGL2, "proxy: %s for request to: %s\n", purl.String(), toDisp)
+			} else {
+				log.Logf(log.DBGL2, "NO proxy for request to: %s\n", toDisp)
+			}
+			return purl, nil
+		},
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout, // time spent establishing a TCP connection
 			KeepAlive: c.DialKeepAliveTimeout,
-			//DualStack: true,		// now set by default and deprecated
+			// DualStack: true,		// now set by default and deprecated
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
-		TLSHandshakeTimeout: c.TlsHandshakeTimeout, // time spent performing the TLS handshake
-		//ExpectContinueTimeout: c.ExpectContinueTimeout, //time client will wait between sending request headers and receiving the go-ahead to send the body
-		ResponseHeaderTimeout: c.ResponseHeaderTimeout, //time spent reading the headers of the response
+		TLSHandshakeTimeout: c.TLSHandshakeTimeout, // time spent performing the TLS handshake
+		// ExpectContinueTimeout: c.ExpectContinueTimeout, //time client will wait between sending request headers and receiving the go-ahead to send the body
+		ResponseHeaderTimeout: c.ResponseHeaderTimeout, // time spent reading the headers of the response
 		TLSClientConfig:       tlsConfig,
 	}
 	if c.httpClient == nil || c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify != c.disableVerifyCert {
+		var checkRedirect func(*http.Request, []*http.Request) error
+		checkRedirect = nil
+		if c.CheckRedirectUserLastResp {
+			checkRedirect = func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout, //entire exchange, from Dial to reading the body
-			Transport: netTransport,
+			Timeout:       c.HTTPClientRequestTimeout, // entire exchange, from Dial to reading the body
+			Transport:     netTransport,
+			CheckRedirect: checkRedirect,
 		}
 	}
 	// Can be used instead of all timers to perform cancel based on time set for the client
-	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
-	//ctx, cancel := context.WithCancel(context.Background())
-	//timer := time.AfterFunc(5*time.Second, func() {
+	// https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
+	// ctx, cancel := context.WithCancel(context.Background())
+	// timer := time.AfterFunc(5*time.Second, func() {
 	//	cancel()
-	//})
+	// })
 
-	req, _ := http.NewRequest(method, url, body)
-	//req = req.WithContext(ctx)
+	req, _ := http.NewRequestWithContext(ctx, method, urlStr, body)
 	req.Close = true
 	if auth != nil {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
@@ -130,15 +185,15 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	}
 
 	// Disabled due to spitting out contents of uploaded files
-	//if log.IsDebug() {
+	// if log.IsDebug() {
 	//	dump, _ := httputil.DumpRequestOut(req, true)
 	//	fmt.Println(string(dump))
-	//}
+	// }
 	// Perform said network call.
-	//log.Logf(log.DBGL3, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
+	// log.Logf(log.DBGL3, "Skip Verify: %v",c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		//glog.Error(err.Error()) // use glog it's amazing
+		// glog.Error(err.Error()) // use glog it's amazing
 		return nil, err
 	}
 
@@ -148,11 +203,12 @@ func (c *Client) Fetch(method, url string, auth *Auth, header map[string]string,
 	}
 	return res, nil
 }
-
 func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]string, body io.Reader, serverCAPath string, cert ClientCert) (*http.Response, error) {
-
+	return c.FetchTLSWithContext(context.Background(), method, url, auth, header, body, serverCAPath, cert)
+}
+func (c *Client) FetchTLSWithContext(ctx context.Context, method, url string, auth Auth, header map[string]string, body io.Reader, serverCAPath string, cert ClientCert) (*http.Response, error) {
 	cp, _ := x509.SystemCertPool()
-	data, _ := ioutil.ReadFile(serverCAPath)
+	data, _ := os.ReadFile(serverCAPath)
 	cp.AppendCertsFromPEM(data)
 
 	config := &tls.Config{
@@ -168,22 +224,22 @@ func (c *Client) FetchTLS(method, url string, auth Auth, header map[string]strin
 		DialContext: (&net.Dialer{
 			Timeout:   c.DialTimeout,
 			KeepAlive: c.DialKeepAliveTimeout,
-			//DualStack: true,		// now set by default and deprecated
+			// DualStack: true,		// now set by default and deprecated
 		}).DialContext,
 		MaxIdleConns:        c.MaxIdleConnections,
 		IdleConnTimeout:     c.IdleConnTimeout,
-		TLSHandshakeTimeout: c.TlsHandshakeTimeout,
-		//ExpectContinueTimeout: c.ExpectContinueTimeout,
+		TLSHandshakeTimeout: c.TLSHandshakeTimeout,
+		// ExpectContinueTimeout: c.ExpectContinueTimeout,
 		TLSClientConfig: config,
 	}
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout,
+			Timeout:   c.HTTPClientRequestTimeout,
 			Transport: netTransport,
 		}
 	}
 
-	req, _ := http.NewRequest(method, url, body)
+	req, _ := http.NewRequestWithContext(ctx, method, url, body)
 	req.Close = true
 	if len(strings.TrimSpace(string(auth.Username))) > 0 {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
@@ -217,19 +273,19 @@ func (c *Client) ProxiedClient() *http.Client {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.disableVerifyCert,
 	}
-	netTransport := &http.Transport{}
+	var netTransport *http.Transport
 	if len(proxy) > 0 {
 		proxyURL, _ := url.Parse(proxy)
 		netTransport = &http.Transport{
 			DialContext: (&net.Dialer{
 				Timeout:   c.DialTimeout,
 				KeepAlive: c.DialKeepAliveTimeout,
-				//DualStack: true,		// now set by default and deprecated
+				// DualStack: true,		// now set by default and deprecated
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
-			TLSHandshakeTimeout: c.TlsHandshakeTimeout,
-			//ExpectContinueTimeout: c.ExpectContinueTimeout,
+			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
+			// ExpectContinueTimeout: c.ExpectContinueTimeout,
 			Proxy:           http.ProxyURL(proxyURL),
 			TLSClientConfig: tlsConfig,
 		}
@@ -238,18 +294,18 @@ func (c *Client) ProxiedClient() *http.Client {
 			DialContext: (&net.Dialer{
 				Timeout:   c.DialTimeout,
 				KeepAlive: c.DialKeepAliveTimeout,
-				//DualStack: true,		// now set by default and deprecated
+				// DualStack: true,		// now set by default and deprecated
 			}).DialContext,
 			MaxIdleConns:        c.MaxIdleConnections,
 			IdleConnTimeout:     c.IdleConnTimeout,
-			TLSHandshakeTimeout: c.TlsHandshakeTimeout,
-			//ExpectContinueTimeout: c.ExpectContinueTimeout,
+			TLSHandshakeTimeout: c.TLSHandshakeTimeout,
+			// ExpectContinueTimeout: c.ExpectContinueTimeout,
 			TLSClientConfig: tlsConfig,
 		}
 	}
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{
-			Timeout:   c.HttpClientRequestTimeout,
+			Timeout:   c.HTTPClientRequestTimeout,
 			Transport: netTransport,
 		}
 	}
@@ -264,29 +320,37 @@ var responseTimeout int
 func Reachable(host, name string, timeout int, disableVerifyCert bool) (bool, error) {
 	if httpClient == nil || responseTimeout != timeout {
 		responseTimeout = timeout
-		httpClient = NewClient(HttpClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
+		httpClient = NewClient(HTTPClientRequestTimeout(responseTimeout), DisableVerifyClientCert(disableVerifyCert))
 	}
 	httpClient.disableVerifyCert = disableVerifyCert
-	//log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
+	// log.Logf(log.DBGL3, "Verify Cert Disabled : %v", httpClient.disableVerifyCert)
 	resp, err := httpClient.Fetch("GET", host, nil, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	// 202 occurs when a http.DELETE is ran
 	if err != nil {
-		if strings.Index(err.Error(), "Client.Timeout ") > -1 {
-			return false, errors.New("site unreachable: " + name)
+		if strings.Contains(err.Error(), "Client.Timeout ") {
+			return false, errors.New("site unreachable (timeout): " + name)
+		} else if strings.Contains(err.Error(), "no such host") {
+			return false, errors.New("site unreachable (no such host): " + name)
+		} else if strings.Contains(err.Error(), "connection refused") {
+			return false, errors.New("site unreachable (connection refused): " + name)
+		} else if strings.Contains(err.Error(), "connect: network is unreachable") {
+			return false, errors.New("site unreachable (connect: network is unreachable): " + name)
 		}
 		return false, fmt.Errorf("site unreachable\n%+v", err.Error())
 	}
 	// Read body to buffer
-	body, err := ioutil.ReadAll(resp.Body)
-	if bserr.Err(err, "Error reading body") {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Logf(log.ERROR, "Error reading body %v", err)
+		// debug.PrintStack()
 		return false, errors.New("unable to read response")
 	}
 
 	if body != nil && len(body) > 0 {
-		//log.Println(string(body))
+		// log.Println(string(body))
 		return true, nil
 	} else if body != nil && len(body) == 0 {
 		// no body but reachable

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	log "github.com/colt3k/nglog/ng"
-	"github.com/colt3k/utils/crypt"
 	"github.com/colt3k/utils/encode"
 	"github.com/colt3k/utils/encode/encodeenum"
 
@@ -91,7 +90,7 @@ func show(hasher hash.Hasher, data []byte) {
 func Test_SSHA(t *testing.T) {
 	password := "password"
 
-	salt := crypt.GenSalt([]byte("salt"), 4)
+	salt := []byte("salt")
 
 	h := isha.New()
 	h.Write([]byte(password))
@@ -99,6 +98,6 @@ func Test_SSHA(t *testing.T) {
 	b := h.Sum(nil)
 	full := append(b, salt...)
 
-	log.Printf("{SSHA}%s",base64.StdEncoding.EncodeToString(full))
+	log.Printf("{SSHA}%s", base64.StdEncoding.EncodeToString(full))
 
 }

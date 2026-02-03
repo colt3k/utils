@@ -1,3 +1,3 @@
 module github.com/colt3k/utils/retry
 
-go 1.16
+go 1.22

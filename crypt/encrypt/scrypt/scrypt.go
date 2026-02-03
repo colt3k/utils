@@ -1,5 +1,9 @@
 package scrypt
 
+/*
+More Info
+	https://cryptobook.nakov.com/mac-and-key-derivation/scrypt
+*/
 import (
 	"crypto/subtle"
 	"encoding/hex"
@@ -47,23 +51,26 @@ var ErrMismatchedHashAndPassword = errors.New("scrypt: the hashed password does 
 // for interactive use (i.e. web applications).
 // These defaults will consume approxmiately 16MB of memory (128 * r * N).
 // The default key length is 256 bits.
-var DefaultParams = Params{N: 16384, R: 8, P: 1, SaltLen: 16, DKLen: aesKeyLength}
+var DefaultParams = Params{N: 32768, R: 8, P: 1, SaltLen: 32, DKLen: aesKeyLength}
 
 /*
 Key derived key for e.g. AES-256
 Key derives a key from the password, salt, and cost parameters returning
+
 	a byte slice of length keyLen that can be used as cryptographic key.
 
 N is a CPU/memory cost parameter, which must be a power of two greater than 1.
 
 r and p must satisfy r * p < 2³⁰. If the parameters do not satisfy the limits,
+
 	the function returns a nil byte slice and an error.
 
 Password is passed by user
 Salt is a unique salt for the system this will be running on and doesn't change
+
+	returns as []byte of sections split by $ in order N, R, P, Salt, Derived Key
 */
 func Key(password string, params Params) ([]byte, error) {
-
 	if params.Salt == nil {
 		return nil, errSalt
 	}
@@ -85,6 +92,9 @@ func Key(password string, params Params) ([]byte, error) {
 	// by a "$" character. The salt and the derived key are hex encoded.
 	//fmt.Println("SALT IN SCRYPT: ", Base64encode(params.Salt))
 	//log.Logln(log.DEBUG, "Building Derived Key, pass back in format N$R$P$SALT$DK")
+	//b64Hash := base64.RawStdEncoding.EncodeToString(dk)
+	//encodedHash := fmt.Sprintf("$scrypt$N=%d,r=%d,p=%d$%s$%s", params.N, params.R, params.P, params.Salt, b64Hash)
+
 	return []byte(fmt.Sprintf("%d$%d$%d$%x$%x", params.N, params.R, params.P, params.Salt, dk)), nil
 }
 
@@ -177,9 +187,9 @@ func Cost(hash []byte) (Params, error) {
 // The returned params will not use more memory than the given (MiB);
 // will not take more time than the given timeout, but more than timeout/2.
 //
-//   The default timeout (when the timeout arg is zero) is 200ms.
-//   The default memMiBytes (when memMiBytes is zero) is 16MiB.
-//   The default parameters (when params == Params{}) is DefaultParams.
+//	The default timeout (when the timeout arg is zero) is 200ms.
+//	The default memMiBytes (when memMiBytes is zero) is 16MiB.
+//	The default parameters (when params == Params{}) is DefaultParams.
 func Calibrate(timeout time.Duration, memMiBytes int, params Params) (Params, error) {
 	p := params
 	if p.N == 0 || p.R == 0 || p.P == 0 || p.SaltLen == 0 || p.DKLen == 0 {

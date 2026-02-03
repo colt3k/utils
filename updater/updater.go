@@ -19,6 +19,7 @@ type AppConfig struct {
 	ArchiveName       string
 	User              []byte
 	Pass              []byte
+	Bearer            bool
 	DisableVerifyCert bool
 	Issue             string
 }
@@ -60,12 +61,15 @@ func NewUser(user, passOrToken, urlPrefix, repository string) *Connection {
 
 type Connection struct {
 	Name                string
+	HostName            string
 	User                string
 	PassOrToken         string
+	Bearer              bool
 	URLPrefix           string
 	Repository          string
 	Path                string
 	OnAvailable         string
+	OnAvailableTimeout  int
 	available           bool
 	OnHostNamePrefix    string
 	hostNamePfx         bool
@@ -73,6 +77,7 @@ type Connection struct {
 	hostNameSuffix      bool
 	OnAvailableViaHTTP  bool
 	DisableValidateCert bool
+	AQLSupport          bool
 }
 
 func (c *Connection) Available() bool {

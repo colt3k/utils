@@ -2,6 +2,7 @@ package passthrough
 
 import (
 	"fmt"
+	log "github.com/colt3k/nglog/ng"
 	"io"
 	"strconv"
 	"sync"
@@ -27,7 +28,7 @@ type PassThru struct {
 	showPart bool
 }
 
-// NewPassThru creates an instance of our PassThru object
+// New creates a new instance of our PassThru object
 func New(readCloser io.ReadCloser, f file.File, notifyInSecs int, showPartNum bool) *PassThru {
 	if notifyInSecs == -1 || notifyInSecs == 0 {
 		notifyInSecs = 30
@@ -40,16 +41,17 @@ func New(readCloser io.ReadCloser, f file.File, notifyInSecs int, showPartNum bo
 	}
 
 	ticker := time.NewTicker(time.Duration(notifyInSecs) * time.Second)
-	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, showPart:showPartNum}
+	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, showPart: showPartNum}
 }
 
+// NewStream creates a new instance of our PassThru by file size
 func NewStream(readCloser io.ReadCloser, fsize int64, name string, partId, totalParts int, notifyInSecs int, showPartNum bool) *PassThru {
 	if notifyInSecs == -1 || notifyInSecs == 0 {
 		notifyInSecs = 30
 	}
 
 	ticker := time.NewTicker(time.Duration(notifyInSecs) * time.Second)
-	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId: partId, totalParts:totalParts, showPart:showPartNum}
+	return &PassThru{rc: readCloser, ticker: ticker, fullSize: fsize, name: name, partId: partId, totalParts: totalParts, showPart: showPartNum}
 }
 
 // Read 'overrides' the underlying io.Reader's Read method, used to track byte counts and forward the call.
@@ -63,7 +65,7 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 	if err == nil {
 		if !pt.readOnce {
 			if pt.showPart {
-				fmt.Printf("Starting part #%d of %d\n", pt.partId, pt.totalParts)
+				log.Logf(log.DEBUG, "Starting part #%d of %d\n", pt.partId, pt.totalParts)
 			}
 			go func() {
 				for range pt.ticker.C {
@@ -89,7 +91,7 @@ func (pt *PassThru) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-// Close
+// Close used to clean up and close our PassThru
 func (pt *PassThru) Close() error {
 	if pt.rc != nil {
 		pt.rc.Close()
@@ -115,6 +117,8 @@ func (pt *PassThru) N() int64 {
 	pt.lock.RUnlock()
 	return n
 }
+
+// Err retrieve the error for the PassThru
 func (pt *PassThru) Err() error {
 	var err error
 	pt.lock.RLock()
@@ -123,8 +127,7 @@ func (pt *PassThru) Err() error {
 	return err
 }
 
-// Len returns the number of bytes of the unread portion of the
-// slice.
+// Len returns the number of bytes of the unread portion of the slice.
 func (pt *PassThru) Len() int {
 
 	if pt.total >= int64(pt.fullSize) {

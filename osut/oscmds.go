@@ -2,7 +2,12 @@ package osut
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/mgutz/str"
 
@@ -81,4 +86,93 @@ func sanitisedCommandOutput(output []byte, err error) (string, error) {
 		return outputString, errors.New(outputString)
 	}
 	return outputString, nil
+}
+
+// CallCmd execute local apps
+func CallCmd(command string) (string, error) {
+	log.Logf(log.DBGL2, "sh -c %v", command)
+	cmd := exec.Command("sh", "-c", command)
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("issue processing call (%v)\n%v", command, err)
+	}
+	output := string(stdoutStderr)
+	return output, nil
+}
+
+// CallCmdNoWait execute app if not already running
+func CallCmdNoWait(command, app string) (int, error) {
+	log.Logf(log.DBGL2, "sh -c %v", command)
+	cmd := exec.Command("sh", "-c", command)
+	err := cmd.Start()
+	if err != nil {
+		return 0, err
+	}
+
+	pid := cmd.Process.Pid
+	// sleep give process time to spin up before app exits
+	time.Sleep(5 * time.Second)
+
+	id, found := FindProcess(app)
+	log.Logf(log.INFO, "id %v, found %v", id, found)
+	if found {
+		pid = id
+	}
+
+	return pid, nil
+}
+
+// FindProcess find by application name return pid and if running true/false
+func FindProcess(appName string) (int, bool) {
+	pCurPid := os.Getppid()
+	curPid := os.Getpid()
+	log.Logf(log.DBGL2, "> Parent Pid: %v, Cur Pid: %v", pCurPid, curPid)
+	cmd := exec.Command("sh", "-c", "ps aux | grep "+appName+" | grep -v grep")
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		var exitErr *exec.ExitError
+		switch {
+		case errors.As(err, &exitErr):
+			exitCode := exitErr.ExitCode()
+			if exitCode == 1 {
+				return curPid, false
+			}
+		default:
+			log.Logf(log.ERROR, "!!! %v", err)
+		}
+	}
+	output := string(stdoutStderr)
+	trim := strings.TrimSpace(output)
+	log.Logf(log.DBGL2, "findProcess data : %v", trim)
+
+	if len(trim) > 0 {
+		pids := make(map[int]int)
+		lines := strings.Split(trim, "\n")
+		for _, j := range lines {
+			fields := strings.Fields(j)
+			// Ensure the process cmd starts with this command and isn't included in another
+			// search each field for appName, could be a diff field based on OS or full path with name
+			for l, m := range fields {
+				if l >= 10 {
+					if strings.Contains(m, appName) {
+						fP, _ := strconv.Atoi(fields[1])
+						pids[fP] = fP
+					}
+				}
+			}
+		}
+		log.Logf(log.DBGL2, "> Cur Pid: %v, PS found: %v", curPid, pids)
+		// If found in map and len of map is more than one we found it running don't delete lock
+		pid := 0
+		for k := range pids {
+			if pids[k] != curPid && pids[k] != pCurPid {
+				pid = k
+			}
+		}
+		if pid != 0 {
+			return pid, true
+		}
+		return curPid, false
+	}
+	return curPid, false
 }

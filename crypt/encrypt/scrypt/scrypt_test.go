@@ -2,6 +2,7 @@ package scrypt
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,8 +160,8 @@ func TestCalibrate(t *testing.T) {
 	}
 }
 
-func ExampleCalibrate() {
-
+func TestExampleCalibrate(t *testing.T) {
+	t.SkipNow()
 	p, err := Calibrate(1*time.Second, 128, Params{})
 	log.Println("Calibration: ", p)
 	if err != nil {
@@ -168,7 +169,10 @@ func ExampleCalibrate() {
 	}
 	salt := crypt.GenSalt(p.Salt, p.SaltLen)
 	p.Salt = salt
-	dk, err := Key("super-secret-password", p)
+	derivedKey, err := Key("super-secret-password", p)
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
 	log.Printf("generated password is %q (%v)", dk, err)
 	/*
 	 Output:

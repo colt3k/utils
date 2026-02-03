@@ -1,6 +1,7 @@
 package aescrypt_gcm
 
 import (
+	"strings"
 	"testing"
 
 	log "github.com/colt3k/nglog/ng"
@@ -32,7 +33,6 @@ func init() {
 	loadTestData()
 }
 
-
 func loadTestData() {
 	cfg.saltScrypt = "wYr2y5H5T2/LCqWURBfVQQ=="
 	cfg.saltScryptBA = []byte(cfg.saltScrypt)
@@ -40,27 +40,31 @@ func loadTestData() {
 	cfg.testPassword = "thisismysuperlongandcomplexpass"
 	cfg.plaintext = "My Original plain text used for testing."
 
-	cfg.cipherTxtScrypt = "h0vyG0BQvDQMBaAGFuHiB3UGTwX9+ssj+Coh2eMce/JONEYvkjqZzSU91+DraddATwcbQ+C+hdrF7uAICIJ7Qw=="
+	cfg.cipherTxtScrypt = "l3XZaAg3JLkq/X/IFv0loI1IGAVetlmRlb1MjscWZBm9Wj9J8YEIZ2clNUALpyKrkGMD3dz51TClNaJj1E76CQ=="
 	cfg.cipherTxtScryptBA = []byte(cfg.cipherTxtScrypt)
 }
 
 func TestScryptEncrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
+	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
 	//p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
-	p := scrypt.Params{N:65536, R:1, P:2, SaltLen:16, DKLen:32}
+	p := scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
 	log.Println("Params: ", p)
 
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
-	log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
+	log.Logf(log.DEBUG, "Salt: %s", encode.Encode(salt, encodeenum.B64STD))
+
 	p.Salt = salt
 	derivedKey, err := scrypt.Key(cfg.testPassword, p)
 	if err != nil {
 		panic(err)
 	}
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	log.Println("Derived Key Length : ", len(dk))
 
-	log.Println("Derived Key Length : ", len(derivedKey))
-
-	a := New(&cfg.plaintext, nil, &derivedKey)
+	a := New(&cfg.plaintext, nil, &dk)
 	crypted := a.Encrypt()
 
 	log.Println("CipherText: ", encode.Encode(crypted, encodeenum.B64STD))
@@ -73,7 +77,7 @@ func TestScryptEncrypt(t *testing.T) {
 func TestScryptDecrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
 	//p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
-	p := scrypt.Params{N:65536, R:1, P:2, SaltLen:16, DKLen:32}
+	p := scrypt.Params{N: 65536, R: 1, P: 2, SaltLen: 16, DKLen: 32}
 	log.Println("Params: ", p)
 
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
@@ -84,12 +88,14 @@ func TestScryptDecrypt(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	log.Println("Derived Key Length : ", len(derivedKey))
+	parts := strings.Split(string(derivedKey), "$")
+	lastPart := parts[len(parts)-1]
+	dk := []byte(lastPart)
+	log.Println("Derived Key Length : ", len(dk))
 
 	crypted := encode.Decode(cfg.cipherTxtScryptBA, encodeenum.B64STD)
 
-	a := New(nil, &crypted, &derivedKey)
+	a := New(nil, &crypted, &dk)
 	plaintext2 := a.Decrypt()
 
 	log.Println("PlainText2: ", string(plaintext2))

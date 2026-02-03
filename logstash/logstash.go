@@ -3,6 +3,7 @@ package logstash
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -106,13 +107,17 @@ func (s *Server) Write(p []byte) (n int, err error) {
 		msg := fmt.Sprintf("%s\n", string(p))
 		i, err = s.Connection.Write([]byte(msg))
 		if err != nil {
-			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
-				s.Connection.Close()
-				s.Connection = nil
-				if err != nil {
-					return i, err
+			var netErr net.Error
+			switch {
+			case errors.As(err, netErr):
+				if netErr.Timeout() {
+					s.Connection.Close()
+					s.Connection = nil
+					if err != nil {
+						return i, err
+					}
 				}
-			} else {
+			default:
 				s.Connection.Close()
 				s.Connection = nil
 				return i, err
@@ -131,13 +136,17 @@ func (s *Server) WriteTLS(p []byte) (n int, err error) {
 		msg := fmt.Sprintf("%s\n", string(p))
 		i, err = s.TLSConnection.Write([]byte(msg))
 		if err != nil {
-			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
-				s.TLSConnection.Close()
-				s.TLSConnection = nil
-				if err != nil {
-					return i, err
+			var netErr net.Error
+			switch {
+			case errors.As(err, netErr):
+				if netErr.Timeout() {
+					s.TLSConnection.Close()
+					s.TLSConnection = nil
+					if err != nil {
+						return i, err
+					}
 				}
-			} else {
+			default:
 				s.TLSConnection.Close()
 				s.TLSConnection = nil
 				return i, err
