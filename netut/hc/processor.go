@@ -1,13 +1,15 @@
 package hc
 
 import (
-	"github.com/colt3k/nglog/ers/bserr"
-	log "github.com/colt3k/nglog/ng"
+	"context"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/colt3k/nglog/ers/bserr"
+	log "github.com/colt3k/nglog/ng"
 )
 
 var client *Client
@@ -94,28 +96,71 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 	}
 	return t
 }
+func (h *HTTPClient) Open(ctx context.Context, data io.Reader) (*http.Response, int, error) {
+	log.Logf(log.DBGL2, "-- called httpCallData for Method %s URL: %s", h.Method, h.URL)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if client == nil || !h.ReUseClient {
+		client = NewClient(
+			HTTPClientRequestTimeout(h.RequestTimeout),
+			DisableVerifyClientCert(h.DisableVerifyClientCert),
+			HTTPClientResponseHeaderTimeout(h.ResponseHeaderTimeout),
+			CheckRedirectUserLastResp(h.RedirectUseLastResponse),
+			DialTimeout(h.DialTimeout),
+			DialKeepAliveTimeout(h.DialKeepAliveTimeout),
+			MaxIdleConnections(h.MaxIdleConnections),
+			IdleConnectionTimeout(h.IdleConnectionTimeout),
+			TLSHandshakeTimeout(h.TLSHandshakeTimeout),
+		)
+	}
+
+	t := time.Now()
+	log.Logf(log.DBGL3, "Start Fetch %v", t.Format(time.RFC1123))
+	resp, err := client.FetchWithContext(ctx, h.Method, h.URL, h.Auth, h.Header, data)
+	log.Logf(log.DBGL3, "Post Fetch %v", time.Since(t))
+
+	if err != nil {
+		if resp != nil {
+			return resp, resp.StatusCode, err
+		}
+		return nil, h.CatchAllErrStatus, err
+	}
+
+	if resp == nil {
+		return nil, h.CatchAllErrStatus, nil
+	}
+
+	return resp, resp.StatusCode, nil
+}
 
 // Process method on HTTPCall object, pass in reader
 func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error) {
 	log.Logf(log.DBGL2, "-- called httpCallData for Method %s URL: %s", h.Method, h.URL)
 	tmp := make(map[string]interface{})
 
-	if client == nil || !h.ReUseClient {
-		//log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
-		// set to timeout after a day per request, accommodates file uploads
-		client = NewClient(HTTPClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
-			HTTPClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
-			DialTimeout(h.DialTimeout), DialKeepAliveTimeout(h.DialKeepAliveTimeout), MaxIdleConnections(h.MaxIdleConnections),
-			IdleConnectionTimeout(h.IdleConnectionTimeout), TLSHandshakeTimeout(h.TLSHandshakeTimeout))
-	}
-	t := time.Now()
-	log.Logf(log.DBGL3, "Start Fetch %v", t.Format(time.RFC1123))
-	var resp, err = client.Fetch(h.Method, h.URL, h.Auth, h.Header, data)
-	log.Logf(log.DBGL3, "Post Fetch %v", time.Since(t))
-
+	resp, status, err := h.Open(context.Background(), data)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	// if client == nil || !h.ReUseClient {
+	// 	// log.Logln(log.DEBUG, "!!! Creating NEW HTTP CLIENT !!!")
+	// 	// set to timeout after a day per request, accommodates file uploads
+	// 	client = NewClient(HTTPClientRequestTimeout(h.RequestTimeout), DisableVerifyClientCert(h.DisableVerifyClientCert),
+	// 		HTTPClientResponseHeaderTimeout(h.ResponseHeaderTimeout), CheckRedirectUserLastResp(h.RedirectUseLastResponse),
+	// 		DialTimeout(h.DialTimeout), DialKeepAliveTimeout(h.DialKeepAliveTimeout), MaxIdleConnections(h.MaxIdleConnections),
+	// 		IdleConnectionTimeout(h.IdleConnectionTimeout), TLSHandshakeTimeout(h.TLSHandshakeTimeout))
+	// }
+	// t := time.Now()
+	// log.Logf(log.DBGL3, "Start Fetch %v", t.Format(time.RFC1123))
+	// var resp, err = client.Fetch(h.Method, h.URL, h.Auth, h.Header, data)
+	// log.Logf(log.DBGL3, "Post Fetch %v", time.Since(t))
+	//
+	// if resp != nil {
+	// 	defer resp.Body.Close()
+	// }
 
 	if err != nil && err.Error() != "201 Created" && err.Error() != "204 No Content" {
 		if resp != nil && resp.Body != nil {
@@ -141,7 +186,11 @@ func (h *HTTPClient) Process(data io.Reader) (map[string]interface{}, int, error
 		} else if resp != nil {
 			return nil, resp.StatusCode, err
 		}
-		return nil, h.CatchAllErrStatus, err
+		return nil, status, err
+	}
+
+	if resp == nil {
+		return nil, status, nil
 	}
 
 	if h.ReturnHead {
@@ -200,13 +249,14 @@ func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeo
 }
 
 // MakeCall to http client
+func MakeCallRaw(ctx context.Context, method, URI string, msg io.Reader, header map[string]string, auth *Auth, settings *HTTPClientSettings) (*http.Response, int, error) {
+	c := NewHTTPClient(method, URI, header, auth, settings)
+	return c.Open(ctx, msg)
+}
+
 func MakeCall(method, URI string, msg io.Reader, header map[string]string, auth *Auth, settings *HTTPClientSettings) (map[string]interface{}, int, error) {
 	c := NewHTTPClient(method, URI, header, auth, settings)
-	mapData, status, err := c.Process(msg)
-	if err != nil {
-		return mapData, status, err
-	}
-	return mapData, status, nil
+	return c.Process(msg)
 }
 
 // HTTPStatusText lookup status code for text
