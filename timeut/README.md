@@ -13,3 +13,12 @@ Time Utilities
 - millis since epoch
 - Julian 2 Date
 - Date 2 Julian
+
+## Additional Helpers
+
+- `StartTime` and `StartDate` for week-based date calculations
+- `Time(...)` and `GMTTime()` wrappers around the custom `MyTime` type
+
+## Development
+
+- `cd timeut && go test ./...`

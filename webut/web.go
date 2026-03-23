@@ -1,3 +1,4 @@
+// Package webut contains small helpers for inconsistent web payloads.
 package webut
 
 import (
@@ -8,6 +9,8 @@ import (
 
 type ConvertibleBoolean bool
 
+// UnmarshalJSON accepts booleans encoded either as JSON booleans or quoted
+// strings.
 func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {
 	asString := string(data)
 

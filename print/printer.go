@@ -1,3 +1,4 @@
+// Package print wraps tablewriter for simple CLI table output.
 package print
 
 import (
@@ -11,6 +12,7 @@ type Printer struct {
 	data   [][]string
 }
 
+// TablePrint renders the configured table to standard output.
 func (p *Printer) TablePrint(border bool) {
 
 	table := tablewriter.NewWriter(os.Stdout)

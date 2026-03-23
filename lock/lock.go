@@ -1,3 +1,4 @@
+// Package lock provides a lightweight temp-file lock for process coordination.
 package lock
 
 import (
@@ -30,6 +31,8 @@ func (l *Lock) Try() bool {
 
 	return true
 }
+
+// Unlock removes the lock file.
 func (l *Lock) Unlock() {
 	err := os.Remove(l.name)
 	if err != nil {

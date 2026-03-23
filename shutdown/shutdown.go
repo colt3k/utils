@@ -1,3 +1,4 @@
+// Package shutdown centralizes SIGINT and SIGTERM handling.
 package shutdown
 
 import (
@@ -18,6 +19,7 @@ type Graceful struct {
 	stop          context.CancelFunc
 }
 
+// SetupNotifyContext initializes or returns the shared signal-aware context.
 func SetupNotifyContext(ctxt context.Context) *Graceful {
 	once.Do(func() {
 		instance = &Graceful{}
@@ -31,6 +33,8 @@ func SetupNotifyContext(ctxt context.Context) *Graceful {
 
 	return instance
 }
+
+// Graceful waits for shutdown, runs cleanup, and then releases resources.
 func (g Graceful) Graceful(cleanup func()) {
 	s := <-g.NotifyContext.Done()
 	fmt.Println("Got signal:", s)

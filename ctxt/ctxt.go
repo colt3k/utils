@@ -1,3 +1,4 @@
+// Package ctxt contains small context-aware helpers.
 package ctxt
 
 import (
@@ -5,6 +6,7 @@ import (
 	"time"
 )
 
+// SleepContext waits for d unless ctx is canceled first.
 func SleepContext(ctx context.Context, d time.Duration) error {
 	select {
 	case <-ctx.Done():

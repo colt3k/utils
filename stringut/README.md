@@ -27,3 +27,11 @@ String utilities
 - replace first occurence of X
 - contains only numeric
 - string equal using fold
+
+## Notes
+
+The package mixes conversion helpers, validation helpers, and regex-driven extractors. Use the package when you need a small utility without pulling in a larger dependency tree, but keep new additions narrowly scoped and well tested.
+
+## Development
+
+- `cd stringut && go test ./...`

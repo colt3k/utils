@@ -1,3 +1,5 @@
+// svcs installs or removes a systemd service for a Go program built from a
+// sibling source directory.
 package main
 
 import (
@@ -27,19 +29,19 @@ func main() {
 
 	if removeService {
 		log.Println("removing service", serviceName)
-		_,err := SudoNoFail("systemctl", "stop", serviceName)
+		_, err := SudoNoFail("systemctl", "stop", serviceName)
 		if err != nil {
 			log.Logf(log.ERROR, "sudo issue %+v", err)
 		}
-		_,err = SudoNoFail("systemctl", "disable", serviceName)
+		_, err = SudoNoFail("systemctl", "disable", serviceName)
 		if err != nil {
 			log.Logf(log.ERROR, "sudo issue %+v", err)
 		}
-		_,err = SudoNoFail("rm", serviceBinary(serviceName))
+		_, err = SudoNoFail("rm", serviceBinary(serviceName))
 		if err != nil {
 			log.Logf(log.ERROR, "sudo issue %+v", err)
 		}
-		_,err = SudoNoFail("rm", serviceDefinition(serviceName))
+		_, err = SudoNoFail("rm", serviceDefinition(serviceName))
 		if err != nil {
 			log.Logf(log.ERROR, "sudo issue %+v", err)
 		}
@@ -48,28 +50,28 @@ func main() {
 
 	log.Println("installing service", serviceName)
 
-	_,err := SudoNoFail("systemctl", "stop", serviceName)
+	_, err := SudoNoFail("systemctl", "stop", serviceName)
 	if err != nil {
 		log.Logf(log.ERROR, "sudo issue %+v", err)
 	}
-	_,err = SudoNoFail("systemctl", "disable", serviceName)
+	_, err = SudoNoFail("systemctl", "disable", serviceName)
 	if err != nil {
 		log.Logf(log.ERROR, "sudo issue %+v", err)
 	}
 
 	source := fmt.Sprintf("%s/%s.go", serviceName, serviceName)
-	_,err = Command("go", "build", "-o", serviceBinary(serviceName), source)
+	_, err = Command("go", "build", "-o", serviceBinary(serviceName), source)
 	if err != nil {
 		log.Logf(log.ERROR, "sudo issue %+v", err)
 	}
 
 	templatePath := writeServiceFile(serviceName, serviceRunAs)
 
-	_,err = Sudo("systemctl", "enable", templatePath)
+	_, err = Sudo("systemctl", "enable", templatePath)
 	if err != nil {
 		log.Logf(log.ERROR, "sudo issue %+v", err)
 	}
-	_,err = Sudo("systemctl", "start", serviceName)
+	_, err = Sudo("systemctl", "start", serviceName)
 	if err != nil {
 		log.Logf(log.ERROR, "sudo issue %+v", err)
 	}
@@ -94,6 +96,7 @@ func writeServiceFile(serviceName, serviceRunAs string) string {
 	return templatePath
 }
 
+// ServiceTemplate is the generated systemd unit definition written to disk.
 var ServiceTemplate = `[Unit]
 Description={{.ServiceName}} Service
 After=network.target
@@ -109,21 +112,28 @@ Restart=on-failure
 WantedBy=multi-user.target
 `
 
+// SudoNoFail runs a command through sudo and returns combined output.
 func SudoNoFail(cmd ...string) ([]byte, error) {
 	command := exec.Command("sudo", cmd...)
 	out, err := command.CombinedOutput()
 	return out, err
 }
+
+// Sudo runs a command through sudo and returns combined output.
 func Sudo(cmd ...string) ([]byte, error) {
 	command := exec.Command("sudo", cmd...)
 	out, err := command.CombinedOutput()
 	return out, err
 }
+
+// Command runs a command directly and returns combined output.
 func Command(app string, cmd ...string) ([]byte, error) {
 	command := exec.Command(app, cmd...)
 	out, err := command.CombinedOutput()
 	return out, err
 }
+
+// PanicOnError panics when err is non-nil.
 func PanicOnError(err error) {
 	panic(err)
 }

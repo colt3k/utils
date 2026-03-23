@@ -1,32 +1,43 @@
 # encryption
 
-
+Crypto helpers for key derivation, symmetric encryption, streaming encryption, signing, verification, certificate generation, and keypair management.
 
 ## Abilities
 
-### Key ALGORITHMS
+### Key algorithms
 
 1. PBKDF2 build key off password
 2. Scrypt build key off password (better alternative to #1)
+3. Argon2id key derivation and password comparison
 
-
-### ENCRYPTION ALGORITHM/TRANSFORMATION
+### Encryption algorithm/transformation
 
 1. AES/CBC/PKCS5Padding Encrypt/Decrypt using prior keys (with AES PKCS7Padding is actually used)
-
+2. AES-GCM helpers
+3. streaming encryption helpers for large payloads
 
 ### MAC
 
 1. Poly1305
 
+## Package Map
+
+- `encrypt/*`: key derivation, AES helpers, padding, and stream encryption.
+- `sign`: Poly1305 signing keys and helpers.
+- `verify`: RSA, ECDSA, and DSA verifier constructors.
+- `cert`: development certificates and Let’s Encrypt integration.
+- `genppk`: RSA and EC keypair generation.
 
 #### TERMS
 
 - Password is passed by user
-
 - Salt is a unique salt for the system this will be running on and doesn't change
-
 - IV or nonce is generated on every encryption and is part of the combination of a key return
+
+## Development
+
+- `cd crypt && go test ./...`
+- certificate examples and tests live under `crypt/cert`
 
 ##### NOTES
 
@@ -37,4 +48,3 @@
 [data-encryption-in-go-using-openssl](http://sosedoff.com/2015/05/22/data-encryption-in-go-using-openssl.html)
 
 [golang cipher](https://golang.org/pkg/crypto/cipher/)
-

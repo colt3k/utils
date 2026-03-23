@@ -1,3 +1,4 @@
+// Package updater defines the shared metadata used by the update backends.
 package updater
 
 import (
@@ -24,6 +25,7 @@ type AppConfig struct {
 	Issue             string
 }
 
+// String returns a compact printable view of the remote app metadata.
 func (a *AppConfig) String() string {
 	var byt bytes.Buffer
 	byt.WriteString("{  OS: ")
@@ -50,6 +52,7 @@ func (a *AppConfig) String() string {
 	return byt.String()
 }
 
+// NewUser builds a basic authenticated update connection definition.
 func NewUser(user, passOrToken, urlPrefix, repository string) *Connection {
 	t := new(Connection)
 	t.User = user
@@ -59,6 +62,7 @@ func NewUser(user, passOrToken, urlPrefix, repository string) *Connection {
 	return t
 }
 
+// Connection describes a candidate update source and its gating rules.
 type Connection struct {
 	Name                string
 	HostName            string
@@ -80,25 +84,37 @@ type Connection struct {
 	AQLSupport          bool
 }
 
+// Available reports whether the connection passed availability checks.
 func (c *Connection) Available() bool {
 	return c.available
 }
+
+// HostPfx reports whether hostname prefix gating matched.
 func (c *Connection) HostPfx() bool {
 	return c.hostNamePfx
 }
+
+// HostSuffix reports whether hostname suffix gating matched.
 func (c *Connection) HostSuffix() bool {
 	return c.hostNameSuffix
 }
+
+// SetAvailable stores the current availability check result.
 func (c *Connection) SetAvailable(val bool) {
 	c.available = val
 }
+
+// SetHostPfx stores the current hostname prefix match state.
 func (c *Connection) SetHostPfx(val bool) {
 	c.hostNamePfx = val
 }
+
+// SetHostSfx stores the current hostname suffix match state.
 func (c *Connection) SetHostSfx(val bool) {
 	c.hostNameSuffix = val
 }
 
+// Version holds the local version metadata used for comparisons.
 type Version struct {
 	Version   string
 	BuildDate string

@@ -1,3 +1,5 @@
+// Package logstash provides a TCP/TLS client for newline-delimited log
+// shipping.
 package logstash
 
 import (
@@ -19,7 +21,7 @@ const (
 	TCPPROTOCOL = "tcp"
 )
 
-// Server struct to hold building of a server
+// Server holds connection settings and the active TCP or TLS connection.
 type Server struct {
 	Host          string
 	Port          int
@@ -28,7 +30,7 @@ type Server struct {
 	Timeout       int
 }
 
-// New host name, port and timeout in seconds
+// New returns a configured log shipping client.
 func New(host string, port, timeout int) *Server {
 	t := new(Server)
 	t.Host = host
@@ -37,14 +39,14 @@ func New(host string, port, timeout int) *Server {
 	return t
 }
 
-// Show host port and timeout
+// Show logs the current host, port, and timeout values.
 func (s *Server) Show() {
 	log.Logln(log.DEBUG, "Host:", s.Host)
 	log.Logln(log.DEBUG, "Port:", s.Port)
 	log.Logln(log.DEBUG, "Timeout:", s.Timeout)
 }
 
-// Connect create server connection
+// Connect opens a plain TCP connection.
 func (s *Server) Connect() (*net.TCPConn, error) {
 
 	host := fmt.Sprintf("%s:%d", s.Host, s.Port)
@@ -67,7 +69,7 @@ func (s *Server) Connect() (*net.TCPConn, error) {
 	return s.Connection, nil
 }
 
-// ConnectTLS connect using TLS
+// ConnectTLS opens a TLS connection using the local CA file.
 func (s *Server) ConnectTLS() (*tls.Conn, error) {
 	cp := x509.NewCertPool()
 	home := file.HomeFolder()
@@ -82,10 +84,10 @@ func (s *Server) ConnectTLS() (*tls.Conn, error) {
 	cfg.ServerName = s.Host
 	cfg.BuildNameToCertificate()
 	cfg.ClientAuth = tls.RequireAndVerifyClientCert
-	//cfg.CipherSuites = []uint16 {
+	// cfg.CipherSuites = []uint16 {
 	//	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-	//}
-	//cfg.InsecureSkipVerify = true		// only needed if you don't have the CA that created the servers key/cert
+	// }
+	// cfg.InsecureSkipVerify = true		// only needed if you don't have the CA that created the servers key/cert
 
 	host := fmt.Sprintf("%s:%d", s.Host, s.Port)
 	log.Logf(log.DEBUG, "connecting to %s", host)
@@ -100,7 +102,7 @@ func (s *Server) ConnectTLS() (*tls.Conn, error) {
 	return s.TLSConnection, nil
 }
 
-// Write out data on connection
+// Write sends a newline-delimited log event on the TCP connection.
 func (s *Server) Write(p []byte) (n int, err error) {
 	var i int
 	if s.Connection != nil {
@@ -129,7 +131,7 @@ func (s *Server) Write(p []byte) (n int, err error) {
 	return i, fmt.Errorf("tcp connection nil")
 }
 
-// WriteTLS write via TLS connection
+// WriteTLS sends a newline-delimited log event on the TLS connection.
 func (s *Server) WriteTLS(p []byte) (n int, err error) {
 	var i int
 	if s.TLSConnection != nil {
@@ -158,7 +160,7 @@ func (s *Server) WriteTLS(p []byte) (n int, err error) {
 	return i, fmt.Errorf("tcp connection nil")
 }
 
-// UpdateTimeout increase time to continue work
+// UpdateTimeout refreshes read and write deadlines on the TCP connection.
 func (s *Server) UpdateTimeout() {
 	end := time.Now().Add(time.Duration(s.Timeout) * time.Second)
 	s.Connection.SetDeadline(end)
@@ -166,7 +168,7 @@ func (s *Server) UpdateTimeout() {
 	s.Connection.SetReadDeadline(end)
 }
 
-// UpdateTLSTimeout increase time to continue work
+// UpdateTLSTimeout refreshes read and write deadlines on the TLS connection.
 func (s *Server) UpdateTLSTimeout() {
 	end := time.Now().Add(time.Duration(s.Timeout) * time.Second)
 	s.TLSConnection.SetDeadline(end)
@@ -174,7 +176,7 @@ func (s *Server) UpdateTLSTimeout() {
 	s.TLSConnection.SetReadDeadline(end)
 }
 
-// Close close server connection
+// Close closes the TCP connection.
 func (s *Server) Close() {
 	err := s.Connection.Close()
 	if err != nil {
@@ -182,7 +184,7 @@ func (s *Server) Close() {
 	}
 }
 
-// CloseTLS close TLS server connection
+// CloseTLS closes the TLS connection.
 func (s *Server) CloseTLS() {
 	err := s.TLSConnection.Close()
 	if err != nil {

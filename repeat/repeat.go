@@ -1,3 +1,4 @@
+// Package repeat runs a task on a fixed schedule until canceled or exhausted.
 package repeat
 
 import (
@@ -13,6 +14,7 @@ var (
 
 type Task func() error
 
+// Rule configures the repeating loop.
 type Rule struct {
 	MaxAttempts    uint
 	currentAttempt uint
@@ -20,6 +22,7 @@ type Rule struct {
 	RepeatTimer    time.Duration
 }
 
+// NewRule returns a rule with conservative defaults.
 func NewRule() Rule {
 	n := Rule{
 		MaxAttempts:  3,
@@ -28,9 +31,14 @@ func NewRule() Rule {
 	}
 	return n
 }
+
+// LoopId returns the timestamp-based identifier of the last run loop.
 func LoopId() int64 {
 	return loopId
 }
+
+// Process executes repeat according to r until ctx is canceled, MaxAttempts is
+// reached, or repeat returns an error.
 func Process(ctx context.Context, r Rule, processName string, repeat Task, stop Task) error {
 	curTime := time.Now().Format(time.RFC3339)
 	log.Logf(log.DEBUG, "setting up repeat process as of %v", curTime)
