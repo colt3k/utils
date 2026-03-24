@@ -34,6 +34,7 @@ type HTTPClient struct {
 	TLSHandshakeTimeout     int
 	DisableVerifyClientCert bool
 	CatchAllErrStatus       int
+	CloseRequest            bool
 }
 
 // NewHTTPClient initialize HTTPClient
@@ -44,6 +45,7 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 	t.Header = header
 	t.Auth = auth
 	if settings != nil {
+		t.CloseRequest = settings.CloseRequest
 		t.ReturnHead = settings.ReturnHeaders
 		t.RequestTimeout = settings.RequestTimeout
 		t.ResponseHeaderTimeout = settings.ResponseHeaderTimeout
@@ -93,6 +95,7 @@ func NewHTTPClient(method, url string, header map[string]string, auth *Auth, set
 		t.IdleConnectionTimeout = 90
 		t.TLSHandshakeTimeout = 10
 		t.CatchAllErrStatus = 1000
+		t.CloseRequest = true
 	}
 	return t
 }
@@ -234,6 +237,7 @@ type HTTPClientSettings struct {
 	IdleConnectionTimeout   int
 	TLSHandshakeTimeout     int
 	CatchAllErrStatus       int
+	CloseRequest            bool
 }
 
 func NewClientSettings(returnHeaders, disableVerifyClientCert bool, requestTimeout, responseHeaderTimeout int) *HTTPClientSettings {

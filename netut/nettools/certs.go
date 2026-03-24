@@ -78,7 +78,7 @@ func OutputPEMFile(filename string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf(CertificateInfo(cert))
+			fmt.Printf("%s", CertificateInfo(cert))
 		default:
 			fmt.Println(block.Type)
 		}
@@ -106,7 +106,7 @@ func CertificateChains(rawCerts [][]byte, chains [][]*x509.Certificate) error {
 			// fmt.Printf("Chain %d:\n", j)
 			for i, cert := range v {
 				fmt.Printf("  Cert %d:\n", i)
-				fmt.Printf(CertificateInfo(cert))
+				fmt.Printf("%s", CertificateInfo(cert))
 			}
 		}
 		Wait()

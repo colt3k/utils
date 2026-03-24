@@ -47,6 +47,7 @@ type Client struct {
 	HTTPClientRequestTimeout  time.Duration
 	CheckRedirectUserLastResp bool
 	disableVerifyCert         bool
+	CloseRequest              bool
 }
 
 type Auth struct {
@@ -69,6 +70,7 @@ func NewClient(opts ...ClientOption) *Client {
 	t.ResponseHeaderTimeout = 10 * time.Second
 	// t.ExpectContinueTimeout = 1 * time.Second
 	t.HTTPClientRequestTimeout = 30 * time.Second
+	t.CloseRequest = true
 
 	for _, opt := range opts {
 		opt(t)
@@ -167,7 +169,9 @@ func (c *Client) FetchWithContext(ctx context.Context, method, urlStr string, au
 	// })
 
 	req, _ := http.NewRequestWithContext(ctx, method, urlStr, body)
-	req.Close = true
+	if c.CloseRequest {
+		req.Close = true
+	}
 	if auth != nil {
 		req.SetBasicAuth(string(auth.Username), string(auth.Password))
 	}
