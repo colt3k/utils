@@ -108,6 +108,7 @@ func (h *HTTPClient) Open(ctx context.Context, data io.Reader) (*http.Response, 
 
 	if client == nil || !h.ReUseClient {
 		client = NewClient(
+			CloseRequest(h.CloseRequest),
 			HTTPClientRequestTimeout(h.RequestTimeout),
 			DisableVerifyClientCert(h.DisableVerifyClientCert),
 			HTTPClientResponseHeaderTimeout(h.ResponseHeaderTimeout),

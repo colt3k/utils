@@ -34,11 +34,11 @@ func TLSHandshakeTimeout(i int) ClientOption {
 	}
 }
 
-//func ExpectContinueTimeout(i int) ClientOption {
+// func ExpectContinueTimeout(i int) ClientOption {
 //	return func(c *Client) {
 //		c.ExpectContinueTimeout = time.Duration(i) * time.Second
 //	}
-//}
+// }
 
 func HTTPClientRequestTimeout(i int) ClientOption {
 	return func(c *Client) {
@@ -58,5 +58,11 @@ func HTTPClientResponseHeaderTimeout(i int) ClientOption {
 func CheckRedirectUserLastResp(b bool) ClientOption {
 	return func(c *Client) {
 		c.CheckRedirectUserLastResp = b
+	}
+}
+
+func CloseRequest(b bool) ClientOption {
+	return func(c *Client) {
+		c.CloseRequest = b
 	}
 }
