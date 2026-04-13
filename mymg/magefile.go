@@ -1255,6 +1255,9 @@ func Build() error {
 		if !dryRun {
 			// once we figure out GO FLAGS use this one when needed
 			// err = sh.RunWithV(env, gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
+			if strings.Contains(goLDFlags, "$") {
+				return fmt.Errorf("issue value has a dollar sign '$' which will be stripped")
+			}
 			err = sh.RunV(gocmd, "build", "-trimpath", "-tags", buildTags, "-ldflags", goLDFlags, "-o", name, projectMainDir)
 			if err != nil {
 				clearEnvFlags(flags, dryRun)
@@ -2756,6 +2759,9 @@ func Install() error {
 			fmt.Println("issue with setup :", err)
 		}
 		if !dryRun {
+			if strings.Contains(goLDFlags, "$") {
+				return fmt.Errorf("issue value has a dollar sign '$' which will be stripped")
+			}
 			err = sh.RunV(gocmd, "install", "-a", "-tags", buildTags, "-ldflags", goLDFlags, projectMainDir)
 			if err != nil {
 				fmt.Println("!!!error: ", err)

@@ -7,7 +7,7 @@ require (
 	github.com/colt3k/utils/io v0.0.24
 	github.com/colt3k/utils/ques v0.0.7
 	github.com/colt3k/utils/stringut v0.0.7
-	github.com/magefile/mage v1.15.0
+	github.com/magefile/mage v1.17.1
 	github.com/pelletier/go-toml/v2 v2.0.6
 )
 
