@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	log "github.com/colt3k/nglog/ng"
 	"github.com/colt3k/utils/encode"
@@ -142,8 +141,14 @@ func TestScryptEncrypt(t *testing.T) {
 
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
 	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
-	//Calibrate to current system
-	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+	// Use fixed parameters matching the golden file instead of Calibrate (machine-dependent)
+	p := scrypt.Params{
+		N:       1048576,
+		R:       1,
+		P:       2,
+		SaltLen: 32,
+		DKLen:   32,
+	}
 
 	if d, err := json.MarshalIndent(p, "", "    "); err == nil {
 		buf.WriteString(fmt.Sprintln("Calibration - ScryptParams: ", string(d)))
@@ -211,8 +216,14 @@ func TestScryptDecrypt(t *testing.T) {
 
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
 	log.Logln(log.DEBUG, "SaltDecoded: ", saltDecoded)
-	//Calibrate to current system
-	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+	// Use fixed parameters matching the golden file instead of Calibrate (machine-dependent)
+	p := scrypt.Params{
+		N:       1048576,
+		R:       1,
+		P:       2,
+		SaltLen: 32,
+		DKLen:   32,
+	}
 	if d, err := json.MarshalIndent(p, "", "    "); err == nil {
 		buf.WriteString(fmt.Sprintln("Calibration - ScryptParams: ", string(d)))
 	}
@@ -288,7 +299,7 @@ func BenchmarkAESScryptCrypt(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-		p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+		p := scrypt.Params{N: 1048576, R: 1, P: 2, SaltLen: 32, DKLen: 32}
 		log.Println("Params: ", p)
 		salt := crypt.GenSalt(saltDecoded, p.SaltLen)
 		log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
@@ -312,7 +323,7 @@ func BenchmarkAESScryptCrypt(b *testing.B) {
 func BenchmarkAESScryptDecrypt(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-		p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+		p := scrypt.Params{N: 1048576, R: 1, P: 2, SaltLen: 32, DKLen: 32}
 		log.Println("Params: ", p)
 		salt := crypt.GenSalt(saltDecoded, p.SaltLen)
 		log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
@@ -339,7 +350,7 @@ func BenchmarkAESScryptDecrypt(b *testing.B) {
 func TestAESCrypt(t *testing.T) {
 
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+	p := scrypt.Params{N: 1048576, R: 1, P: 2, SaltLen: 32, DKLen: 32}
 	log.Println("Params: ", p)
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
 	log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
@@ -365,7 +376,7 @@ func TestAESCrypt(t *testing.T) {
 }
 func TestAESDecrypt(t *testing.T) {
 	saltDecoded := encode.Decode(cfg.saltScryptBA, encodeenum.B64STD)
-	p, err := scrypt.Calibrate(1*time.Second, 128, scrypt.Params{})
+	p := scrypt.Params{N: 1048576, R: 1, P: 2, SaltLen: 32, DKLen: 32}
 	log.Println("Params: ", p)
 	salt := crypt.GenSalt(saltDecoded, p.SaltLen)
 	log.Printf("Salt: %s\n", encode.Encode(salt, encodeenum.B64STD))
