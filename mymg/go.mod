@@ -1,9 +1,9 @@
 module github.com/colt3k/utils/mymg
 
-go 1.24.0
+go 1.25.0
 
 require (
-	github.com/colt3k/utils/crypt v0.0.16
+	github.com/colt3k/utils/crypt v0.0.17
 	github.com/colt3k/utils/io v0.0.24
 	github.com/colt3k/utils/ques v0.0.7
 	github.com/colt3k/utils/stringut v0.0.7
@@ -19,7 +19,7 @@ require (
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )
